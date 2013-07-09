@@ -8,9 +8,14 @@ AC_LANG(C++)
 AC_CONFIG_MACRO_DIR([m4])
 
 
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE()
 LT_INIT
+
+# trick to remove "-g -O2" default options for C*FLAGS
+CXXFLAGS=""
+CFLAGS=""
+
 
 # standard system requirements
 AC_PROG_CC
@@ -19,12 +24,19 @@ AM_PROG_CC_C_O
 AC_HEADER_STDBOOL
 AC_C_INLINE
 AC_TYPE_SIZE_T
+AC_CHECK_HEADERS( [pthread.h stdio.h math.h limits.h zlib.h iostream fstream string vector exception sstream], [], [AC_MSG_ERROR(["Header not found"])] )
+AC_CHECK_HEADERS( [bzlib.h],[bzlib=yes] )
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
+# AC_PROG_RANLIB
 
 # common flags
-CXXFLAGS+=" -Wall"
-CFLAGS+=" -Wall -D_USE_KNETFILE -D_FILE_OFFSET_BITS=64"
+# common flags
+if test "$CXX" == "g++" ; then
+	CXXFLAGS+=" -Wall -Wextra"
+	CFLAGS+=" -Wall -Wextra"
+fi
+FLAGS+=" -D_USE_KNETFILE -D_FILE_OFFSET_BITS=64"
 
 # checking for 64 bit system (optional)
 echo $ECHO_N "checking for 64 bit architecture... "
@@ -40,11 +52,13 @@ esac
 
 # checking for BOOST library (required)
 echo "===== BOOST support (required) ====="
-BOOST_STATIC()
 BOOST_REQUIRE([1.40.0])
+BOOST_STATIC()
+BOOST_FILESYSTEM
 BOOST_IOSTREAMS
 BOOST_PROGRAM_OPTIONS
 BOOST_THREADS
+BOOST_REGEX
 
 
 # enable debug programs
@@ -60,6 +74,9 @@ AC_ARG_ENABLE([static-FindTranslocations],
      [enable_static_FindTranslocations=$enableval],
      [enable_static_FindTranslocations=no])
 AM_CONDITIONAL(STATIC_ENABLED,test "$enable_static_FindTranslocations" != "no")
+
+AM_CONDITIONAL(GCC_COMPILER,test "$CC" = "gcc")
+AM_CONDITIONAL(BGX_COMPILER,test "$CC" = "bgxlc_r")
 
 
 # print summary
