@@ -10,6 +10,7 @@
 #include <vector>
 #include <map>
 #include <fstream>
+#include <iostream>
 
 #ifdef INLINE_DISABLED
 #define INLINE
