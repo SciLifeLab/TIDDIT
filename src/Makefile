@@ -68,15 +68,18 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
+am__dirstamp = $(am__leading_dot)dirstamp
 am_FindTranslocations_OBJECTS =  \
-	FindTranslocations-FindTranslocations.$(OBJEXT)
+	FindTranslocations-FindTranslocations.$(OBJEXT) \
+	dataStructures/FindTranslocations-Translocations.$(OBJEXT)
 FindTranslocations_OBJECTS = $(am_FindTranslocations_OBJECTS)
 FindTranslocations_LDADD = $(LDADD)
 FindTranslocations_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(FindTranslocations_CXXFLAGS) $(CXXFLAGS) \
 	$(FindTranslocations_LDFLAGS) $(LDFLAGS) -o $@
-am__objects_1 = FindTranslocations_debug-FindTranslocations.$(OBJEXT)
+am__objects_1 = FindTranslocations_debug-FindTranslocations.$(OBJEXT) \
+	dataStructures/FindTranslocations_debug-Translocations.$(OBJEXT)
 am_FindTranslocations_debug_OBJECTS = $(am__objects_1)
 FindTranslocations_debug_OBJECTS =  \
 	$(am_FindTranslocations_debug_OBJECTS)
@@ -250,7 +253,9 @@ top_builddir = ..
 top_srcdir = ..
 ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = subdir-objects
-FindTranslocations_SOURCES = FindTranslocations.cpp
+FindTranslocations_SOURCES = FindTranslocations.cpp \
+				dataStructures/Translocations.cpp
+
 FindTranslocations_debug_SOURCES = $(FindTranslocations_SOURCES)
 SAMTOOLS = samtools/
 INCLUDES = -I$(SAMTOOLS) 
@@ -342,21 +347,37 @@ clean-binPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
+dataStructures/$(am__dirstamp):
+	@$(MKDIR_P) dataStructures
+	@: > dataStructures/$(am__dirstamp)
+dataStructures/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) dataStructures/$(DEPDIR)
+	@: > dataStructures/$(DEPDIR)/$(am__dirstamp)
+dataStructures/FindTranslocations-Translocations.$(OBJEXT):  \
+	dataStructures/$(am__dirstamp) \
+	dataStructures/$(DEPDIR)/$(am__dirstamp)
 FindTranslocations$(EXEEXT): $(FindTranslocations_OBJECTS) $(FindTranslocations_DEPENDENCIES) $(EXTRA_FindTranslocations_DEPENDENCIES) 
 	@rm -f FindTranslocations$(EXEEXT)
 	$(FindTranslocations_LINK) $(FindTranslocations_OBJECTS) $(FindTranslocations_LDADD) $(LIBS)
+dataStructures/FindTranslocations_debug-Translocations.$(OBJEXT):  \
+	dataStructures/$(am__dirstamp) \
+	dataStructures/$(DEPDIR)/$(am__dirstamp)
 FindTranslocations_debug$(EXEEXT): $(FindTranslocations_debug_OBJECTS) $(FindTranslocations_debug_DEPENDENCIES) $(EXTRA_FindTranslocations_debug_DEPENDENCIES) 
 	@rm -f FindTranslocations_debug$(EXEEXT)
 	$(FindTranslocations_debug_LINK) $(FindTranslocations_debug_OBJECTS) $(FindTranslocations_debug_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f dataStructures/FindTranslocations-Translocations.$(OBJEXT)
+	-rm -f dataStructures/FindTranslocations_debug-Translocations.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
 
 include ./$(DEPDIR)/FindTranslocations-FindTranslocations.Po
 include ./$(DEPDIR)/FindTranslocations_debug-FindTranslocations.Po
+include dataStructures/$(DEPDIR)/FindTranslocations-Translocations.Po
+include dataStructures/$(DEPDIR)/FindTranslocations_debug-Translocations.Po
 
 .cpp.o:
 	depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -396,6 +417,20 @@ FindTranslocations-FindTranslocations.obj: FindTranslocations.cpp
 #	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
 #	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(FindTranslocations_CXXFLAGS) $(CXXFLAGS) -c -o FindTranslocations-FindTranslocations.obj `if test -f 'FindTranslocations.cpp'; then $(CYGPATH_W) 'FindTranslocations.cpp'; else $(CYGPATH_W) '$(srcdir)/FindTranslocations.cpp'; fi`
 
+dataStructures/FindTranslocations-Translocations.o: dataStructures/Translocations.cpp
+	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(FindTranslocations_CXXFLAGS) $(CXXFLAGS) -MT dataStructures/FindTranslocations-Translocations.o -MD -MP -MF dataStructures/$(DEPDIR)/FindTranslocations-Translocations.Tpo -c -o dataStructures/FindTranslocations-Translocations.o `test -f 'dataStructures/Translocations.cpp' || echo '$(srcdir)/'`dataStructures/Translocations.cpp
+	$(am__mv) dataStructures/$(DEPDIR)/FindTranslocations-Translocations.Tpo dataStructures/$(DEPDIR)/FindTranslocations-Translocations.Po
+#	source='dataStructures/Translocations.cpp' object='dataStructures/FindTranslocations-Translocations.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(FindTranslocations_CXXFLAGS) $(CXXFLAGS) -c -o dataStructures/FindTranslocations-Translocations.o `test -f 'dataStructures/Translocations.cpp' || echo '$(srcdir)/'`dataStructures/Translocations.cpp
+
+dataStructures/FindTranslocations-Translocations.obj: dataStructures/Translocations.cpp
+	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(FindTranslocations_CXXFLAGS) $(CXXFLAGS) -MT dataStructures/FindTranslocations-Translocations.obj -MD -MP -MF dataStructures/$(DEPDIR)/FindTranslocations-Translocations.Tpo -c -o dataStructures/FindTranslocations-Translocations.obj `if test -f 'dataStructures/Translocations.cpp'; then $(CYGPATH_W) 'dataStructures/Translocations.cpp'; else $(CYGPATH_W) '$(srcdir)/dataStructures/Translocations.cpp'; fi`
+	$(am__mv) dataStructures/$(DEPDIR)/FindTranslocations-Translocations.Tpo dataStructures/$(DEPDIR)/FindTranslocations-Translocations.Po
+#	source='dataStructures/Translocations.cpp' object='dataStructures/FindTranslocations-Translocations.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(FindTranslocations_CXXFLAGS) $(CXXFLAGS) -c -o dataStructures/FindTranslocations-Translocations.obj `if test -f 'dataStructures/Translocations.cpp'; then $(CYGPATH_W) 'dataStructures/Translocations.cpp'; else $(CYGPATH_W) '$(srcdir)/dataStructures/Translocations.cpp'; fi`
+
 FindTranslocations_debug-FindTranslocations.o: FindTranslocations.cpp
 	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(FindTranslocations_debug_CXXFLAGS) $(CXXFLAGS) -MT FindTranslocations_debug-FindTranslocations.o -MD -MP -MF $(DEPDIR)/FindTranslocations_debug-FindTranslocations.Tpo -c -o FindTranslocations_debug-FindTranslocations.o `test -f 'FindTranslocations.cpp' || echo '$(srcdir)/'`FindTranslocations.cpp
 	$(am__mv) $(DEPDIR)/FindTranslocations_debug-FindTranslocations.Tpo $(DEPDIR)/FindTranslocations_debug-FindTranslocations.Po
@@ -409,6 +444,20 @@ FindTranslocations_debug-FindTranslocations.obj: FindTranslocations.cpp
 #	source='FindTranslocations.cpp' object='FindTranslocations_debug-FindTranslocations.obj' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
 #	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(FindTranslocations_debug_CXXFLAGS) $(CXXFLAGS) -c -o FindTranslocations_debug-FindTranslocations.obj `if test -f 'FindTranslocations.cpp'; then $(CYGPATH_W) 'FindTranslocations.cpp'; else $(CYGPATH_W) '$(srcdir)/FindTranslocations.cpp'; fi`
+
+dataStructures/FindTranslocations_debug-Translocations.o: dataStructures/Translocations.cpp
+	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(FindTranslocations_debug_CXXFLAGS) $(CXXFLAGS) -MT dataStructures/FindTranslocations_debug-Translocations.o -MD -MP -MF dataStructures/$(DEPDIR)/FindTranslocations_debug-Translocations.Tpo -c -o dataStructures/FindTranslocations_debug-Translocations.o `test -f 'dataStructures/Translocations.cpp' || echo '$(srcdir)/'`dataStructures/Translocations.cpp
+	$(am__mv) dataStructures/$(DEPDIR)/FindTranslocations_debug-Translocations.Tpo dataStructures/$(DEPDIR)/FindTranslocations_debug-Translocations.Po
+#	source='dataStructures/Translocations.cpp' object='dataStructures/FindTranslocations_debug-Translocations.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(FindTranslocations_debug_CXXFLAGS) $(CXXFLAGS) -c -o dataStructures/FindTranslocations_debug-Translocations.o `test -f 'dataStructures/Translocations.cpp' || echo '$(srcdir)/'`dataStructures/Translocations.cpp
+
+dataStructures/FindTranslocations_debug-Translocations.obj: dataStructures/Translocations.cpp
+	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(FindTranslocations_debug_CXXFLAGS) $(CXXFLAGS) -MT dataStructures/FindTranslocations_debug-Translocations.obj -MD -MP -MF dataStructures/$(DEPDIR)/FindTranslocations_debug-Translocations.Tpo -c -o dataStructures/FindTranslocations_debug-Translocations.obj `if test -f 'dataStructures/Translocations.cpp'; then $(CYGPATH_W) 'dataStructures/Translocations.cpp'; else $(CYGPATH_W) '$(srcdir)/dataStructures/Translocations.cpp'; fi`
+	$(am__mv) dataStructures/$(DEPDIR)/FindTranslocations_debug-Translocations.Tpo dataStructures/$(DEPDIR)/FindTranslocations_debug-Translocations.Po
+#	source='dataStructures/Translocations.cpp' object='dataStructures/FindTranslocations_debug-Translocations.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(FindTranslocations_debug_CXXFLAGS) $(CXXFLAGS) -c -o dataStructures/FindTranslocations_debug-Translocations.obj `if test -f 'dataStructures/Translocations.cpp'; then $(CYGPATH_W) 'dataStructures/Translocations.cpp'; else $(CYGPATH_W) '$(srcdir)/dataStructures/Translocations.cpp'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -531,6 +580,8 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f dataStructures/$(DEPDIR)/$(am__dirstamp)
+	-rm -f dataStructures/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -540,7 +591,7 @@ clean: clean-am
 clean-am: clean-binPROGRAMS clean-generic clean-libtool mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf ./$(DEPDIR) dataStructures/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -586,7 +637,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR)
+	-rm -rf ./$(DEPDIR) dataStructures/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

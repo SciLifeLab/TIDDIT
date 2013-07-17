@@ -3,8 +3,11 @@
  */
 
 #include "common.h"
-#include "radix.h"
 #include "samtools/sam.h"
+#include "dataStructures/Translocations.h"
+
+
+enum pairStatus {pair_Proper, pair_wrongOrientation, pair_wrongDistance, pair_wrongChrs, pair_wrongOptDup};
 
 
 #define MIN(x,y) \
@@ -45,25 +48,32 @@ samfile_t * open_alignment_file(std::string path) {
 
 
 
-void computeLibraryStats(samfile_t *fp, unsigned int minInsert, unsigned int maxInsert, uint64_t genomeLength);
+void computeLibraryStats(samfile_t *fp, uint32_t MinInsert, uint32_t MaxInsert, uint64_t estimatedGenomeSize);
+void findTranslocations(ofstream & outputFileDescriptor, samfile_t *fp, uint32_t MinInsert, uint32_t MaxInsert, uint64_t estimatedGenomeSize);
+pairStatus checkPair(const bam1_core_t *core_read1, const bam1_core_t *core_read2, uint32_t MinInsert, uint32_t MaxInsert);
 
-
+// global variables
+uint32_t contigsNumber;
+float readCoverage;
+float spanningCoverage;
 
 int main(int argc, char *argv[]) {
 	//MAIN VARIABLE
+	string alignmentFile		 = "";
+
+	bool outtie 				 = true;
+	unsigned int WINDOW 		 = 1000;
+	uint64_t estimatedGenomeSize = 0;
+	int32_t MinInsert;
+	int32_t MaxInsert;
+
+	// VARIABLES USING DURING COMPUTATION
+	string outputFile = "output.bed";
+	uint64_t genomeLength = 0;
 
 
-	string alignmentFile = "";
-	int32_t MinInsert = 100;
-	int32_t MaxInsert = 1000000;
-
-	unsigned int WINDOW = 1000;
-	uint64_t estimatedGenomeSize;
-
-
-
-	string outputFile = "FRC.txt";
-	string featureFile = "Features.txt";
+	ofstream outputFileDescriptor;
+	outputFileDescriptor.open (outputFile.c_str());
 
 	// PROCESS PARAMETERS
 	stringstream ss;
@@ -72,13 +82,14 @@ int main(int argc, char *argv[]) {
 
 
 	desc.add_options() ("help", "produce help message")
-					("sam", po::value<string>(), "paired end alignment file (in sam or bam format). Expected orientation <- ->")
-					("min-insert",  po::value<int>(), "paired reads minimum allowed insert size. Used in order to filter outliers. Insert size goeas from beginning of first read to end of second read")
-					("max-insert",  po::value<int>(), "paired reads maximum allowed insert size. Used in order to filter outliers.")
-					("window",  po::value<unsigned int>(), "window size for features computation")
-					("genome-size", po::value<unsigned long int>(), "estimated genome size (if not supplied genome size is believed to be assembly length")
-					("output",  po::value<string>(), "Header output file names (default FRC.txt and Features.txt)")
-					;
+							("sam", po::value<string>(), "alignment file in bam format, expected sorted by read name")
+							("min-insert",  po::value<int>(), "paired reads minimum allowed insert size. Used in order to filter outliers. Insert size goeas from beginning of first read to end of second read")
+							("max-insert",  po::value<int>(), "paired reads maximum allowed insert size. Used in order to filter outliers.")
+							("orientation", po::value<string>(), "expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default outtie")
+							("genome-size", po::value<unsigned long int>(), "estimated genome size (if not supplied genome size is believed to be assembly length")
+							("output",  po::value<string>(), "Header output file names (default FRC.txt and Features.txt)")
+							("window",  po::value<unsigned int>(), "window size for features computation")
+							;
 
 	po::variables_map vm;
 	try {
@@ -95,15 +106,21 @@ int main(int argc, char *argv[]) {
 		exit(0);
 	}
 
-
 	// PARSE SAM/BAM file
 	if (!vm.count("sam")) {
 		DEFAULT_CHANNEL << "Please specify --sam " << endl;
 		exit(0);
 	}
 
+
 	if (vm.count("sam")) {
 		alignmentFile = vm["sam"].as<string>();
+	}
+
+
+	if (!vm.count("min-insert") || !vm.count("max-insert")) {
+		DEFAULT_CHANNEL << "Please specify min-insert and max-insert " << endl;
+		exit(0);
 	}
 
 	if (vm.count("min-insert")) {
@@ -114,30 +131,30 @@ int main(int argc, char *argv[]) {
 			exit(2);
 		}
 	}
-	if (vm.count("pe-max-insert")) {
-		MaxInsert = vm["pe-max-insert"].as<int>();
+	if (vm.count("max-insert")) {
+		MaxInsert = vm["max-insert"].as<int>();
 	}
 
-
-	if(vm.count("sam")){
-		cout << "sam file name is " << alignmentFile << endl;
-		cout << "library min " << MinInsert << "\n";
-		cout << "library max " << MaxInsert << "\n";
+	if (vm.count("orientation")) {
+		string userOrientation = vm["orientation"].as<string>();
+		if(userOrientation.compare("innie") == 0) {
+			outtie = false;
+		} else if (userOrientation.compare("outtie") == 0) {
+			outtie = true;
+		} else {
+			DEFAULT_CHANNEL << "outtie (<- ->) or innie (-> <-) only allowed orientations\n";
+			DEFAULT_CHANNEL << desc << endl;
+			exit(2);
+		}
 	}
-
-
-
-
 
 	if (vm.count("window")) {
 		WINDOW = vm["window"].as<unsigned int>();
 	}
 
-	string header = "";
 	if (vm.count("output")) {
-		header = vm["output"].as<string>();
-		outputFile = header + "_FRC.txt";
-		featureFile = header + "_Features.txt";
+		string header = vm["output"].as<string>();
+		outputFile = header + ".txt";
 	}
 
 	if (vm.count("genome-size")) {
@@ -146,18 +163,28 @@ int main(int argc, char *argv[]) {
 		estimatedGenomeSize = 0;
 	}
 
+	if(vm.count("sam")){
+		cout << "sam file name is " << alignmentFile << endl;
+		cout << "library min " << MinInsert << "\n";
+		cout << "library max " << MaxInsert << "\n";
+		if(outtie) {
+			cout << "library orientation <- ->\n";
+		} else {
+			cout << "library orientation -> <-\n";
+		}
+	}
 
 
-	uint64_t genomeLength = 0;
-	uint32_t contigsNumber = 0;
+
+
 	samfile_t *fp;
-
 	fp = open_alignment_file(alignmentFile);
-
 	EXIT_IF_NULL(fp);
+
 	bam_header_t* head = fp->header; // sam header
 	map<string,unsigned int> contig2position;
 	map<unsigned int,string> position2contig;
+
 	for(int i=0; i< head->n_targets ; i++) {
 		genomeLength += head->target_len[i];
 		contig2position[head->target_name[i]]=contigsNumber;   // keep track of contig name and position in order to avoid problems when processing two libraries
@@ -169,62 +196,25 @@ int main(int argc, char *argv[]) {
 		estimatedGenomeSize = genomeLength; // if user has not provided genome size, approaximated it with assembly size
 	}
 	cout << "total number of contigs " << contigsNumber << endl;
-	cout << "assembly length " << genomeLength << "\n";
-	cout << "estimated length " << estimatedGenomeSize << "\n";
+	//cout << "assembly length " << genomeLength << "\n";
+	cout << "estimated Genome length " << estimatedGenomeSize << "\n";
 
 	samclose(fp); // close the file
 
-	//parse BAM
-
-
-	fp = open_alignment_file(alignmentFile);
-
-
-
-	EXIT_IF_NULL(fp);
-	head = fp->header; // sam header
-
-
-	computeLibraryStats(fp, 100, 5000, genomeLength ) ;
-
-	return 0;
-
-
-	int currentTid = -1;
-	int reads = 0;
-	bam1_t *b = bam_init1();
-
-	// NOW PROCESS LIBRARIES
-
+	//Now compute the BAM file
 	fp = open_alignment_file(alignmentFile);
 	EXIT_IF_NULL(fp);
 	head = fp->header; // sam header
-	while (samread(fp, b) >= 0) {
-		//Get bam core.
-		const bam1_core_t *core = &b->core;
-		if (core == NULL) {
-			printf("Input file is corrupt!");
-			return -1;
-		}
-		++reads;
+	// obtain library statistics
+	computeLibraryStats(fp,  MinInsert, MaxInsert, estimatedGenomeSize);
+	samclose(fp); // close the file
 
-		// new contig
-		if (is_mapped(core)) {
-			if (core->tid != currentTid) { // another contig or simply the first one
-				cout << "now porcessing contig " << core->tid << "\n";
 
-				if(currentTid == -1) { // first read that I`m processing
-
-				} else {
-
-				}
-			} else {
-				//add information to current contig
-
-			}
-		}
-	}
-
+	// now find translocations
+	fp = open_alignment_file(alignmentFile);
+	EXIT_IF_NULL(fp);
+	head = fp->header; // sam header
+	findTranslocations(outputFileDescriptor, fp,MinInsert, MaxInsert, estimatedGenomeSize);
 	samclose(fp); // close the file
 
 
@@ -232,254 +222,223 @@ int main(int argc, char *argv[]) {
 
 
 
+void computeLibraryStats(samfile_t *fp, uint32_t MinInsert, uint32_t MaxInsert, uint64_t estimatedGenomeSize) {
+	//Initialize bam entity
+	bam1_t *b_read1 = bam_init1();
+	bam1_t *b_read2 = bam_init1();
+	uint32_t reads							 = 0;
+	uint64_t properAlignedReadsLength		 = 0; // total length of properly aligned pairs
+	uint64_t properAlignedInsertsLength 	 = 0; // total length of proper inserts
+
+	//mated reads (not necessary correctly mated)
+	uint32_t matedPairs 					 = 0; // length of reads that align on a contig with the mate
+	//correctly aligned mates
+	uint32_t correctlyMatedpairs 			 = 0; // total number of correctly mated reads
+	//wrongly oriented reads
+	uint32_t wronglyOrientedPairs	 		 = 0; // number of wrongly oriented reads
+	//wrongly distance reads
+	uint32_t wronglyDistancePairs       	 = 0; // number of reads at the wrong distance
+	//singletons
+	uint32_t singletonPairs 				 = 0; // number of singleton reads
+	//mates on different contigs
+	uint32_t matesDifferentChromosomesPairs  = 0; // number of contig placed in a different contig
+	//optical duplicates
+	uint32_t matesOpticalDuplicates			 = 0; // number of contig placed in a different contig
 
 
-void computeLibraryStats(samfile_t *fp, unsigned int minInsert, unsigned int maxInsert, uint64_t genomeLength) {
+	while (samread(fp, b_read1) >= 0) {
+		const bam1_core_t *core_read1 = &b_read1->core;
+		if(core_read1->flag&BAM_FMUNMAP) { // mate unmapped
+			singletonPairs ++;
+			reads ++;
+		} else {
+			//extract the core from both alignments
+			samread(fp, b_read2);
+			const bam1_core_t *core_read2 = &b_read2->core;
+
+			if (core_read1 == NULL or core_read2 == NULL) {  //There is something wrong with the read/file
+				printf("Input file is corrupt!");
+				return ;
+			}
+			reads += 2; // otherwise one more read is readed
+			matedPairs ++;
+
+			pairStatus currentPair = checkPair(core_read1,core_read2, MinInsert, MaxInsert);
+
+			switch (currentPair) {
+				case pair_Proper : 				correctlyMatedpairs ++;  break;
+				case pair_wrongOrientation : 	wronglyOrientedPairs ++; break;
+				case pair_wrongDistance : 		wronglyDistancePairs ++; break;
+				case pair_wrongChrs :			matesDifferentChromosomesPairs++; break;
+				case pair_wrongOptDup :			matesOpticalDuplicates ++; break;
+				default : break;
+			}
+
+
+			if(currentPair ==  pair_Proper) {
+				int32_t read1_insertSize  = core_read1->isize;
+				int32_t read1_length      = core_read1->l_qseq;
+				int32_t read2_length      = core_read2->l_qseq;
+				properAlignedReadsLength  += (read1_length + read2_length);
+				properAlignedInsertsLength+= read1_insertSize;
+			}
+
+		}
+
+	}
+
+	readCoverage 	 = (float)(properAlignedReadsLength)/estimatedGenomeSize;
+	spanningCoverage = (float)(properAlignedInsertsLength)/estimatedGenomeSize;;
+
+	cout << "number of reads " 						<< reads 							<< "\n";
+	cout << "number of pairs " 						<< matedPairs	 					<< "\n";
+	cout << "number of correctly oriented pairs "	<< correctlyMatedpairs 				<< "\n";
+	cout << "number of wrongly oriented pairs " 	<< wronglyOrientedPairs 			<< "\n";
+	cout << "number of wrongly distance pairs " 	<< wronglyDistancePairs 			<< "\n";
+	cout << "number of wrongly chromosomes pairs " 	<< matesDifferentChromosomesPairs 	<< "\n";
+	cout << "number of Optical duplicates pairs "	<< matesOpticalDuplicates 			<< "\n";
+	cout << "------------\n";
+	cout << "read coverage across the genome " << readCoverage << "\n";
+	cout << "spanning coverage across the genome " << spanningCoverage << "\n";
+
+}
+
+
+
+
+
+void findTranslocations(ofstream & outputFileDescriptor, samfile_t *fp, uint32_t MinInsert, uint32_t MaxInsert, uint64_t estimatedGenomeSize) {
 
 
 	//Initialize bam entity
-	bam1_t *b = bam_init1();
+	bam1_t *b_read1 = bam_init1();
+	bam1_t *b_read2 = bam_init1();
 
-	//All var declarations
-	unsigned int contigs = 0; // number of contigs/scaffolds
-	// total reads
-	uint32_t reads = 0;
-	uint64_t readsLength = 0;   // total length of reads
-	uint32_t unmappedReads = 0;
-	uint32_t mappedReads = 0;
-	uint32_t zeroQualityReads = 0;
-	uint32_t duplicates = 0;
+	Translocations *Trans;
+	Trans = new Translocations(contigsNumber);
 
-	uint64_t contigSize = 0;
-	uint64_t insertsLength = 0; // total inserts length
-	float insertMean;
-	float insertStd;
+	Trans->initTrans(fp);
 
-	// mated reads (not necessary correctly mated)
-	uint32_t matedReads = 0;        // length of reads that align on a contig with the mate
-	uint64_t matedReadsLength = 0;  // total length of mated reads
-	// correctly aligned mates
-	uint32_t correctlyMatedReads = 0; // total number of correctly mated reads
-	uint64_t correctlyMatedReadsLength = 0; // length of correctly mated reads
-	// wrongly oriented reads
-	uint32_t wronglyOrientedReads = 0; // number of wrongly oriented reads
-	uint64_t wronglyOrientedReadsLength = 0; // length of wrongly oriented reads
-	// wrongly distance reads
-	uint32_t wronglyDistanceReads       = 0; // number of reads at the wrong distance
-	uint64_t wronglyDistanceReadsLength = 0;  // total length of reads placed in different contigs
-	// singletons
-	uint32_t singletonReads = 0; // number of singleton reads
-	uint64_t singletonReadsLength = 0;     // total length of singleton reads
-	// mates on different contigs
-	uint32_t matedDifferentContig = 0; // number of contig placed in a different contig
-	uint64_t matedDifferentContigLength = 0; // total number of reads placed in different contigs
 
-	float C_A = 0; // total read coverage
-	float S_A = 0; // total span coverage
-	float C_M = 0; // coverage induced by correctly aligned pairs
-	float C_W = 0; // coverage induced by wrongly mated pairs
-	float C_S = 0; // coverage induced by singletons
-	float C_C = 0; // coverage induced by reads with mate on a diferent contif
 
-	// compute mean and std on the fly
-	float Mk = 0;
-	float Qk = 0;
-	uint32_t counterK = 1;
-	//Keep header for further reference
-	bam_header_t* head = fp->header;
-	int32_t currentTid = -1;
-	int32_t iSize;
 
-	while (samread(fp, b) >= 0) {
-		//Get bam core.
-		const bam1_core_t *core = &b->core;
-		if (core == NULL) {  //There is something wrong with the read/file
-			printf("Input file is corrupt!");
-			return ;
-		}
-		++reads; // otherwise one more read is readed
-
-		if (!is_mapped(core)) {
-			++unmappedReads;
+	while (samread(fp, b_read1) >= 0) {
+		const bam1_core_t *core_read1 = &b_read1->core;
+		if(core_read1->flag&BAM_FMUNMAP) { // mate unmapped
+			// do nothing, read next read
 		} else {
-			if (core->tid != currentTid) {
-				//Get length of next section
-				contigSize = head->target_len[core->tid];
-				contigs++;
-				if (contigSize < 1) {//We can't have such sizes! this can't be right
-					fprintf(stderr,"%s has size %d, which can't be right!\nCheck bam header!",head->target_name[core->tid],contigSize);
-				}
-				currentTid = core->tid;
+			//extract the core from both alignments
+			samread(fp, b_read2);
+			const bam1_core_t *core_read2 = &b_read2->core;
+			if (core_read1 == NULL or core_read2 == NULL) {  //There is something wrong with the read/file
+				printf("Input file is corrupt!");
+				return ;
 			}
-			//&& !(core->flag&BAM_FSECONDARY)
-			if(!(core->flag&BAM_FUNMAP) && !(core->flag&BAM_FDUP) && !(core->flag&BAM_FQCFAIL)) { // if read has been mapped and it is not a DUPLICATE or a SECONDARY alignment
-				uint32_t* cigar = bam1_cigar(b);
-				++mappedReads;
-				uint32_t alignmentLength = bam_cigar2qlen(core,cigar);
-				readsLength += alignmentLength;
-				uint32_t startRead = core->pos; // start position on the contig
-				uint32_t startPaired;
-				//Now check if reads belong to a proper pair: both reads aligned on the same contig at the expected distance and orientation
-				if ((core->flag&BAM_FREAD1) //First in pair
-						&& !(core->flag&BAM_FMUNMAP) /*Mate is also mapped!*/
-						&& (core->tid == core->mtid) /*Mate on the same chromosome*/
-				) {
-					//pair is mapped on the same contig and I'm looking the first pair
-					startPaired = core->mpos;
-					if(startRead < startPaired) {
-						iSize = (startPaired + core->l_qseq -1) - startRead; // insert size, I consider both reads of the same length
-						if(!(core->flag&BAM_FREVERSE) && (core->flag&BAM_FMREVERSE) ) { //
-							//here reads are correctly oriented
-							if (minInsert <= iSize && iSize <= maxInsert) { //this is a right insert
-								if(counterK == 1) {
-									Mk = iSize;
-									Qk = 0;
-									counterK++;
-								} else {
-									float oldMk = Mk;
-									float oldQk = Qk;
-									Mk = oldMk + (iSize - oldMk)/counterK;
-									Qk = oldQk + (counterK-1)*(iSize - oldMk)*(iSize - oldMk)/(float)counterK;
-									counterK++;
-								}
-								insertsLength += iSize;
-								correctlyMatedReads++;
-								correctlyMatedReadsLength +=  bam_cigar2qlen(core,cigar); // update number of correctly mapped and their length
-							} else {
-								wronglyDistanceReads++;
-								wronglyDistanceReadsLength += bam_cigar2qlen(core,cigar);
-							}
-						} else {
-							//pair is wrongly oriented
-							wronglyOrientedReads++;
-							wronglyOrientedReadsLength += bam_cigar2qlen(core,cigar);
-						}
-					} else {
-						iSize = (startRead + alignmentLength - 1) - startPaired;
-						if((core->flag&BAM_FREVERSE) && !(core->flag&BAM_FMREVERSE) ) { //
-							//here reads are correctly oriented
-							//here reads are correctly oriented
-							if (minInsert <= iSize && iSize <= maxInsert) { //this is a right insert
-								if(counterK == 1) {
-									Mk = iSize;
-									Qk = 0;
-									counterK++;
-								} else {
-									float oldMk = Mk;
-									float oldQk = Qk;
-									Mk = oldMk + (iSize - oldMk)/counterK;
-									Qk = oldQk + (counterK-1)*(iSize - oldMk)*(iSize - oldMk)/(float)counterK;
-									counterK++;
-								}
-								insertsLength += iSize;
-								correctlyMatedReads++;
-								correctlyMatedReadsLength +=  bam_cigar2qlen(core,cigar); // update number of correctly mapped and their length
-							} else {
-								wronglyDistanceReads++;
-								wronglyDistanceReadsLength += bam_cigar2qlen(core,cigar);
-							}
-						} else {
-							//pair is wrongly oriented
-							wronglyOrientedReads++;
-							wronglyOrientedReadsLength += bam_cigar2qlen(core,cigar);
-						}
-					}
-				} else  if ((core->flag&BAM_FREAD2) //Second in pair
-						&& !(core->flag&BAM_FMUNMAP) /*Mate is also mapped!*/
-						&& (core->tid == core->mtid) /*Mate on the same chromosome*/
-				)
-					// if I'm considering the second read in a pair I must check it is is a correctly mated read and if this is the case update the right variables
-				{
-					startPaired = core->mpos;
-					if(startRead > startPaired) {
-						iSize = (startRead + alignmentLength -1) - startPaired;
-						if((core->flag&BAM_FREVERSE) && !(core->flag&BAM_FMREVERSE) ) { //
-							//here reads are correctly oriented
-							if (minInsert <= iSize && iSize <= maxInsert) { //this is a right insert, no need to update insert coverage
-								correctlyMatedReads++;
-								correctlyMatedReadsLength +=  bam_cigar2qlen(core,cigar); // update number of correctly mapped and their length
-							} else {
-								wronglyDistanceReads++;
-								wronglyDistanceReadsLength += bam_cigar2qlen(core,cigar);
-							}
-						} else {
-							//pair is wrongly oriented
-							wronglyOrientedReads++;
-							wronglyOrientedReadsLength += bam_cigar2qlen(core,cigar);
-						}
-					} else {
-						iSize = (startPaired + core->l_qseq -1) - startRead;
-						if(!(core->flag&BAM_FREVERSE) && (core->flag&BAM_FMREVERSE) ) { //
-							//here reads are correctly oriented
-							if (minInsert <= iSize && iSize <= maxInsert) { //this is a right insert, no need to update insert coverage
-								correctlyMatedReads++;
-								correctlyMatedReadsLength +=  bam_cigar2qlen(core,cigar); // update number of correctly mapped and their length
-							}else {
-								wronglyDistanceReads++;
-								wronglyDistanceReadsLength += bam_cigar2qlen(core,cigar);
-							}
-						} else {
-							//pair is wrongly oriented
-							wronglyOrientedReads++;
-							wronglyOrientedReadsLength += bam_cigar2qlen(core,cigar);
-						}
-					}
-				} else if (core->tid != core->mtid && !(core->flag&BAM_FMUNMAP)) {
-					//Count inter-chrom pairs
-					matedDifferentContig++;
-					matedDifferentContigLength += bam_cigar2qlen(core,cigar);
-				} else if(core->flag&BAM_FMUNMAP) {
-					// if mate read is unmapped
-					singletonReads++;
-					singletonReadsLength += bam_cigar2qlen(core,cigar);
+
+			pairStatus currentPair = checkPair(core_read1,core_read2, MinInsert, MaxInsert);
+
+			if(currentPair ==  pair_wrongChrs) {
+				// here is where I concentrate my efforts, transolcations
+				uint32_t startRead_1 			= core_read1->pos; // start position on the chromosome
+				uint32_t chromosomeRead_1		= core_read1->tid;
+				uint32_t qualityAligRead_1		= core_read1->qual;
+
+
+				uint32_t startRead_2 			= core_read2->pos; // start position on the chromosome
+				uint32_t chromosomeRead_2		= core_read2->tid;
+				uint32_t qualityAligRead_2		= core_read2->qual;
+
+				//cout << head->target_name[chromosomeRead_1] << "\t" << startRead_1 << "\t" << qualityAligRead_1  << " -- " << head->target_name[chromosomeRead_2] <<  "\t" << startRead_2 << "\t" << qualityAligRead_2 << "\n";
+				if(qualityAligRead_1 >= 20 and qualityAligRead_2 >= 20) {
+					Trans->insertConnection(chromosomeRead_1,startRead_1,chromosomeRead_2,startRead_2);
 				}
-
-
-				if (core->flag&BAM_FPROPER_PAIR) {
-					//Is part of a proper pair
-					matedReads ++; // increment number of mated reads
-					matedReadsLength += bam_cigar2qlen(core,cigar); // add the length of the read aligne as proper mate (not necessary correctly mated)
-				}
-
-				if (core->flag&BAM_FDUP) {   //This is a duplicate. Don't count it!.
-					++duplicates;
-				}
-			} else {
-				++zeroQualityReads;
-
 			}
+		}
+
+	}
+
+
+	//Trans->printConnections();
+	uint32_t minimumNumberOfSupportingPairs = 5;
+	float minCov = readCoverage/5;
+	float maxCov = readCoverage*5;
+
+	for (uint32_t i = 1; i<= Trans->chromosomesNum; i++) {
+		for(uint32_t j = i +1; j<= Trans->chromosomesNum; j++) {
+			Trans->findEvents(outputFileDescriptor, i,j, minimumNumberOfSupportingPairs, minCov, maxCov);
 		}
 	}
 
-	cout << "LIBRARY STATISTICS\n";
-	cout << "\ttotal reads number " << reads << "\n";
-	cout << "\ttotal mapped reads " << mappedReads << "\n";
-	cout << "\ttotal unmapped reads " << unmappedReads << "\n";
-	cout << "\tproper pairs " << matedReads << "\n";
-	cout << "\tzero quality reads " << zeroQualityReads << "\n";
-	cout << "\tcorrectly oriented " << correctlyMatedReads << "\n";
-	cout << "\twrongly oriented " << wronglyOrientedReads << "\n";
-	cout << "\twrongly distance " << wronglyDistanceReads << "\n";
-	cout << "\twrongly contig " <<  matedDifferentContig << "\n";
-	cout << "\tsingletons " << singletonReads << "\n";
 
-	uint32_t total = correctlyMatedReads + wronglyOrientedReads + wronglyDistanceReads + matedDifferentContig + singletonReads;
-	cout << "\ttotal " << total << "\n";
-	cout << "\tCoverage statistics\n";
+}
 
 
-	cout << "\tC_A = " << C_A << endl;
-	cout << "\tS_A = " << S_A << endl;
-	cout << "\tC_M = " << C_M << endl;
-	cout << "\tC_W = " << C_W << endl;
-	cout << "\tC_S = " << C_S << endl;
-	cout << "\tC_C = " << C_C << endl;
-	cout << "\tMean Insert length = " << Mk << endl;
-	cout << "\tStd Insert length = " << Qk << endl;
-	cout << "----------\n";
+
+
+pairStatus checkPair(const bam1_core_t *core_read1, const bam1_core_t *core_read2, uint32_t MinInsert, uint32_t MaxInsert) {
+	//uint32_t read1_startingPos = core_read1->mpos;
+	if( (core_read1->flag&BAM_FDUP) || (core_read1->flag&BAM_FQCFAIL) || (core_read2->flag&BAM_FDUP) || (core_read2->flag&BAM_FQCFAIL)) {// both reads are mapped but at least one is an optical duplicat or fails vendor quality specifications
+		return pair_wrongOptDup;
+	} else if(core_read1->tid != core_read2->tid) { // read mapped on different chromosomes (the one I am interested in)
+		return pair_wrongChrs;
+	}
+	// if it is neither an optical duplicate nor a pair aligned on different chromosomes
+	int32_t read1_insertSize  = core_read1->isize;
+	bool read1_forw; // true for forward and false otherwise
+	if(!(core_read1->flag&BAM_FREVERSE)) {
+		read1_forw = true;
+	} else {
+		read1_forw = false;
+	}
+	bool read1_isFirst;
+	if(core_read1->flag&BAM_FREAD1) { // if this is the first read in the pair
+		read1_isFirst = true;
+	} else {
+		read1_isFirst = false;
+	}
+
+	bool read2_forw; // true for forward and false otherwise
+	if(!(core_read2->flag&BAM_FREVERSE)) {
+		read2_forw = true;
+	} else {
+		read2_forw = false;
+	}
+	bool read2_isFirst;
+	if(core_read2->flag&BAM_FREAD1) { // if this is the first read in the pair
+		read2_isFirst = true;
+	} else {
+		read2_isFirst = false;
+	}
+
+
+	if(read1_forw == read2_forw) {
+		return pair_wrongOrientation;
+	} else if(read1_isFirst) {
+		if(!read1_forw && read2_forw) {
+			if(read1_insertSize >= MinInsert and read1_insertSize <= MaxInsert) {
+				return pair_Proper;
+			} else {
+				return pair_wrongDistance;
+			}
+		} else {
+			return pair_wrongOrientation;
+		}
+	} else if(read2_isFirst) {
+		if(!read1_forw && read2_forw) {
+			if(read1_insertSize >= MinInsert and read1_insertSize <= MaxInsert) {
+				return pair_Proper;
+			} else {
+				return pair_wrongDistance;
+			}
+		} else {
+			return pair_wrongOrientation;
+		}
+	}
+
 
 
 
 }
+
 
 

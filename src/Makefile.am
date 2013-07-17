@@ -4,7 +4,8 @@ AUTOMAKE_OPTIONS = subdir-objects
 bin_PROGRAMS=FindTranslocations FindTranslocations_debug
 
 
-FindTranslocations_SOURCES=FindTranslocations.cpp
+FindTranslocations_SOURCES=FindTranslocations.cpp \
+				dataStructures/Translocations.cpp
 	
 
 	

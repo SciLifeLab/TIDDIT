@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <vector>
 #include <map>
+#include <fstream>
 
 #ifdef INLINE_DISABLED
 #define INLINE
@@ -76,6 +77,8 @@ enum t_alignment { unique_alignment, multiple_alignments, alignments_not_found, 
 enum t_masked { masked, not_masked };
 
 enum Feature {LOW_COVERAGE_AREA, HIGH_COVERAGE_AREA, LOW_NORMAL_AREA, HIGH_NORMAL_AREA, HIGH_SINGLE_AREA, HIGH_SPANNING_AREA, HIGH_OUTIE_AREA, COMPRESSION_AREA, STRECH_AREA, TOTAL};
+
+
 
 /**
  * Conversion from strand type to char type
