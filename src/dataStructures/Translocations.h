@@ -38,7 +38,7 @@ public:
 	void printConnections();
 
 	void compressConnections(uint32_t chr1, uint32_t chr2);
-	void findEvents(ofstream & OutputFileDescriptor, uint32_t chr1, uint32_t chr2, uint32_t minimumPairs, float minCov, float maxCov);
+	void findEvents(ofstream & OutputFileDescriptor, uint32_t chr1, uint32_t chr2, uint32_t minimumPairs, float minCov, float maxCov, uint32_t windowSize, uint32_t windowStep);
 
 
 

@@ -7,7 +7,7 @@
 #include "dataStructures/Translocations.h"
 
 
-enum pairStatus {pair_Proper, pair_wrongOrientation, pair_wrongDistance, pair_wrongChrs, pair_wrongOptDup};
+enum pairStatus {pair_Proper, pair_wrongOrientation, pair_wrongDistance, pair_wrongChrs, pair_wrongOptDup, pair_Deletion};
 
 
 #define MIN(x,y) \
@@ -49,8 +49,8 @@ samfile_t * open_alignment_file(std::string path) {
 
 
 void computeLibraryStats(samfile_t *fp, uint32_t MinInsert, uint32_t MaxInsert, uint64_t estimatedGenomeSize);
-void findTranslocations(ofstream & outputFileDescriptor, samfile_t *fp, uint32_t MinInsert, uint32_t MaxInsert, uint64_t estimatedGenomeSize);
-pairStatus checkPair(const bam1_core_t *core_read1, const bam1_core_t *core_read2, uint32_t MinInsert, uint32_t MaxInsert);
+void findTranslocations(ofstream & outputFileDescriptor, samfile_t *fp, int32_t MinInsert,  int32_t MaxInsert, uint64_t estimatedGenomeSize);
+pairStatus checkPair(const bam1_core_t *core_read1, const bam1_core_t *core_read2, int32_t MinInsert, int32_t MaxInsert);
 
 // global variables
 uint32_t contigsNumber;
@@ -64,8 +64,8 @@ int main(int argc, char *argv[]) {
 	bool outtie 				 = true;
 	unsigned int WINDOW 		 = 1000;
 	uint64_t estimatedGenomeSize = 0;
-	int32_t MinInsert;
-	int32_t MaxInsert;
+	int MinInsert;
+	int MaxInsert;
 
 	// VARIABLES USING DURING COMPUTATION
 	string outputFile = "output.bed";
@@ -83,11 +83,11 @@ int main(int argc, char *argv[]) {
 
 	desc.add_options() ("help", "produce help message")
 							("sam", po::value<string>(), "alignment file in bam format, expected sorted by read name")
-							("min-insert",  po::value<int>(), "paired reads minimum allowed insert size. Used in order to filter outliers. Insert size goeas from beginning of first read to end of second read")
+							("min-insert",  po::value<int>(), "paired reads minimum allowed insert size. Used in order to filter outliers. Insert size goes from beginning of first read to end of second read")
 							("max-insert",  po::value<int>(), "paired reads maximum allowed insert size. Used in order to filter outliers.")
 							("orientation", po::value<string>(), "expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default outtie")
 							("genome-size", po::value<unsigned long int>(), "estimated genome size (if not supplied genome size is believed to be assembly length")
-							("output",  po::value<string>(), "Header output file names (default FRC.txt and Features.txt)")
+							("output",  po::value<string>(), "Header output file names")
 							("window",  po::value<unsigned int>(), "window size for features computation")
 							;
 
@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
 	EXIT_IF_NULL(fp);
 	head = fp->header; // sam header
 	// obtain library statistics
-	computeLibraryStats(fp,  MinInsert, MaxInsert, estimatedGenomeSize);
+	//computeLibraryStats(fp,  MinInsert, MaxInsert, estimatedGenomeSize);
 	samclose(fp); // close the file
 
 
@@ -298,8 +298,8 @@ void computeLibraryStats(samfile_t *fp, uint32_t MinInsert, uint32_t MaxInsert, 
 	cout << "number of wrongly chromosomes pairs " 	<< matesDifferentChromosomesPairs 	<< "\n";
 	cout << "number of Optical duplicates pairs "	<< matesOpticalDuplicates 			<< "\n";
 	cout << "------------\n";
-	cout << "read coverage across the genome " << readCoverage << "\n";
-	cout << "spanning coverage across the genome " << spanningCoverage << "\n";
+	cout << "read coverage across the genome " 		<< readCoverage << "\n";
+	cout << "spanning coverage across the genome " 	<< spanningCoverage << "\n";
 
 }
 
@@ -307,75 +307,108 @@ void computeLibraryStats(samfile_t *fp, uint32_t MinInsert, uint32_t MaxInsert, 
 
 
 
-void findTranslocations(ofstream & outputFileDescriptor, samfile_t *fp, uint32_t MinInsert, uint32_t MaxInsert, uint64_t estimatedGenomeSize) {
-
-
+void findTranslocations(ofstream & outputFileDescriptor, samfile_t *fp, int32_t MinInsert, int32_t MaxInsert, uint64_t estimatedGenomeSize) {
 	//Initialize bam entity
 	bam1_t *b_read1 = bam_init1();
 	bam1_t *b_read2 = bam_init1();
+
+	bam_header_t* head = fp->header; // sam header
+	for(int i=0; i< head->n_targets ; i++) {
+		cout << i << " " << head->target_name[i] << "\n";
+	}
 
 	Translocations *Trans;
 	Trans = new Translocations(contigsNumber);
 
 	Trans->initTrans(fp);
 
-
-
-
 	while (samread(fp, b_read1) >= 0) {
 		const bam1_core_t *core_read1 = &b_read1->core;
 		if(core_read1->flag&BAM_FMUNMAP) { // mate unmapped
-			// do nothing, read next read
+			//DONOTHING as I have removed unmapped reads, if one read is without the mate it means that I need to read only one!!!!
 		} else {
-			//extract the core from both alignments
 			samread(fp, b_read2);
+
 			const bam1_core_t *core_read2 = &b_read2->core;
 			if (core_read1 == NULL or core_read2 == NULL) {  //There is something wrong with the read/file
 				printf("Input file is corrupt!");
 				return ;
 			}
+			pairStatus currentPair = checkPair(core_read1,core_read2, MinInsert, MaxInsert );
 
-			pairStatus currentPair = checkPair(core_read1,core_read2, MinInsert, MaxInsert);
 
 			if(currentPair ==  pair_wrongChrs) {
-				// here is where I concentrate my efforts, transolcations
+				// possible trans-location event found
 				uint32_t startRead_1 			= core_read1->pos; // start position on the chromosome
 				uint32_t chromosomeRead_1		= core_read1->tid;
 				uint32_t qualityAligRead_1		= core_read1->qual;
-
 
 				uint32_t startRead_2 			= core_read2->pos; // start position on the chromosome
 				uint32_t chromosomeRead_2		= core_read2->tid;
 				uint32_t qualityAligRead_2		= core_read2->qual;
 
-				//cout << head->target_name[chromosomeRead_1] << "\t" << startRead_1 << "\t" << qualityAligRead_1  << " -- " << head->target_name[chromosomeRead_2] <<  "\t" << startRead_2 << "\t" << qualityAligRead_2 << "\n";
 				if(qualityAligRead_1 >= 20 and qualityAligRead_2 >= 20) {
-					Trans->insertConnection(chromosomeRead_1,startRead_1,chromosomeRead_2,startRead_2);
+					if(chromosomeRead_1 < chromosomeRead_2) {
+						Trans->insertConnection(chromosomeRead_1,startRead_1, chromosomeRead_2,startRead_2);
+					} else {
+						Trans->insertConnection(chromosomeRead_2,startRead_2, chromosomeRead_1,startRead_1);
+					}
+				}
+			} else if (currentPair == pair_Deletion) {
+				// possible deletion event found
+				int32_t startRead_1 			= core_read1->pos; // start position on the chromosome
+				int32_t chromosomeRead_1		= core_read1->tid;
+				int32_t qualityAligRead_1		= core_read1->qual;
+
+				int32_t startRead_2 			= core_read2->pos; // start position on the chromosome
+				int32_t chromosomeRead_2		= core_read2->tid;
+				int32_t qualityAligRead_2		= core_read2->qual;
+
+				if(qualityAligRead_1 >= 20 and qualityAligRead_2 >= 20) {
+					//if(chromosomeRead_1 == 13  ) { //and startRead_1 >= 16700000 and startRead_1 < 16850000
+					//	int32_t difference = startRead_2 -  startRead_1;
+					//	cout << chromosomeRead_1 << "\t" << startRead_1 << " --- " <<  chromosomeRead_2 << "\t" << startRead_2 << " --- " << difference <<"\n";
+					//}
+					if(startRead_1 < startRead_2) {
+						Trans->insertConnection(chromosomeRead_1,startRead_1, chromosomeRead_2,startRead_2);
+					} else {
+						Trans->insertConnection(chromosomeRead_2,startRead_2, chromosomeRead_1,startRead_1);
+					}
 				}
 			}
 		}
-
 	}
 
 
-	//Trans->printConnections();
-	uint32_t minimumNumberOfSupportingPairs = 5;
-	float minCov = readCoverage/5;
-	float maxCov = readCoverage*5;
+	uint32_t minimumNumberOfSupportingPairs = 10;
+	readCoverage = 1.44958;
+	float minCov = readCoverage/4;
+	float maxCov = readCoverage*3;
+	uint32_t windowSize = 4000;
+	uint32_t windowStep = 1000;
 
-	for (uint32_t i = 1; i<= Trans->chromosomesNum; i++) {
+	for (uint32_t i = 0; i<= Trans->chromosomesNum; i++) {
 		for(uint32_t j = i +1; j<= Trans->chromosomesNum; j++) {
-			Trans->findEvents(outputFileDescriptor, i,j, minimumNumberOfSupportingPairs, minCov, maxCov);
+			Trans->findEvents(outputFileDescriptor, i,j, minimumNumberOfSupportingPairs, minCov, maxCov, windowSize, windowStep);
 		}
 	}
 
 
+	ofstream outputDeletionFile;
+	outputDeletionFile.open ("output_deletions.bed");
+	minimumNumberOfSupportingPairs = ;
+	minCov = 0;
+	maxCov = 100;
+	windowSize = 8000;
+	windowStep = 1000;
+	for (uint32_t i = 0; i<= Trans->chromosomesNum; i++) {
+		Trans->findEvents(outputDeletionFile, i, i, minimumNumberOfSupportingPairs, minCov, maxCov, windowSize, windowStep);
+	}
 }
 
 
 
-
-pairStatus checkPair(const bam1_core_t *core_read1, const bam1_core_t *core_read2, uint32_t MinInsert, uint32_t MaxInsert) {
+pairStatus checkPair(const bam1_core_t *core_read1, const bam1_core_t *core_read2, int32_t MinInsert, int32_t MaxInsert) {
 	//uint32_t read1_startingPos = core_read1->mpos;
 	if( (core_read1->flag&BAM_FDUP) || (core_read1->flag&BAM_FQCFAIL) || (core_read2->flag&BAM_FDUP) || (core_read2->flag&BAM_FQCFAIL)) {// both reads are mapped but at least one is an optical duplicat or fails vendor quality specifications
 		return pair_wrongOptDup;
@@ -384,6 +417,15 @@ pairStatus checkPair(const bam1_core_t *core_read1, const bam1_core_t *core_read
 	}
 	// if it is neither an optical duplicate nor a pair aligned on different chromosomes
 	int32_t read1_insertSize  = core_read1->isize;
+	if(read1_insertSize < 0) {
+		 read1_insertSize = -1*(read1_insertSize);
+	}
+
+	int32_t read2_insertSize  = core_read2->isize;
+	if(read2_insertSize < 0) {
+		read2_insertSize = -1*(read2_insertSize);
+	}
+
 	bool read1_forw; // true for forward and false otherwise
 	if(!(core_read1->flag&BAM_FREVERSE)) {
 		read1_forw = true;
@@ -411,13 +453,27 @@ pairStatus checkPair(const bam1_core_t *core_read1, const bam1_core_t *core_read
 	}
 
 
-	if(read1_forw == read2_forw) {
-		return pair_wrongOrientation;
-	} else if(read1_isFirst) {
+
+	//if(read1_forw == read2_forw) {
+	//	return pair_wrongOrientation;
+	//} else
+	if (read1_insertSize >= MinInsert and read1_insertSize <= MaxInsert) {
+		return pair_Proper;
+	} else if (read1_insertSize > MaxInsert) {
+		return pair_Deletion;
+	}
+	return pair_Proper;
+
+	/*
+
+	if(read1_isFirst) {
 		if(!read1_forw && read2_forw) {
 			if(read1_insertSize >= MinInsert and read1_insertSize <= MaxInsert) {
 				return pair_Proper;
 			} else {
+				if(read1_insertSize > MaxInsert) {
+					return pair_Deletion;
+				}
 				return pair_wrongDistance;
 			}
 		} else {
@@ -425,16 +481,19 @@ pairStatus checkPair(const bam1_core_t *core_read1, const bam1_core_t *core_read
 		}
 	} else if(read2_isFirst) {
 		if(!read1_forw && read2_forw) {
-			if(read1_insertSize >= MinInsert and read1_insertSize <= MaxInsert) {
+			if(read2_insertSize >= MinInsert and read2_insertSize <= MaxInsert) {
 				return pair_Proper;
 			} else {
+				if(read2_insertSize > MaxInsert) {
+					return pair_Deletion;
+				}
 				return pair_wrongDistance;
 			}
 		} else {
 			return pair_wrongOrientation;
 		}
 	}
-
+	*/
 
 
 
