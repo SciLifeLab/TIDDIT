@@ -396,7 +396,7 @@ void findTranslocations(ofstream & outputFileDescriptor, samfile_t *fp, int32_t 
 
 	ofstream outputDeletionFile;
 	outputDeletionFile.open ("output_deletions.bed");
-	minimumNumberOfSupportingPairs = ;
+	minimumNumberOfSupportingPairs = 2;
 	minCov = 0;
 	maxCov = 100;
 	windowSize = 8000;
