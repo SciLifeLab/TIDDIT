@@ -1,11 +1,15 @@
+
+
 #ifndef TYPES_H_
 #define TYPES_H_
+
 
 #include <string>
 #include <algorithm>    // std::sort
 #include <vector>       // std::vector
 #include <cstring>
-#include <cmath>
+
+
 #include <climits>
 #include <cstdlib>
 #include <sstream>
@@ -14,6 +18,10 @@
 #include "api/BamReader.h"
 #include "api/BamAlignment.h"
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+
+#define M_PI 3.141592654
 
 #ifdef INLINE_DISABLED
 #define INLINE
@@ -198,7 +206,7 @@ static readStatus computeReadType(BamAlignment al, uint32_t max_insert, bool is_
 
 static float normcdf(float x,float mu,float sigma) {
 	float t = x - mu;
-	float y = 0.5 * erfc(-t / (sigma * sqrt(2.0)));
+	float y = 0.5 * erfc(float(-t / (sigma * sqrt(2.0))));
 	if (y > 1.0) {
 		y = 1.0;
 	}
