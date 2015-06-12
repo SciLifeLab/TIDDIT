@@ -90,7 +90,7 @@ void Window::insertRead(BamAlignment alignment) {
 		this->resetWindow(alignment.Position, alignment.RefID); // this is executed only when the first read in inserted
 	}
 
-	if(this->windowOpen) { //is window is open I need to check that I am not going out of boundaries
+	if(this->windowOpen) { //fs window is open I need to check that I am not going out of boundaries
 		if(alignment.Position > this->currentWindowEnd) { //I am out of the limit, I need to check if my current buffer contains variations
 			bool varFound = this->computeVariations();
 			if(varFound) {
@@ -98,7 +98,7 @@ void Window::insertRead(BamAlignment alignment) {
 			} else {
 				this->goToNextWindow(alignment.Position);
 				if (this->currentWindowEnd < alignment.Position) {
-					cout << "attenzione!!! "<<  this->currentWindowEnd  << " " << alignment.Position << "\n";
+					cout << "attention!!! "<<  this->currentWindowEnd  << " " << alignment.Position << "\n";
 				}
 			}
 		}
@@ -127,8 +127,11 @@ void Window::insertRead(BamAlignment alignment) {
 bool Window::computeVariations() {
 	//by construction I have only forward links, i.e., from chr_i to chr_j with i<j
 	this->computeCoverage();
-	if( this->coverage > 10*this->meanCoverage ) {
-		return false;
+	//if( this->coverage > 10*this->meanCoverage ) {
+	//	return false;
+	//}
+	if (this->currentWindowEnd >= 89816960 and this->currentWindowStart <=  89816960) {
+		cout <<  this->currentWindowStart << " " << this->currentWindowEnd << "\n";
 	}
 
 	bool found = false;
@@ -180,8 +183,8 @@ bool Window::computeVariations() {
 				//ExpectedLinks(uint32_t sizeA, uint32_t sizeB, uint32_t gap, float insert_mean, float insert_stddev, float coverage, uint32_t readLength)
 
 				//INTORDUCE A LIMIT TO WINDOWSIZE 1000
-				if(firstWindowLength > 200 and secondWindowLength > 200 and
-						pairsFormingLink >= minimumPairs  and coverageRealFirstWindow < 5*this->meanCoverage) { //ration between coverage
+				//I need to find the window that maximise this
+				if(pairsFormingLink >= minimumPairs  ) { //ration between coverage  // and coverageRealFirstWindow < 5*this->meanCoverage
 
 					//TODO: compute expected distance between the two windows
 					int32_t estimated_distance = 0;

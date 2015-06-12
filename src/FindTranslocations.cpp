@@ -13,15 +13,11 @@
 #include <iostream>
 #include <fstream>
 
-//#include "data_structures/Translocations.h"
 #include "data_structures/Translocation.h"
 #include  <boost/program_options.hpp>
 namespace po = boost::program_options;
 
 
-//void findTranslocations(string file, int32_t min_insert,  int32_t max_insert, bool outtie, uint64_t genomeSize,
-//		uint16_t minimum_mapping_quality, uint32_t windowSize , uint32_t windowStep, uint32_t minimumSupportingPairs, float coverage,
-//		string outputFileHeader);
 
 void findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t max_insert, bool outtie, uint16_t minimum_mapping_quality,
 		uint32_t windowSize , uint32_t windowStep, uint32_t minimumSupportingPairs, float coverage, float meanInsertSize, float StdInsertSize, string outputFileHeader);
@@ -37,21 +33,27 @@ int main(int argc, char *argv[]) {
 	int max_insert				    = 1000000;  // max insert size
 	string outputFileHeader         = "output"; // default output name
 	int minimum_mapping_quality     = 20;
+	float coverage;
+	float meanInsert;
+	float insertStd;
 
 	// PROCESS PARAMETERS
 	stringstream ss;
 	ss << package_description() << endl << endl << "Allowed options";
 	po::options_description desc(ss.str().c_str());
 	desc.add_options() ("help", "produce help message")
-						("bam", po::value<string>(), "alignment file in bam format, expected sorted by read name. If bwa mem is used option -M MUST be specified in order to map as secondary the splitted reads")
-						("min-insert",  po::value<int>(), "paired reads minimum allowed insert size. Used in order to filter outliers. Insert size goes from beginning of first read to end of second read")
-						("max-insert",  po::value<int>(), "paired reads maximum allowed insert size. Used in order to filter outliers.")
-						("orientation", po::value<string>(), "expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default outtie")
-						("output",  po::value<string>(), "Header output file names")
+						("bam",          po::value<string>(),      "alignment file in bam format, sorted by coordinate. If bwa mem is used option -M MUST be specified in order to map as secondary the splitted reads")
+						("min-insert",   po::value<int>(),         "paired reads minimum allowed insert size. Used in order to filter outliers. Insert size goes from beginning of first read to end of second read")
+						("max-insert",   po::value<int>(),         "paired reads maximum allowed insert size. pairs aligning on the same chr at a distance higher than this are considered candidates for SV.")
+						("orientation",  po::value<string>(),      "expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default outtie")
+						("output",       po::value<string>(),      "Header output file names")
 						("minimum-supporting-pairs",  po::value<unsigned int>(), "Minimum number of supporting pairs in order to call a variation event (default 10)")
 						("minimum-mapping-quality",  po::value<int>(), "Minimum mapping quality to consider an alignment (default 20)")
-						("window-size",  po::value<unsigned int>(), "Size of the sliding window (default 1000)")
-						("window-step",  po::value<unsigned int>(), "size of the step in overlapping window (must be lower than window-size) (default 100)")
+						("window-size",  po::value<unsigned int>(),    "Size of the sliding window (default 1000)")
+						("window-step",  po::value<unsigned int>(),    "size of the step in overlapping window (must be lower than window-size) (default 100)")
+						("coverage",     po::value<float>(), "do not compute coverage from bam file, use the one specified here (must be used in combination with --insert --insert-std)")
+						("insert",       po::value<float>(), "do not compute insert size from bam file, use the one specified here (must be used in combination with --coverage --insert-std)")
+						("insert-std",   po::value<float>(), "do not compute insert size standard deviation from bam file, use the one specified here (must be used in combination with --insert --coverage)")
 						;
 //TODO: add minimum number of reads to support a translocation, window size etc.
 
@@ -70,18 +72,18 @@ int main(int argc, char *argv[]) {
 		return 2;
 	}
 
-	// PARSE SAM/BAM file
+	// PARSE BAM file
 	if (!vm.count("bam")) {
 		DEFAULT_CHANNEL << "Please specify --bam " << endl;
 		return 2;
 	}
-	if (vm.count("bam")) {
-		alignmentFile = vm["bam"].as<string>();
-	}
-	if (!vm.count("min-insert") || !vm.count("max-insert")) {
-		DEFAULT_CHANNEL << "Please specify min-insert and max-insert " << endl;
+	alignmentFile = vm["bam"].as<string>();
+
+	if (!vm.count("max-insert")) {
+		DEFAULT_CHANNEL << "Please specify max-insert " << endl;
 		return 2;
 	}
+
 	if (vm.count("min-insert")) {
 		min_insert = vm["min-insert"].as<int>();
 		if(min_insert <= 0) {
@@ -90,9 +92,11 @@ int main(int argc, char *argv[]) {
 			return 2;
 		}
 	}
+
 	if (vm.count("max-insert")) {
 		max_insert = vm["max-insert"].as<int>();
 	}
+
 	if (vm.count("orientation")) {
 		string userOrientation = vm["orientation"].as<string>();
 		if(userOrientation.compare("innie") == 0) {
@@ -129,32 +133,21 @@ int main(int argc, char *argv[]) {
 
 	if (vm.count("minimum-supporting-pairs")) {
 		minimumSupportingPairs = vm["minimum-supporting-pairs"].as<unsigned int>();
-		}
+	}
 
-//   mean   stddev  cov  readlen soft len1 len2 d
-//	3000  , 1500,   50    100      0  3000 7000 0
-// sizeA   sizeB  gap  insert_mean   insert_stddev   coverage  readLength)
-// 3000, 7000, 0, 3000, 1500, 50, 100
-//	cout << "test of ExpectedLinks (566.726420673) "<< ExpectedLinks(3000, 7000, 0, 3000, 1500, 50, 100) << "\n";
-
-	if(vm.count("sam")){
-		cout << "sam file name is " << alignmentFile << endl;
-		cout << "library min " << min_insert << "\n";
-		cout << "library max " << max_insert << "\n";
-		if(outtie) {
-			cout << "library orientation <- ->\n";
-		} else {
-			cout << "library orientation -> <-\n";
+	if (vm.count("coverage") or vm.count("insert") or vm.count("insert-std")) {
+		if ( !(vm.count("coverage") and vm.count("insert") and vm.count("insert-std")) ){
+			DEFAULT_CHANNEL << "--coverage , --insert, and --insert-std must be all specified at the same time. Please specify all three or let the program compute the numbers (Bam file wil be read twice).\n";
+			return 2;
 		}
 	}
 
 
+	// Now parse BAM header and extract information about genome lenght
 	uint64_t genomeLength = 0;
 	uint32_t contigsNumber = 0;
 	BamReader bamFile;
 	bamFile.Open(alignmentFile);
-
-
 
 	SamHeader head = bamFile.GetHeader();
 	if (head.HasSortOrder()) {
@@ -183,24 +176,22 @@ int main(int argc, char *argv[]) {
 	cout << "total number of contigs " 	<< contigsNumber << endl;
 	cout << "assembly length " 			<< genomeLength << "\n";
 
+	if (vm.count("coverage") or vm.count("insert") or vm.count("insert-std")) {
+		coverage    = vm["coverage"].as<float>();
+		meanInsert  = vm["insert"].as<float>();
+		insertStd   = vm["insert-std"].as<float>();
 
-	LibraryStatistics library;
-	library = computeLibraryStats(alignmentFile, genomeLength, max_insert, outtie);
-	//constants refer to P488_101
-	/*
-	float coverage   = 2.41713;
-	float meanInsert = 3159.82;
-	float insertStd  = 1573.74;
-	*/
-	float coverage   = library.C_A;
-	float meanInsert = library.insertMean;
-	float insertStd  = library.insertStd;
+	} else {
+		LibraryStatistics library;
+		library = computeLibraryStats(alignmentFile, genomeLength, max_insert, outtie);
 
+		coverage   = library.C_A;
+		meanInsert = library.insertMean;
+		insertStd  = library.insertStd;
+	}
 
 	findTranslocationsOnTheFly(alignmentFile, min_insert, max_insert, outtie, minimum_mapping_quality,
 			windowSize, windowStep, minimumSupportingPairs, coverage, meanInsert, insertStd, outputFileHeader);
-//	findTranslocations(alignmentFile, min_insert, max_insert, outtie, genomeLength,
-//			minimum_mapping_quality, windowSize, windowStep, minimumSupportingPairs, coverage, outputFileHeader);
 
 }
 
