@@ -468,6 +468,10 @@ void findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t
 	//open the bam file
 	BamReader bamFile;
 	bamFile.Open(bamFileName);
+	//open a reade used to jump across the bamfile
+
+
+
 	//Information from the header is needed to initialize the data structure
 	SamHeader head = bamFile.GetHeader();
 	// now create Translocation on the fly
@@ -475,7 +479,7 @@ void findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t
 
 	window = new Window(windowSize, windowStep, max_insert, minimum_mapping_quality,
 		outtie,  meanInsertSize,  StdInsertSize,  minimumSupportingPairs,
-		 meanCoverage,  outputFileHeader);
+		 meanCoverage,  outputFileHeader,bamFileName);
 	window->initTrans(head);
 
 	//Initialize bam entity

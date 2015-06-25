@@ -2,7 +2,7 @@
  * Translocations.cpp
  *
  *  Created on: Jul 10, 2013
- *      Author: vezzi
+ *      Author: vezzi, Eisfeldt
  */
 
 #include "Translocation.h"
@@ -28,7 +28,7 @@ bool sortLinksChr1(Link i, Link  j) {
 
 Window::Window(int windowSize, int windowStep, int max_insert, uint16_t minimum_mapping_quality,
 		bool outtie, float mean_insert, float std_insert, int minimumPairs,
-		float meanCoverage, string outputFileHeader) {
+		float meanCoverage, string outputFileHeader,string bamFileName) {
 	this->windowSize 		 = windowSize;
 	this->windowStep 		 = windowStep;
 	this->max_insert		 = max_insert;
@@ -38,14 +38,15 @@ Window::Window(int windowSize, int windowStep, int max_insert, uint16_t minimum_
 	this ->std_insert		 = std_insert;
 	this->minimumPairs		 = minimumPairs;
 	this->meanCoverage		 = meanCoverage;
+	this->bamFileName		=bamFileName;
 
 	this->outputFileHeader   = outputFileHeader;
 	string inter_chr_events = outputFileHeader + "_inter_chr_events.tab";
 	this->interChrVariations.open(inter_chr_events.c_str());
-	this->interChrVariations << "chrA\tstartOnA\tendOnA\tchrB\tstartOnB\tendOnB\tLinksFromWindow\tLinksToChrB\tLinksToEvent\tCoverageOnChrA\tOrientationA\tOrientationB\n";
+	this->interChrVariations << "chrA\tstartOnA\tendOnA\tchrB\tstartOnB\tendOnB\tLinksFromWindow\tLinksToChrB\tLinksToEvent\tCoverageOnChrA\tCoverageOnChrB\tOrientationA\tOrientationB\n";
 	string intra_chr_events = outputFileHeader + "_intra_chr_events.tab";
 	this->intraChrVariations.open(intra_chr_events.c_str());
-	this->intraChrVariations << "chrA\tstartOnA\tendOnA\tchrB\tstartOnB\tendOnB\tLinksFromWindow\tLinksToChrB\tLinksToEvent\tCoverageOnChrA\tOrientationA\tOrientationB\n";
+	this->intraChrVariations << "chrA\tstartOnA\tendOnA\tchrB\tstartOnB\tendOnB\tLinksFromWindow\tLinksToChrB\tLinksToEvent\tCoverageOnChrA\tCoverageOnChrB\tOrientationA\tOrientationB\n";
 
 	this->coverage          	= 0;
 	this->currentWindowStart	= 0;
@@ -123,6 +124,39 @@ void Window::insertRead(BamAlignment alignment) {
 
 }
 
+float Window::computeCoverageB(string bamFileName, int chrB, int start, int end, int32_t secondWindowLength){
+	int bases=0;
+	float coverage;
+	BamReader bamFile;
+	BamAlignment currentRead;
+
+
+	//test if an index file is available
+
+
+
+	if(!bamFile.Open(bamFileName)){
+		return -1;
+	}else{
+		if(bamFile.LocateIndex() == 0){
+			cout << "warning no index file found, extraction will proceed in slow mode" << endl;
+		}
+		//moves to a region and itterates through every read inside that region
+		bamFile.SetRegion(chrB,start,chrB,end); 
+		while ( bamFile.GetNextAlignment(currentRead) ) {
+			if(currentRead.IsMapped()) {
+			//calculates the length of a read
+			bases+=currentRead.Length;
+			}
+		}
+	bamFile.Close();
+		//calculates the and returns the coverage within the window
+		coverage=bases/secondWindowLength;
+		return(coverage);
+	}	
+	
+}
+
 
 bool Window::computeVariations() {
 	//by construction I have only forward links, i.e., from chr_i to chr_j with i<j
@@ -180,6 +214,8 @@ bool Window::computeVariations() {
 				int32_t firstWindowLength  =  realFirstWindowEnd - realFirstWindowStart +1; // real window size on chr1
 				//compute the coverage
 				float coverageRealFirstWindow = this->computeCoverage(realFirstWindowStart, realFirstWindowEnd);
+				float coveragRealSecondWindow = computeCoverageB(bamFileName,chr2,startSecondWindow,stopSecondWindow,secondWindowLength);
+				//float coveragRealSecondWindow = 0;
 				//ExpectedLinks(uint32_t sizeA, uint32_t sizeB, uint32_t gap, float insert_mean, float insert_stddev, float coverage, uint32_t readLength)
 
 				//INTORDUCE A LIMIT TO WINDOWSIZE 1000
@@ -243,14 +279,16 @@ bool Window::computeVariations() {
 						intraChrVariations << position2contig[this->chr]  << "\t" <<     realFirstWindowStart   << "\t" <<       realFirstWindowEnd               << "\t"  ;
 						intraChrVariations << position2contig[chr2]       << "\t" <<         startSecondWindow  << "\t" <<        stopSecondWindow                << "\t"  ;
 						intraChrVariations <<      linksFromWindow        << "\t" <<        numLinksToChr2      << "\t" <<          pairsFormingLink              << "\t";
-						intraChrVariations <<     coverageRealFirstWindow << "\t" <<       read1_orientation    << "\t" <<         read2_orientation              << "\n" ;
+						intraChrVariations <<     coverageRealFirstWindow << "\t" << coveragRealSecondWindow << "\t";
+    						intraChrVariations <<	  read1_orientation    << "\t" <<         read2_orientation              << "\n" ;
 						//expectedLinksInWindow << "\t" << pairsFormingLink/expectedLinksInWindow << "\t" << estimatedDistance << "\n";
 
 					} else {
 						interChrVariations << position2contig[this->chr]  << "\t" <<     realFirstWindowStart   << "\t" <<       realFirstWindowEnd               << "\t"  ;
 						interChrVariations << position2contig[chr2]       << "\t" <<         startSecondWindow  << "\t" <<         stopSecondWindow               << "\t"  ;
 						interChrVariations <<     linksFromWindow        << "\t" <<        numLinksToChr2      << "\t" <<          pairsFormingLink              << "\t";
-						interChrVariations <<     coverageRealFirstWindow << "\t" <<       read1_orientation    << "\t" <<         read2_orientation              << "\n" ;
+						interChrVariations <<     coverageRealFirstWindow << "\t" << coveragRealSecondWindow << "\t";
+						interChrVariations <<       read1_orientation    << "\t" <<         read2_orientation              << "\n" ;
 						//expectedLinksInWindow << "\t" << pairsFormingLink/expectedLinksInWindow << "\t" << estimatedDistance << "\n";
 					}
 					found = true;

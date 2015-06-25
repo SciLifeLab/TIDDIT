@@ -2,7 +2,7 @@
  * Translocations.h
  *
  *  Created on: Jul 10, 2013
- *      Author: vezzi
+ *      Author: vezzi, Eisfeldt
  */
 
 #ifndef TRANSLOCATION_H_
@@ -37,6 +37,9 @@ public:
 	int minimumPairs;
 	float meanCoverage;
 
+	//the file name of the bamfile
+	string bamFileName;
+
 
 	//More static parts initialized by init method
 	map<string,unsigned int> contig2position;
@@ -50,7 +53,7 @@ public:
 
 	Window(int windowSize, int windowStep, int max_insert, uint16_t minimum_mapping_quality,
 			bool outtie, float mean_insert, float std_insert, int minimumPairs,
-			float meanCoverage, string outputFileHeader); // constructor
+			float meanCoverage, string outputFileHeader, string bamFileName); // constructor
 	void initTrans(SamHeader head);				   // initialise the contig to position array
 	void insertRead(BamAlignment alignment);	   // inserts a new read
 	void goToNextWindow(int position);			   // moves to next window
@@ -58,6 +61,7 @@ public:
 
 	float computeCoverage(); // computes coverage of the area memorised in the area
 	float computeCoverage(uint32_t start, uint32_t end); // computes coverage of the area memorised in the area
+	float computeCoverageB(string bamFileName, int chrB, int start, int end, int32_t secondWindowLength); //computes the coverage of the window of chromosome B
 
 	bool computeIntraChr(ofstream & OutputFileDescriptor, uint16_t minimum_mapping_quality, float mean_insert, float std_insert, int minimumPairs, float meanCoverage);
 	bool computeInterChr(ofstream & OutputFileDescriptor, uint16_t minimum_mapping_quality, float mean_insert, float std_insert, int minimumPairs, float meanCoverage);
