@@ -28,7 +28,7 @@ bool sortLinksChr1(Link i, Link  j) {
 
 Window::Window(int windowSize, int windowStep, int max_insert, uint16_t minimum_mapping_quality,
 		bool outtie, float mean_insert, float std_insert, int minimumPairs,
-		float meanCoverage, string outputFileHeader,string bamFileName) {
+		float meanCoverage, string outputFileHeader,string bamFileName, string indexFile) {
 	this->windowSize 		 = windowSize;
 	this->windowStep 		 = windowStep;
 	this->max_insert		 = max_insert;
@@ -39,6 +39,7 @@ Window::Window(int windowSize, int windowStep, int max_insert, uint16_t minimum_
 	this->minimumPairs		 = minimumPairs;
 	this->meanCoverage		 = meanCoverage;
 	this->bamFileName		=bamFileName;
+	this -> indexFile		=indexFile;
 
 	this->outputFileHeader   = outputFileHeader;
 	string inter_chr_events = outputFileHeader + "_inter_chr_events.tab";
@@ -138,7 +139,7 @@ float Window::computeCoverageB(string bamFileName, int chrB, int start, int end,
 	if(!bamFile.Open(bamFileName)){
 		return -1;
 	}else{
-		if(bamFile.LocateIndex() == 0){
+		if(bamFile.OpenIndex(indexFile) == 0){
 			cout << "warning no index file found, extraction will proceed in slow mode" << endl;
 		}
 		//moves to a region and itterates through every read inside that region

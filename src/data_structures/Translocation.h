@@ -39,6 +39,7 @@ public:
 
 	//the file name of the bamfile
 	string bamFileName;
+	string indexFile;
 
 
 	//More static parts initialized by init method
@@ -53,7 +54,7 @@ public:
 
 	Window(int windowSize, int windowStep, int max_insert, uint16_t minimum_mapping_quality,
 			bool outtie, float mean_insert, float std_insert, int minimumPairs,
-			float meanCoverage, string outputFileHeader, string bamFileName); // constructor
+			float meanCoverage, string outputFileHeader, string bamFileName, string indexFile); // constructor
 	void initTrans(SamHeader head);				   // initialise the contig to position array
 	void insertRead(BamAlignment alignment);	   // inserts a new read
 	void goToNextWindow(int position);			   // moves to next window

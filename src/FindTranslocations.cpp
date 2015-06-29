@@ -26,7 +26,7 @@
 namespace po = boost::program_options;
 
 //returns a bam file contaning the reads located in a given region of the genome
-void TranslocationBAM(string BamFileName,string outputFileHeader,string inputFileName,map<string,unsigned int> contig2position){
+void TranslocationBAM(string BamFileName,string outputFileHeader,string inputFileName,map<string,unsigned int> contig2position, string indexFile){
 	//the number of regions involved in each event
 	int n=2;
 	int j=0;
@@ -66,6 +66,10 @@ void TranslocationBAM(string BamFileName,string outputFileHeader,string inputFil
 	if ( !writer.Open(eventbam.c_str(), header, references) ) {
 		cout << "Could not open output BAM file" << endl;
 		return;
+	}
+	//test if an index file is available
+	if(bamFile.OpenIndex(indexFile) == 0){
+		cout << "Failed to load the index file" << endl;
 	}
 
 
@@ -133,10 +137,7 @@ void TranslocationBAM(string BamFileName,string outputFileHeader,string inputFil
 						return;
 					}
 				
-				//test if an index file is available
-				if(bamFile.LocateIndex() == 0){
-					cout << "warning no index file found, extraction will proceed in slow mode" << endl;
-				}
+
 
 
 
@@ -173,7 +174,7 @@ void TranslocationBAM(string BamFileName,string outputFileHeader,string inputFil
 
 
 void findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t max_insert, bool outtie, uint16_t minimum_mapping_quality,
-		uint32_t windowSize , uint32_t windowStep, uint32_t minimumSupportingPairs, float coverage, float meanInsertSize, float StdInsertSize, string outputFileHeader);
+		uint32_t windowSize , uint32_t windowStep, uint32_t minimumSupportingPairs, float coverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string Indexfile);
 
 int main(int argc, char *argv[]) {
 	//MAIN VARIABLE
@@ -195,6 +196,7 @@ int main(int argc, char *argv[]) {
 	ssGeneral << "General" << endl << endl << "Allowed options";
 	po::options_description general(ssGeneral.str().c_str());
 	general.add_options() ("help", "produce help message")
+	("bai",		po::value<string>(),	"the reference file")
 	("bam",          po::value<string>(),      "alignment file in bam format, sorted by coordinate. If bwa mem is used option -M MUST be specified in order to map as secondary the splitted reads")
 	("module-help", po::value<string>(), "produce the help message of a module, \n --module-help X \n X =sv,extract,cnv or general")
 	("output",       po::value<string>(),      "Header output file names");
@@ -286,6 +288,11 @@ int main(int argc, char *argv[]) {
 		return 2;
 	}
 	alignmentFile = vm["bam"].as<string>();
+	if (!vm.count("bai")){
+		DEFAULT_CHANNEL << "a reference file must be selected" << endl;
+		return 2;
+	}
+	string indexFile=vm["bai"].as<string>();
 
 	if (vm.count("output")) {
 		string header = vm["output"].as<string>();
@@ -348,7 +355,7 @@ int main(int argc, char *argv[]) {
 
 	if (vm.count("input-file")){
 		roi=vm["input-file"].as<string>();
-		TranslocationBAM(alignmentFile,outputFileHeader,roi,contig2position);
+		TranslocationBAM(alignmentFile,outputFileHeader,roi,contig2position,indexFile);
 		return 1;
 	}else{
 		cout << "please select an input file" << endl;
@@ -440,7 +447,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		findTranslocationsOnTheFly(alignmentFile, min_insert, max_insert, outtie, minimum_mapping_quality,
-				windowSize, windowStep, minimumSupportingPairs, coverage, meanInsert, insertStd, outputFileHeader);
+				windowSize, windowStep, minimumSupportingPairs, coverage, meanInsert, insertStd, outputFileHeader, indexFile);
 
 
 	//if the find copy number variation module is chosen
@@ -464,7 +471,8 @@ int main(int argc, char *argv[]) {
 
 
 void findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t max_insert, bool outtie, uint16_t minimum_mapping_quality,
-		uint32_t windowSize , uint32_t windowStep, uint32_t minimumSupportingPairs, float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader) {
+		uint32_t windowSize , uint32_t windowStep, uint32_t minimumSupportingPairs
+, float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string indexFile) {
 	//open the bam file
 	BamReader bamFile;
 	bamFile.Open(bamFileName);
@@ -479,7 +487,7 @@ void findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t
 
 	window = new Window(windowSize, windowStep, max_insert, minimum_mapping_quality,
 		outtie,  meanInsertSize,  StdInsertSize,  minimumSupportingPairs,
-		 meanCoverage,  outputFileHeader,bamFileName);
+		 meanCoverage,  outputFileHeader,bamFileName,indexFile);
 	window->initTrans(head);
 
 	//Initialize bam entity
