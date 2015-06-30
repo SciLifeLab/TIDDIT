@@ -59,6 +59,7 @@ public:
 	void insertRead(BamAlignment alignment);	   // inserts a new read
 	void goToNextWindow(int position);			   // moves to next window
 	void resetWindow(int position, uint32_t chr);  // resets window when moving to next chr
+	void extendWindow(int position);		//extends the window
 
 	float computeCoverage(); // computes coverage of the area memorised in the area
 	float computeCoverage(uint32_t start, uint32_t end); // computes coverage of the area memorised in the area

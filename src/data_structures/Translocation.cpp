@@ -72,6 +72,7 @@ void Window::initTrans(SamHeader head) {
 }
 
 void Window::insertRead(BamAlignment alignment) {
+	
 
 	readStatus alignmentStatus = computeReadType(alignment, this->max_insert, this->outtie);
 	if(alignmentStatus == unmapped or alignmentStatus == lowQualty ) {
@@ -83,7 +84,6 @@ void Window::insertRead(BamAlignment alignment) {
 		cout << "working on sequence " << position2contig[alignment.RefID] << "\n";
 		this->resetWindow(alignment.Position, alignment.RefID); // this is executed only when the first read in inserted
 	}
-
 	if(alignment.RefID != this->chr) { // I am moving to a new chromosomes, need to check if the current window can be used or not
 		if(this->windowOpen) {
 			this->computeVariations();
@@ -92,8 +92,8 @@ void Window::insertRead(BamAlignment alignment) {
 		this->resetWindow(alignment.Position, alignment.RefID); // this is executed only when the first read in inserted
 	}
 
-	if(this->windowOpen) { //fs window is open I need to check that I am not going out of boundaries
-		if(alignment.Position > this->currentWindowEnd) { //I am out of the limit, I need to check if my current buffer contains variations
+	if(this->windowOpen) { //is window is open I need to check that I am not going out of boundaries
+		if(alignment.Position > this-> currentWindowEnd ) { //I am out of the limit, I need to check if my current buffer contains variations
 			bool varFound = this->computeVariations();
 			if(varFound) {
 				this->resetWindow(alignment.Position, alignment.RefID);
@@ -347,6 +347,10 @@ void Window::resetWindow(int position, uint32_t chr) {
 
 }
 
+//window extension function
+void Window::extendWindow(int position){
+	currentWindowEnd=position+windowSize;
+}
 
 float Window::computeCoverage(uint32_t start, uint32_t end) {
 	float totalReadSizeOnWindow = 0;
