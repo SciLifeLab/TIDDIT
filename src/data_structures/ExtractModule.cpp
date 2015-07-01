@@ -1,18 +1,12 @@
 /*
- * extract.cpp
+ * Translocations.cpp
  *
- *  Created on: Jun 29, 2015
- *      Author: Eisfeldt,Vezzi
+ *  Created on: Jul 10, 2013
+ *      Author: vezzi, Eisfeldt
  */
-//a function used to extract th reads found in specified regions and write the reads to bam files
 
-#include <stdio.h>
-#include <time.h>
-#include <string>
-#include <vector>
-#include <map>
-#include <string>
-#include <queue>
+#include "ProgramModules.h"
+
 
 #include <sstream>
 #include <iostream>
@@ -22,8 +16,13 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include "api/BamWriter.h"
+#include <queue>
 
-void extract(string BamFileName,string outputFileHeader,string inputFileName,map<string,unsigned int> contig2position, string indexFile){
+
+Extract::Extract() { }
+
+
+void Extract::extract(string BamFileName,string outputFileHeader,string inputFileName,map<string,unsigned int> contig2position, string indexFile){
 	//the number of regions involved in each event
 	int n=2;
 	int j=0;
@@ -165,3 +164,7 @@ void extract(string BamFileName,string outputFileHeader,string inputFileName,map
 	writer.Close();
 	bamFile.Close();
 }
+
+
+
+

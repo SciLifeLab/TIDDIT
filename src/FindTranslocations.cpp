@@ -15,9 +15,8 @@
 #include <iostream>
 #include <fstream>
 
-#include "data_structures/Translocation.h"
-#include "data_structures/extract.cpp"
-#include "data_structures/findTranslocationsOnTheFly.cpp"
+
+#include "data_structures/ProgramModules.h"
 #include  <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -49,13 +48,6 @@ queue<string> checkFiles(po::variables_map vm){
 
 	return(files);
 }
-
-//Function used to extract reads in specified regions and write the reads to bam files
-void extract(string BamFileName,string outputFileHeader,string inputFileName,map<string,unsigned int> contig2position, string indexFile);
-
-//Function used to find translocations
-void findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t max_insert, bool outtie, uint16_t minimum_mapping_quality,
-		uint32_t windowSize , uint32_t windowStep, uint32_t minimumSupportingPairs, float coverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string Indexfile);
 
 int main(int argc, char *argv[]) {
 	//MAIN VARIABLE
@@ -168,6 +160,7 @@ int main(int argc, char *argv[]) {
 	map<string,unsigned int> contig2position;
 	map<unsigned int,string> position2contig;
 	uint64_t genomeLength = 0;
+	uint32_t contigsNumber = 0;
 
 	if(fileQueue.back() != "error"){
 		alignmentFile = fileQueue.front();
@@ -178,8 +171,7 @@ int main(int argc, char *argv[]) {
 
 	
 		// Now parse BAM header and extract information about genome lenght
-		uint64_t genomeLength = 0;
-		uint32_t contigsNumber = 0;
+		
 		BamReader bamFile;
 		bamFile.Open(alignmentFile);
 
@@ -204,18 +196,12 @@ int main(int argc, char *argv[]) {
 	
 			position2contig[contigsNumber] = contig2position[sequence->Name];
 			contigsNumber++;
-	
-	
-			
-		}
-	
+		}	
 		bamFile.Close();
 	
 		cout << "total number of contigs " 	<< contigsNumber << endl;
 		cout << "assembly length " 			<< genomeLength << "\n";
 	}
-
-
 	//if the bam extraction module is chosen;
 	if (vm.count("extract")){
 		
@@ -239,8 +225,11 @@ int main(int argc, char *argv[]) {
 
 	if (vm.count("input-file")){
 		roi=vm["input-file"].as<string>();
-		extract(alignmentFile,outputFileHeader,roi,contig2position,indexFile);
+		Extract *BamExtraction;
+		BamExtraction = new Extract();
+		 BamExtraction -> extract(alignmentFile,outputFileHeader,roi,contig2position,indexFile);
 		return 1;
+
 	}else{
 		DEFAULT_CHANNEL << desc2 << endl;
 		return 0;
@@ -337,7 +326,9 @@ int main(int argc, char *argv[]) {
 			insertStd  = library.insertStd;
 		}
 
-		findTranslocationsOnTheFly(alignmentFile, min_insert, max_insert, outtie, minimum_mapping_quality,
+		StructuralVariations *FindTranslocations;
+		FindTranslocations = new StructuralVariations();
+		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, min_insert, max_insert, outtie, minimum_mapping_quality,
 				windowSize, windowStep, minimumSupportingPairs, coverage, meanInsert, insertStd, outputFileHeader, indexFile);
 
 
