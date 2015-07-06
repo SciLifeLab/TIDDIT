@@ -53,8 +53,6 @@ int main(int argc, char *argv[]) {
 	//MAIN VARIABLE
 	string alignmentFile		    = "";       // alignment file name
 	bool outtie 				    = true;	 // library orientation
-	uint32_t windowSize 		    = 1000;     // Window size
-	uint32_t windowStep 		    = 100;     // Window step
 	uint32_t minimumSupportingPairs = 10;
 	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 1000000;  // max insert size
@@ -93,8 +91,6 @@ int main(int argc, char *argv[]) {
 		("orientation",  po::value<string>(),      "expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default outtie")				
 		("minimum-supporting-pairs",  po::value<unsigned int>(), "Minimum number of supporting pairs in order to call a variation event (default 10)")
 		("minimum-mapping-quality",  po::value<int>(), "Minimum mapping quality to consider an alignment (default 20)")
-		("window-size",  po::value<unsigned int>(),    "Size of the sliding window (default 1000)")
-		("window-step",  po::value<unsigned int>(),    "size of the step in overlapping window (must be lower than window-size) (default 100)")
 		("coverage",     po::value<float>(), "do not compute coverage from bam file, use the one specified here (must be used in combination with --insert --insert-std)")
 		("insert",       po::value<float>(), "do not compute insert size from bam file, use the one specified here (must be used in combination with --coverage --insert-std)")
 		("insert-std",   po::value<float>(), "do not compute insert size standard deviation from bam file, use the one specified here (must be used in combination with --insert --coverage)");
@@ -288,18 +284,6 @@ int main(int argc, char *argv[]) {
 		if (vm.count("minimum-mapping-quality")) {
 			minimum_mapping_quality = vm["minimum-mapping-quality"].as<int>();
 		}
-
-		if (vm.count("window-size")) {
-			windowSize = vm["window-size"].as<unsigned int>();
-		}
-
-		if (vm.count("window-step")) {
-			windowStep = vm["window-step"].as<unsigned int>();
-			if (windowStep > windowSize) {
-				DEFAULT_CHANNEL << "window-step cannot be larger than window-size\n";
-				return 2;
-			}
-		}
 	
 		if (vm.count("minimum-supporting-pairs")) {
 			minimumSupportingPairs = vm["minimum-supporting-pairs"].as<unsigned int>();
@@ -328,8 +312,7 @@ int main(int argc, char *argv[]) {
 
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();
-		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, min_insert, max_insert, outtie, minimum_mapping_quality,
-				windowSize, windowStep, minimumSupportingPairs, coverage, meanInsert, insertStd, outputFileHeader, indexFile);
+		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, min_insert, max_insert, outtie, minimum_mapping_quality, minimumSupportingPairs, coverage, meanInsert, insertStd, outputFileHeader, indexFile,contigsNumber);
 
 
 	//if the find copy number variation module is chosen

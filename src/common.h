@@ -8,6 +8,7 @@
 #include <algorithm>    // std::sort
 #include <vector>       // std::vector
 #include <cstring>
+#include <queue>
 
 
 #include <climits>
