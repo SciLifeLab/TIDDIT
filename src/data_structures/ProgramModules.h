@@ -28,7 +28,7 @@ public:
 	StructuralVariations();
 	//main function
 	void findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t max_insert, bool outtie, uint16_t minimum_mapping_quality,
-		uint32_t windowSize , uint32_t windowStep, uint32_t minimumSupportingPairs, float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string indexFile);
+		uint32_t minimumSupportingPairs, float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string indexFile, int contigsNumber);
 };
 
 #endif /* PROGRAMMODULES_H_ */

@@ -9,26 +9,24 @@
 #define TRANSLOCATION_H_
 
 #include "common.h"
-#include <list>
-
-
-
 
 
 class Window {
 public:
 	//object fields that change as the window moves
 	float coverage;
-	int currentWindowStart;
-	int currentWindowEnd;
-	bool windowOpen;
 	int chr;
-	list<BamAlignment> TranslocationEvents;
-	list<BamAlignment> alignmentsOnWindow;
+
+	vector< queue<BamAlignment> >	eventReads;
+	vector<long> covOnChrA;
+	vector<long> tmpCovOnChrA;
+
+	vector<int> linksFromWin;
+	vector<int> tmpLinksFromWin;
+
+
 
 	//More static parts initialized by constructor
-	int windowSize;
-	int windowStep;
 	int max_insert;
 	uint16_t minimum_mapping_quality;
 	bool outtie;
@@ -52,50 +50,20 @@ public:
 	ofstream intraChrVariations;
 
 
-	Window(int windowSize, int windowStep, int max_insert, uint16_t minimum_mapping_quality,
+	Window(int max_insert, uint16_t minimum_mapping_quality,
 			bool outtie, float mean_insert, float std_insert, int minimumPairs,
 			float meanCoverage, string outputFileHeader, string bamFileName, string indexFile); // constructor
 	void initTrans(SamHeader head);				   // initialise the contig to position array
 	void insertRead(BamAlignment alignment);	   // inserts a new read
-	void goToNextWindow(int position);			   // moves to next window
-	void resetWindow(int position, uint32_t chr);  // resets window when moving to next chr
-	void extendWindow(int position);		//extends the window
+	queue<BamAlignment> queueAppend(queue<BamAlignment> queueOne,queue<BamAlignment> queueTwo); //append queues;
+	vector<long> findRegionOnB( queue<BamAlignment> alignmentQueue, int minimumPairs,int maxDistance); //Finds the region of the event on chromosome B
+	vector<long> newChrALimit(queue<BamAlignment> alignmentQueue,long Bstart,long Bend); //resizes the window on CHRA
+	vector<double> computeStatisticsA(string bamFileName, int chrB, int start, int end, int32_t WindowLength, string indexFile); //compute coverage and number of links from window on the chrA
+	vector<string> computeOrientation(queue<BamAlignment> alignmentQueue,long Astart,long Aend,long Bstart,long Bend);//compute the orientation of the read and the mate
 
-	float computeCoverage(); // computes coverage of the area memorised in the area
-	float computeCoverage(uint32_t start, uint32_t end); // computes coverage of the area memorised in the area
-	float computeCoverageB(string bamFileName, int chrB, int start, int end, int32_t secondWindowLength); //computes the coverage of the window of chromosome B
-
-	bool computeIntraChr(ofstream & OutputFileDescriptor, uint16_t minimum_mapping_quality, float mean_insert, float std_insert, int minimumPairs, float meanCoverage);
-	bool computeInterChr(ofstream & OutputFileDescriptor, uint16_t minimum_mapping_quality, float mean_insert, float std_insert, int minimumPairs, float meanCoverage);
-	bool computeVariations();
-
-// the two must return a bool and I need to adjust the window accordingly
-// it is likely that a double passage must be performed or I need to doble the data structure
+	float computeCoverageB(int chrB, int start, int end, int32_t secondWindowLength); //computes the coverage of the window of chromosome B
+	bool computeVariations(int chr2);
 
 };
-
-class Link {
-public:
-	uint32_t chr1_start;
-	uint32_t chr2_start;
-	uint32_t chr2_end;
-	uint32_t supportingPairs;
-	bool	ischr1_rev;
-	bool	ischr2_rev;
-};
-
-class Translocations {
-public:
-	map<uint32_t, vector<Link> > Connections ;
-	Translocations();
-	void insertConnection(uint32_t chr2, uint32_t pos2  );
-	void insertConnection(uint32_t chr1_start, uint32_t chr2, uint32_t pos2 ,  bool reversed1, bool reversed2 );
-
-
-//	void findEvents(ofstream & OutputFileDescriptor, uint32_t chr1, uint32_t chr2, uint32_t minimumPairs, float minCov, float maxCov, uint32_t windowSize, uint32_t windowStep);
-
-};
-
-
 
 #endif /* TRANSLOCATIONS_H_ */
