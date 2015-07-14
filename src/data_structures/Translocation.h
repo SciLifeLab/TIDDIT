@@ -48,6 +48,8 @@ public:
 	string outputFileHeader;
 	ofstream interChrVariations;
 	ofstream intraChrVariations;
+	ofstream interChrVariationsVCF;
+	ofstream intraChrVariationsVCF;
 
 
 	Window(int max_insert, uint16_t minimum_mapping_quality,
