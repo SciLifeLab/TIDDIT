@@ -396,8 +396,8 @@ vector<long> Window::findRegionOnB( queue<BamAlignment> alignmentQueue, int mini
 	for(int i=1; i< QueueSize;i++){
 
 		//if the current mate is close enough to the previous mate
-		if( maxDistance >= (mate_positions[1]-linksToRegionQueue.back()) ){
-			linksToRegionQueue.push(mate_positions[1]);
+		if( maxDistance >= (mate_positions[i]-linksToRegionQueue.back()) ){
+			linksToRegionQueue.push(mate_positions[i]);
 
 		}else{
 			//if there are enough links beetween two regions, the region and the number of pairs are saved, and later on returned
