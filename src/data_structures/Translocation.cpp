@@ -76,13 +76,6 @@ Window::Window(int max_insert, uint16_t minimum_mapping_quality,
 	this -> indexFile		=indexFile;
 
 	this->outputFileHeader   = outputFileHeader;
-	string inter_chr_events = outputFileHeader + "_inter_chr_events.tab";
-	this->interChrVariations.open(inter_chr_events.c_str());
-	this->interChrVariations <<"chrA\tstartOnA\tendOnA\tchrB\tstartOnB\tendOnB\tLinksFromWindow\tLinksToChrB\tLinksToEvent\tCoverageOnChrA\tCoverageOnChrB\tOrientationA\tOrientationB\tExpectedLinksToEvent\tLinksToEvent/ExpectedLinksToEvent\tEstimatedDistance\n";
-	string intra_chr_events = outputFileHeader + "_intra_chr_events.tab";
-	this->intraChrVariations.open(intra_chr_events.c_str());
-	this->intraChrVariations << "chrA\tstartOnA\tendOnA\tchrB\tstartOnB\tendOnB\tLinksFromWindow\tLinksToChrB\tLinksToEvent\tCoverageOnChrA\tCoverageOnChrB\tOrientationA\tOrientationB\tExpectedLinksToEvent\tLinksToEvent/ExpectedLinksToEvent\tEstimatedDistance\n";
-
 	string inter_chr_eventsVCF = outputFileHeader + "_inter_chr_events.vcf";
 	this->interChrVariationsVCF.open(inter_chr_eventsVCF.c_str());
 	this->interChrVariationsVCF << VCFHeader();
@@ -292,6 +285,7 @@ bool Window::computeVariations(int chr2) {
 		long startSecondWindow=chr2regions[i*3];
 		long stopSecondWindow=chr2regions[i*3+1];	
 		long pairsFormingLink=chr2regions[i*3+2];
+		if(pairsFormingLink >= minimumPairs  ) {
 
 		
 
@@ -317,18 +311,11 @@ bool Window::computeVariations(int chr2) {
 		int averageReadLength=int(statisticsFirstWindow[2]);
 		double coverageRealSecondWindow=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
 
-		if(pairsFormingLink >= minimumPairs  ) { //ration between coverage  // and coverageRealFirstWindow < 5*this->meanCoverage
-		//I need to find the window that maximise this
 			int secondWindowLength=(stopSecondWindow-startSecondWindow+1);
 			int firstWindowLength=stopchrA-startchrA+1;
 			float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, averageReadLength);
+
 			if(this->chr == chr2) {
-				intraChrVariations << position2contig[this->chr]  << "\t" <<     startchrA   << "\t" <<       stopchrA               << "\t"  ;
-				intraChrVariations << position2contig[chr2]       << "\t" <<         startSecondWindow  << "\t" <<        stopSecondWindow                << "\t"  ;
-				intraChrVariations <<      linksFromWindow        << "\t" <<        numLinksToChr2      << "\t" <<          pairsFormingLink              << "\t";
-				intraChrVariations <<    coverageRealFirstWindow   << "\t" << coverageRealSecondWindow << "\t";
-    				intraChrVariations <<	  read1_orientation    << "\t" <<         read2_orientation << "\t"
-				<< expectedLinksInWindow << "\t" << pairsFormingLink/expectedLinksInWindow << "\t" << estimatedDistance << "\n";
 
 				string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, pairsFormingLink, linksFromWindow,mean_insert, std_insert,estimatedDistance);
 				string svType="BND";
@@ -343,12 +330,6 @@ bool Window::computeVariations(int chr2) {
 
 	
 			} else {
-				interChrVariations << position2contig[this -> chr]  << "\t" <<     startchrA   << "\t" <<       stopchrA               << "\t"  ;
-				interChrVariations << position2contig[chr2]       << "\t" <<         startSecondWindow  << "\t" <<         stopSecondWindow               << "\t"  ;
-				interChrVariations <<     linksFromWindow        << "\t" <<        numLinksToChr2      << "\t" <<          pairsFormingLink              << "\t";
-				interChrVariations <<     coverageRealFirstWindow	<< "\t" << coverageRealSecondWindow << "\t";
-				interChrVariations <<       read1_orientation    << "\t" <<         read2_orientation              << "\t"
-				 << expectedLinksInWindow << "\t" << pairsFormingLink/expectedLinksInWindow << "\t" << estimatedDistance << "\n";
 
 				string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, pairsFormingLink, linksFromWindow,mean_insert, std_insert,estimatedDistance);
 				string svType="BND";
@@ -412,13 +393,11 @@ vector<long> Window::findRegionOnB( queue<BamAlignment> alignmentQueue, int mini
 	sort(mate_positions.begin(), mate_positions.end(), sortMate);
 	//finds the region of the event
 	linksToRegionQueue.push(mate_positions[0]);
-	mate_positions.erase(mate_positions.begin());
-	for(int i=0; i< QueueSize-1;i++){
+	for(int i=1; i< QueueSize;i++){
 
 		//if the current mate is close enough to the previous mate
-		if( maxDistance >= (mate_positions[0]-linksToRegionQueue.back()) ){
-			linksToRegionQueue.push(mate_positions[0]);
-			mate_positions.erase(mate_positions.begin());
+		if( maxDistance >= (mate_positions[1]-linksToRegionQueue.back()) ){
+			linksToRegionQueue.push(mate_positions[1]);
 
 		}else{
 			//if there are enough links beetween two regions, the region and the number of pairs are saved, and later on returned
@@ -432,8 +411,7 @@ vector<long> Window::findRegionOnB( queue<BamAlignment> alignmentQueue, int mini
 			}
 			//the queue is reset so that the next event may be found(if any)
 			linksToRegionQueue=queue<long>();
-			linksToRegionQueue.push(mate_positions[0]);
-			mate_positions.erase(mate_positions.begin());
+			linksToRegionQueue.push(mate_positions[i]);
 		}
 		
 	}

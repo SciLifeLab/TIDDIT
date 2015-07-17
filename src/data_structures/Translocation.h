@@ -46,8 +46,6 @@ public:
 
 	//Output part
 	string outputFileHeader;
-	ofstream interChrVariations;
-	ofstream intraChrVariations;
 	ofstream interChrVariationsVCF;
 	ofstream intraChrVariationsVCF;
 
