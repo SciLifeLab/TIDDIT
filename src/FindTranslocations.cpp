@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
 	//extraction parameters
 	po::options_description desc2("\nUsage: FindTranslocations --extract [Options] --bam inputfile --bai indexfile --output outputFolder(optional) \nOptions");
 	desc2.add_options()	
-		("input-file",       po::value<string>(), "tab file containing the events(required)")
+		("input-file",       po::value<string>(), "VCF file containing the events(required)")
 		("filter",       po::value<string>(), "filter the reads that are to be extracted(TODO)");
 	po::options_description extractModule(" ");
 	extractModule.add_options()

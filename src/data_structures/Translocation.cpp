@@ -39,15 +39,16 @@ string VCFHeader(){
 	headerString+="##INFO=<ID=ED,Number=1,Type=Integer,Description=\"The average estimated distance between paired ends within the window\">\n";
 	//set filters
 	headerString+="##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links between A and B is less than 40\% of the expected value\">\n";
-	headerString+="=##FILTER=<ID=FewLinks,Description=\"Fewer than 40% of the links in window A link to window B\">\n";
-	headerString+="=##FILTER=<ID=UnexpectedDistance,Description=\"The average paired reads distance is deviating\">\n";
+	headerString+="##FILTER=<ID=FewLinks,Description=\"Fewer than 40% of the links in window A link to chromosome B\">\n";
+	headerString+="##FILTER=<ID=UnexpectedDistance,Description=\"The average paired reads distance is deviating\">\n";
+	headerString+="##FILTER=<ID=UnexpectedCoverage,Description=\"The coverage of the window on chromosome B or A is higher than 10*average coverage\">\n";
 	//Header
 	headerString+="#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n";		
 
 	return(headerString);		
 }
 
-string filterFunction(double RATIO, int linksToB, int LinksFromWindow,float mean_insert, float std_insert,int estimatedDistance){
+string filterFunction(double RATIO, int linksToB, int LinksFromWindow,float mean_insert, float std_insert,int estimatedDistance,double coverageA,double coverageB,double coverageAVG){
 	string filter = "PASS";
 	double linkratio= (double)linksToB/(double)LinksFromWindow;
 	if(RATIO < 0.4){
@@ -56,6 +57,8 @@ string filterFunction(double RATIO, int linksToB, int LinksFromWindow,float mean
 		filter="FewLinks";
 	}else if(estimatedDistance > 2*std_insert + mean_insert or estimatedDistance < -2*std_insert+mean_insert){
 		filter="UnexpectedDistance";
+	}else if(coverageA > 10*coverageAVG or coverageB > coverageAVG*10){
+		filter="UnexpectedCoverage";
 	}
 
 
@@ -317,8 +320,9 @@ bool Window::computeVariations(int chr2) {
 
 			if(this->chr == chr2) {
 
-				string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, pairsFormingLink, linksFromWindow,mean_insert, std_insert,estimatedDistance);
+				string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, numLinksToChr2, linksFromWindow,mean_insert, 								std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);
 				string svType="BND";
+
 
 				intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\t.\t"  ;
 				intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
@@ -331,7 +335,7 @@ bool Window::computeVariations(int chr2) {
 	
 			} else {
 
-				string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, pairsFormingLink, linksFromWindow,mean_insert, std_insert,estimatedDistance);
+				string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, numLinksToChr2, linksFromWindow,mean_insert, 								std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);
 				string svType="BND";
 
 				interChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\t.\t"  ;
