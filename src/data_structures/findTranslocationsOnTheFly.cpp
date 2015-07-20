@@ -46,8 +46,6 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_
 			}
 			window->eventReads[i]=queue<BamAlignment>();
 		}
-	window->interChrVariations.close();
-	window->intraChrVariations.close();
 	window->interChrVariationsVCF.close();
 	window->intraChrVariationsVCF.close();
 

@@ -26,9 +26,7 @@ Options:
 * ``--orientation`` expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default outtie
 * ``--output`` Header of the output file names
 * ``--minimum-supporting-pairs`` Minimum number of supporting pairs in order to call a variation event (default 10) 
-* ``--minimum-mapping-quality`` Minimum mapping quality to consider an alignment (default 20) 
-* ``--window-size`` Size of the sliding window (default 1000) 
-* ``--window-step`` Size of the step in overlapping window (must be lower than window-size) (default 100)
+* ``--minimum-mapping-quality`` Minimum mapping quality to consider an alignment (default 20)
 
 
 LICENCE

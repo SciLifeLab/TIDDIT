@@ -21,12 +21,9 @@
 
 Extract::Extract() { }
 
-
+//This function is used to extract the event regions from a bam file using the output vcf of FindTranslocations
 void Extract::extract(string BamFileName,string outputFileHeader,string inputFileName,map<string,unsigned int> contig2position, string indexFile){
-	//the number of regions involved in each event
-	int n=2;
-	int j=0;
-	string tmpstr;
+	int VCFheader=0;
 	string line;
 	string eventbam;
 	string eventfolder;
@@ -78,82 +75,89 @@ void Extract::extract(string BamFileName,string outputFileHeader,string inputFil
 	if (inputFile){
 		while (getline( inputFile, line )){
 			//skips the input header
-			if (j > 0){
-				//splits on tab
-				vector<std::string> splitline;
-				boost::split(splitline, line, boost::is_any_of("\t"));
+			//splits on tab
+			vector<std::string> splitline;
+			boost::split(splitline, line, boost::is_any_of("\t"));
 
+
+			//make sure that the reader is not collecting values from the metadata of the vcf file
+			if(VCFheader != 0){
 				queue<int> chr;
 				queue<int> startPos;queue<int> endPos;
 				//the filename of the file containing single regions
 				string regionfile = "";
 
-				try{
-					//extracts the startpos,endpos and chromosome of each given region
-					for(int i=0;i<=1;i++){
-						//extracts the chromosome REFID
-						tmpstr=splitline.front();
-						splitline.erase( splitline.begin() );
-						chr.push(contig2position[tmpstr]);
-						regionfile+=tmpstr;
-						regionfile+="_";
+
+				string INFOLine;
+				//extract the info line
+				INFOLine=splitline[7];
 			
-						//extracts the start position on the given chromosome
-						tmpstr=splitline.front();
-						splitline.erase( splitline.begin() );
-						startPos.push( atoi(tmpstr.c_str()));
-						regionfile+=tmpstr;
-						regionfile+="_";
+
+				//get the region from the info line
+				vector<std::string> splitINFOLine;
+				boost::split(splitINFOLine, INFOLine, boost::is_any_of(";"));
+				//
+				for(int i =0;i<2;i++){
+					vector<std::string> chromosomeVector;
+					boost::split(chromosomeVector,splitINFOLine[1+2*i], boost::is_any_of("="));
+					//extract the chromosome
+					chr.push(contig2position[chromosomeVector[1]]);
+					regionfile+=chromosomeVector[1];
+					regionfile+="_";
+			
+					//extracts the start position on the given chromosome
+					vector<std::string> positionVector;
+					boost::split(positionVector,splitINFOLine[2+2*i], boost::is_any_of("="));
+					boost::split(positionVector,positionVector[1], boost::is_any_of(","));
+					startPos.push( atoi(positionVector[0].c_str()));
+					regionfile+=positionVector[0];
+					regionfile+="_";
 
 						//extracts the end position on the given chromosome
-						tmpstr=splitline.front();
-						splitline.erase( splitline.begin() );
-						endPos.push(atoi(tmpstr.c_str()));
-						regionfile+=tmpstr;
-						if(i == 0){regionfile+="_";}
-
-
-						if(startPos.back() > endPos.back()){
-							cout << "ERROR: chromosome startpos must be located before endpos" << endl;
-							return;
-						}
-			
+					endPos.push(atoi(positionVector[1].c_str()));
+					regionfile+=positionVector[1];
+					if(i ==0){
+						regionfile+="_";
 					}
-				}catch(...){
-					cout << "error invalid --extract input" << endl;
-					return;
 				}
+
 
 				regionfile+=".bam";
 				regionfile=eventfolder+"/"+regionfile;
 					// attempt to open our BamWriter{
-					if ( !regionwriter.Open(regionfile.c_str(), header, references) ) {
-						cout << "Could not open output event BAM file" << endl;
-						return;
-					}
-				
+				if ( !regionwriter.Open(regionfile.c_str(), header, references) ) {
+					cout << "Could not open output event BAM file" << endl;
+					return;
+				}
+			
 
 
 
 
 
 				//collects all reads found in the given intervals and writes them to the file outputFileHeader+"_roi.bam"
-				for(int i=0;i<n;i++){
+				for(int i=0;i<2;i++){
 					bamFile.SetRegion(chr.front(),startPos.front(),chr.front(),endPos.front()); 
 					chr.pop();startPos.pop();endPos.pop();
 					while ( bamFile.GetNextAlignment(currentRead) ) {
 						if(currentRead.IsMapped()) {
-						//prints the read to bam file
-						writer.SaveAlignment(currentRead);
-						regionwriter.SaveAlignment(currentRead);
+							if(currentRead.Position >= startPos.front() and currentRead.Position <= endPos.front()){
+							//prints the read to bam file
+							writer.SaveAlignment(currentRead);
+							regionwriter.SaveAlignment(currentRead);
+							}
 						}
 					}
 				}
 				regionwriter.Close();
 				
 
+			}else{
+				if(splitline[0] == "#CHROM"){
+					VCFheader =1;
+				}
+			
 			}
-			j++;
 		}
 		
 		inputFile.close();
@@ -164,7 +168,5 @@ void Extract::extract(string BamFileName,string outputFileHeader,string inputFil
 	writer.Close();
 	bamFile.Close();
 }
-
-
 
 
