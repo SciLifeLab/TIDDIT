@@ -48,20 +48,20 @@ def main(args):
     	sys.stdout.write("##INFO=<ID=OA,Number=1,Type=Integer,Description=\"Orientation of the reads in window A\">\n");
     	sys.stdout.write("##INFO=<ID=OB,Number=1,Type=Integer,Description=\"Orientation of the mates in window B\">\n");
     	sys.stdout.write("##INFO=<ID=CHRA,Number=1,Type=String,Description=\"The chromosome of window A\">\n");
-   	sys.stdout.write("##INFO=<ID=CHRB,Number=1,Type=String,Description=\"The chromosome of window B\">\n");
-   	sys.stdout.write("##INFO=<ID=WINA,Number=2,Type=Integer,Description=\"start and stop positon of window A\">\n");
+        sys.stdout.write("##INFO=<ID=CHRB,Number=1,Type=String,Description=\"The chromosome of window B\">\n");
+        sys.stdout.write("##INFO=<ID=WINA,Number=2,Type=Integer,Description=\"start and stop positon of window A\">\n");
     	sys.stdout.write("##INFO=<ID=WINB,Number=2,Type=Integer,Description=\"start and stop position of window B\">\n");
     	sys.stdout.write("##INFO=<ID=EL,Number=1,Type=Integer,Description=\"Expected links to window B\">\n");
     	sys.stdout.write("##INFO=<ID=RATIO,Number=1,Type=Integer,Description=\"The number of links divided by the expected number of links\">\n");
     	sys.stdout.write("##INFO=<ID=ED,Number=1,Type=Integer,Description=\"The average estimated distance between paired ends within the window\">\n");
-   	sys.stdout.write("##INFO=<ID=FEATURE,Number=2,Type=String,Description=\"The features of regions A and B\">\n");
-   	sys.stdout.write("##INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">\n");
+        sys.stdout.write("##INFO=<ID=FEATURE,Number=2,Type=String,Description=\"The features of regions A and B\">\n");
+        sys.stdout.write("##INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">\n");
     	#set filters
     	sys.stdout.write("##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links between A and B is less than 40\% of the expected value\">\n");
     	sys.stdout.write("##FILTER=<ID=FewLinks,Description=\"Fewer than 40% of the links in window A link to chromosome B\">\n");
-   	sys.stdout.write("##FILTER=<ID=UnexpectedDistance,Description=\"The average paired reads distance is deviating\">\n");
+        sys.stdout.write("##FILTER=<ID=UnexpectedDistance,Description=\"The average paired reads distance is deviating\">\n");
     	sys.stdout.write("##FILTER=<ID=UnexpectedCoverage,Description=\"The coverage of the window on chromosome B or A is higher than 10*average coverage\">\n");
- 	#Header
+        #Header
     	sys.stdout.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
 
         UncompressedVariations = ( line.rstrip().split('\t') for line in fin if not line.startswith("#"))
