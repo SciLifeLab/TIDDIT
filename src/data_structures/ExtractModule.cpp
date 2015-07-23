@@ -138,16 +138,17 @@ void Extract::extract(string BamFileName,string outputFileHeader,string inputFil
 				//collects all reads found in the given intervals and writes them to the file outputFileHeader+"_roi.bam"
 				for(int i=0;i<2;i++){
 					bamFile.SetRegion(chr.front(),startPos.front(),chr.front(),endPos.front()); 
-					chr.pop();startPos.pop();endPos.pop();
 					while ( bamFile.GetNextAlignment(currentRead) ) {
 						if(currentRead.IsMapped()) {
-							if(currentRead.Position >= startPos.front() and currentRead.Position <= endPos.front()){
+                    		if(currentRead.Position >= startPos.front() and currentRead.Position <= endPos.front()){
 							//prints the read to bam file
 							writer.SaveAlignment(currentRead);
 							regionwriter.SaveAlignment(currentRead);
 							}
 						}
 					}
+                    chr.pop();startPos.pop();endPos.pop();
+                    
 				}
 				regionwriter.Close();
 				
