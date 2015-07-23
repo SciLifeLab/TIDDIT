@@ -3,46 +3,67 @@ import argparse
 from operator import itemgetter
 
 def main(args):
-    allVariations = {};
+    allVariations       = {}
     for variation_file in [item for sublist in args.variations for item in sublist] :
+        collapsedVariations = {} # this will contain the SVs of this file, but collapsing those that are close
         with open(variation_file) as fin:
             #memorize all variations
-            Variations = [ line.rstrip().split('\t') for line in fin if not line[0] =="#"]
-            INFO=[infoCol[7].split(";") for infoCol in Variations]
-
-            #now I need to collapse similar variations
-            collapsedVariations = {}
-            for variation in INFO:
-
-		chrA=variation[1].split("=")[1];
-		posA=variation[2].split("=")[1];
-		posA=posA.split(",");
-		startA=posA[0];
-		endA=posA[1];
-
-		chrB=variation[3].split("=")[1];
-		posB=variation[4].split("=")[1];
-		posB=posB.split(",");
-		startB=posB[0];
-		endB=posB[1];
-
-                tollerance = 25000
-                startA = int(startA) - tollerance
+            for line in fin:
+                if line.startswith("#") or line.startswith("="):
+                    continue
+                variation   = line.rstrip().split("\t")[7]
+                description = dict(item.split("=") for item in variation.split(";"))
+                #now I need to collapse similar variations
+                chrA    = description["CHRA"]
+                startA  = int(description["WINA"].split(",")[0])
+                endA    = int(description["WINA"].split(",")[1])
+                chrB    = description["CHRB"]
+                startB  = int(description["WINB"].split(",")[0])
+                endB    = int(description["WINB"].split(",")[1])
+                tollerance = 5000
+                startA = startA - tollerance
                 if startA < 0:
                     startA = 0
-                startB = int(startB) - tollerance
+                startB = startB - tollerance
                 if startB < 0:
                     startB = 0
-                current_variation = [chrA, startA , int(endA), chrB, startB, int(endB)]
+                current_variation = [chrA, startA , endA + tollerance, chrB, startB, endB + tollerance]
                 collapsedVariations = populate_DB(collapsedVariations, current_variation, True, 0)
 
+        ##collapse again in order to avoid problems with areas that have become too close one to onther
+        elemnets_before = 0
+        for chrA in collapsedVariations:
+            for chrB in collapsedVariations[chrA] :
+                for collapsedVariation in collapsedVariations[chrA][chrB]:
+                    elemnets_before += 1
+        elemnets_after  = 0
 
-            #now populate the DB
+        while elemnets_before != elemnets_after:
+            collapsedVariationsFinal = {}
+            elemnets_before = 0
+            elemnets_after  = 0
             for chrA in collapsedVariations:
                 for chrB in collapsedVariations[chrA] :
                     for collapsedVariation in collapsedVariations[chrA][chrB]:
                         current_variation = [chrA, collapsedVariation[0],  collapsedVariation[1], chrB, collapsedVariation[2], collapsedVariation[3]]
-                        allVariations = populate_DB(allVariations, current_variation, False, 0)
+                        collapsedVariationsFinal = populate_DB(collapsedVariationsFinal, current_variation, True, 0)
+                        elemnets_before += 1
+            for chrA in collapsedVariationsFinal:
+                for chrB in collapsedVariationsFinal[chrA] :
+                    for collapsedVariation in collapsedVariationsFinal[chrA][chrB]:
+                        elemnets_after += 1
+            collapsedVariations.clear()
+            collapsedVariations = collapsedVariationsFinal
+
+
+        #now populate the DB
+        for chrA in collapsedVariations:
+            for chrB in collapsedVariations[chrA] :
+                for collapsedVariation in collapsedVariations[chrA][chrB]:
+                    current_variation = [chrA, collapsedVariation[0],  collapsedVariation[1], chrB, collapsedVariation[2], collapsedVariation[3]]
+                    allVariations = populate_DB(allVariations, current_variation, False, 0)
+                        
+        
     
 
     for chrA in allVariations:
@@ -51,8 +72,7 @@ def main(args):
                 print "{}\t{}\t{}\t{}\t{}\t{}\t{}".format(chrA, chrB,  event[0],  event[1],  event[2], event[3], event[4])
 
 
-
-
+#['GL000214.1', 118579, 137473, 'GL000224.1', 0, 18933]
 
 
 def populate_DB(allVariations, variation, local, tollerance):
@@ -139,7 +159,6 @@ def mergeIfSimilar(event, variation): #event is in the DB, variation is the new 
 
     new_event = []
 
-    totalOverlapSize    = 0
     totalEventSize      = 0
     found               = 0
     
@@ -147,37 +166,40 @@ def mergeIfSimilar(event, variation): #event is in the DB, variation is the new 
         if j == 0:
             variation_start    = variation_chrA_start
             variation_end      = variation_chrA_end
-            event_start  = event_chrA_start
-            event_end    = event_chrA_end
+            event_start        = event_chrA_start
+            event_end          = event_chrA_end
         else:
             variation_start    = variation_chrB_start
             variation_end      = variation_chrB_end
-            event_start  = event_chrB_start
-            event_end    = event_chrB_end
+            event_start        = event_chrB_start
+            event_end          = event_chrB_end
 
-        event_size  = event_end - event_start + 1
-        totalOverlapSize += event_size
         overlap     = 0
-        
-        
-        if variation_start <= event_start and variation_end >= event_end and variation_start < event_end:
+        #event         ---------------------
+        #variaton   ------------------------------
+        if variation_start < event_start and variation_end > event_end:
             overlap = event_end - event_start + 1
             new_event.append(variation_start)
             new_event.append(variation_end)
-        elif variation_start <= event_start and variation_end <= event_end and variation_start < event_end:
-            overlap = variation_end - event_start + 1
-            new_event.append(variation_start)
-            new_event.append(event_end)
-        elif variation_start >= event_start and variation_end >= event_end and variation_start < event_end:
-            overlap = event_end - variation_start + 1
-            new_event.append(event_start)
-            new_event.append(variation_end)
-        elif variation_start >= event_start and variation_end <= event_end and variation_start < event_end:
+        #event         ---------------------
+        #variaton        ---------------      take into account special cases
+        elif variation_start >= event_start and variation_end <= event_end:
             overlap = variation_end - variation_start + 1
             new_event.append(event_start)
             new_event.append(event_end)
-        
-        totalOverlapSize += overlap
+        #event           ---------------------
+        #variaton     ------------------
+        elif variation_start < event_start and variation_end < event_end and variation_end >= event_start: #variation_end > event_start
+            overlap = variation_end - event_start + 1
+            new_event.append(variation_start)
+            new_event.append(event_end)
+        #event         ---------------------
+        #variaton           ----------------------
+        elif variation_start >= event_start and variation_end > event_end and variation_start <= event_end:
+            overlap = event_end - variation_start + 1
+            new_event.append(event_start)
+            new_event.append(variation_end)
+
         if overlap  > 0:
             found += 1
 
