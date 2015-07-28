@@ -26,6 +26,8 @@ include_directories( ${Boost_INCLUDE_DIRS} )
 file(GLOB FIND_TRANS_FILES
     ${PROJECT_SOURCE_DIR}/src/FindTranslocations.cpp
     ${PROJECT_SOURCE_DIR}/src/data_structures/Translocation.cpp
+	${PROJECT_SOURCE_DIR}/src/data_structures/VcfBedInput.cpp
+	${PROJECT_SOURCE_DIR}/src/data_structures/CoverageModule.cpp
 	${PROJECT_SOURCE_DIR}/src/data_structures/ExtractModule.cpp
 	${PROJECT_SOURCE_DIR}/src/data_structures/findTranslocationsOnTheFly.cpp
     ${PROJECT_SOURCE_DIR}/src/common.h

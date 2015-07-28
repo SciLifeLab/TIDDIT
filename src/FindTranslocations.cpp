@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
 	modules.add_options()
 		("help", "produce help message")
 		("cnv", "Select the cnv module to find copy number variations ")
+		("cov", "select the cov module to analyse the coverage of regions inside a bam file")
 		("extract", "select the extract module to extract regions of interest from a bam file")
 		("sv", "select the sv module to find structural variations");
 	
@@ -103,8 +104,12 @@ int main(int argc, char *argv[]) {
 	//extraction parameters
 	po::options_description desc2("\nUsage: FindTranslocations --extract [Options] --bam inputfile --bai indexfile --output outputFolder(optional) \nOptions");
 	desc2.add_options()	
-		("input-file",       po::value<string>(), "VCF file containing the events(required)")
-		("filter",       po::value<string>(), "filter the reads that are to be extracted(TODO)");
+		("input-file",       po::value<string>(), "VCF or bed file containing the events(required)")
+		("no-singlets"	, "the files containing single events/regions will not be generated")
+		("no-total" 	, "the file contining all events will not be generated")
+		("filter",       po::value<string>(), "filter the reads that are to be extracted(TODO)")
+		("extract-events",	"Select this option if the input file is the vcf output of FindTranslocations(default)")
+		("extract-bed",		"select this option if the input file is a bed file");
 	po::options_description extractModule(" ");
 	extractModule.add_options()
 		("help", "produce help message")
@@ -118,7 +123,19 @@ int main(int argc, char *argv[]) {
 	po::options_description cnvModule(" ");
 	cnvModule.add_options()
 		("help", "produce help message")
-		("extract", "select the extract module to extract regions of interest from a bam file");
+		("cov", "select the cov module to analyse the coverage of regions inside a bam file");
+
+	//Analyse coverage
+	po::options_description desc4("\nUsage: FindTranslocations --cov [Mode] --bam inputfile --bai indexfile --output outputFile(optional) \nOptions:only one mode may be selected");
+	desc4.add_options()
+		("bin",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file")
+		("vcf", 	po::value<string>() ,"Select this option if the input file is the output intra-chromosomal vcf of Findtranslocations. coverage will be calculated between the events")
+		("bed", 	po::value<string>() ,"Select this option if the input file is a bedfile");
+	po::options_description coverageModule(" ");
+	coverageModule.add_options()
+		("help", "produce help message")
+		("cov", "select the coverage module to analyse the coverage of a bam file");
+	//used to control the input files
 
 
 
@@ -126,7 +143,7 @@ int main(int argc, char *argv[]) {
 	stringstream ss;
 	ss << package_description() << endl;
 	po::options_description menu_union(ss.str().c_str());
-	menu_union.add(modules).add(general).add(desc).add(desc2).add(desc3);
+	menu_union.add(modules).add(general).add(desc).add(desc2).add(desc3).add(desc4);
 
 
 
@@ -145,7 +162,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	//if no module is selected a help message is shown
-	if( !vm.count("extract") and !vm.count("sv") and !vm.count("cnv") ){
+	if( !vm.count("extract") and !vm.count("sv") and !vm.count("cnv") and !vm.count("cov")){
 		DEFAULT_CHANNEL << modules << endl;
 		return 2;
 	}
@@ -223,7 +240,22 @@ int main(int argc, char *argv[]) {
 		roi=vm["input-file"].as<string>();
 		Extract *BamExtraction;
 		BamExtraction = new Extract();
-		 BamExtraction -> extract(alignmentFile,outputFileHeader,roi,contig2position,indexFile);
+		int exclusion =0;
+		if (vm.count("no-singlets")){
+			exclusion+=1;
+			cout << "yes" << endl;
+		}if (vm.count("no-total")){
+			exclusion+=2;
+		}
+
+		if (vm.count("extract-events")){
+			 BamExtraction -> extract(alignmentFile,outputFileHeader,roi,contig2position,indexFile,1,exclusion);
+		}
+		if (vm.count("extract-bed")){
+			 BamExtraction -> extract(alignmentFile,outputFileHeader,roi,contig2position,indexFile,2,exclusion);
+		}else{
+			 BamExtraction -> extract(alignmentFile,outputFileHeader,roi,contig2position,indexFile,1,exclusion);
+		}
 		return 1;
 
 	}else{
@@ -330,6 +362,62 @@ int main(int argc, char *argv[]) {
 			return 2;
 		}
 		DEFAULT_CHANNEL << desc3 << endl;
+
+	//the coverage module
+	}else if(vm.count("cov")){
+
+		po::options_description menu_union(ss.str().c_str());
+		po::variables_map vm;
+		menu_union.add(general).add(desc4).add(coverageModule);
+
+		try {
+			po::store(po::parse_command_line(argc, argv, menu_union), vm);
+			po::notify(vm);
+		} catch (boost::program_options::error & error) {
+			ERROR_CHANNEL <<  "Only one module may be selected" << endl;
+			return 2;
+		}
+
+		if(vm.count("help") or fileQueue.back()== "error"){
+			DEFAULT_CHANNEL << desc4 << endl;
+			return 2;
+		}
+
+		
+		Cov *calculateCoverage;
+		calculateCoverage = new Cov();
+		LibraryStatistics library;
+		//calculate the coverage of the entre library
+		if(vm.count("bin") or vm.count("bed") or vm.count("vcf")){
+			library = computeLibraryStats(alignmentFile, genomeLength, max_insert, outtie);
+			coverage   = library.C_A;
+		}else{
+			cout << "no mode selected, shuting down" << endl;
+			return(0);
+		}
+				
+		int option=0;
+		int binSize=0;
+		if(vm.count("bin")){
+			option=1;
+			binSize =vm["bin"].as<int>();
+			string inFile= "";
+			calculateCoverage -> coverageMain(alignmentFile,indexFile,inFile,outputFileHeader,coverage,contig2position,option,binSize);
+		}else if(vm.count("bed")){
+			option=2;
+			string inFile=vm["bed"].as<string>();
+			calculateCoverage -> coverageMain(alignmentFile,indexFile,inFile,outputFileHeader,coverage,contig2position,option,binSize);
+		}else if(vm.count("vcf")){
+			string inFile=vm["vcf"].as<string>();
+			calculateCoverage -> coverageMain(alignmentFile,indexFile,inFile,outputFileHeader,coverage,contig2position,option,binSize);
+		}
+				
+
+
+
+
+
+
 	}
 
 }

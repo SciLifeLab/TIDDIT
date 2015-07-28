@@ -22,11 +22,16 @@
 Extract::Extract() { }
 
 //This function is used to extract the event regions from a bam file using the output vcf of FindTranslocations
-void Extract::extract(string BamFileName,string outputFileHeader,string inputFileName,map<string,unsigned int> contig2position, string indexFile){
+void Extract::extract(string BamFileName,string outputFileHeader,string inputFileName,map<string,unsigned int> contig2position, string indexFile, int BedOrVCF,int exclusion){
 	int VCFheader=0;
 	string line;
 	string eventbam;
 	string eventfolder;
+
+	if(exclusion == 3){
+		cout << "All output excluded!" << endl;
+		return;
+	}
 
 	//creates a folder for the outputdata
 	boost::filesystem::path dir(outputFileHeader.c_str());
@@ -34,11 +39,15 @@ void Extract::extract(string BamFileName,string outputFileHeader,string inputFil
 		std::cout << "error creating output folder" << "\n";
 		return;
 	}
-	eventfolder=outputFileHeader+"/events";
-	boost::filesystem::path eventdir( eventfolder.c_str());
-	if(!boost::filesystem::create_directory(eventdir)) {
-		std::cout << "error creating output folder(is a folder with the output name already existing?)" << "\n";
-		return;
+	
+	//only generate this folder if the user wants files of each separate event
+	if(exclusion != 1){
+		eventfolder=outputFileHeader+"/events";
+		boost::filesystem::path eventdir( eventfolder.c_str());
+		if(!boost::filesystem::create_directory(eventdir)) {
+			std::cout << "error creating output folder(is a folder with the output name already existing?)" << "\n";
+			return;
+		}
 	}
 
 	//opens one writer for writing one file containing all the output sequences, and one writer to create files containing each separate region
@@ -54,114 +63,103 @@ void Extract::extract(string BamFileName,string outputFileHeader,string inputFil
 	const SamHeader header = bamFile.GetHeader();
 	const RefVector references = bamFile.GetReferenceData();
 
-	// attempt to open our BamWriter{
-	cout << eventbam << endl;
-	if ( !writer.Open(eventbam.c_str(), header, references) ) {
-		cout << "Could not open output BAM file" << endl;
-		return;
+	//open the bam file writer if the user wants to output a file containing all the events
+	if( exclusion != 2){
+		// attempt to open our BamWriter{
+		cout << eventbam << endl;
+		if ( !writer.Open(eventbam.c_str(), header, references) ) {
+			cout << "Could not open output BAM file" << endl;
+			return;
+		}
 	}
+
 	//test if an index file is available
 	if(bamFile.OpenIndex(indexFile) == 0){
 		cout << "Failed to load the index file" << endl;
 	}
-
-
-
-
+	
 
 	//opens the input file and reads each line
 	cout << "initiates extraction, please wait" << endl;
-	ifstream inputFile( inputFileName.c_str() );
-	if (inputFile){
-		while (getline( inputFile, line )){
-			//skips the input header
-			//splits on tab
-			vector<std::string> splitline;
-			boost::split(splitline, line, boost::is_any_of("\t"));
 
+	VcfBedInput *openInputFile;
+	openInputFile = new VcfBedInput();
+	queue<string> regions= openInputFile -> findRegions(inputFileName, BedOrVCF);
+	int numberOfRegions;
+	int regionsPerLine;
+	//if vcf is chosen
+	if(BedOrVCF ==1){
+		regionsPerLine=2;
+		numberOfRegions=regions.size()/6;
+	}else{
+		regionsPerLine=1;
+		numberOfRegions=regions.size()/3;
+	}
+	for(int j =0;j < numberOfRegions;j++){
+		queue<int> chr;
+		queue<int> startPos;queue<int> endPos;
+		//the filename of the file containing single regions
+		string regionfile = "";
+		for(int i =0;i<regionsPerLine;i++){	
+			//extract the chromosome
+			chr.push(contig2position[regions.front()]);
+			regionfile+=regions.front();
+			regionfile+="_";
+			regions.pop();
 
-			//make sure that the reader is not collecting values from the metadata of the vcf file
-			if(VCFheader != 0){
-				queue<int> chr;
-				queue<int> startPos;queue<int> endPos;
-				//the filename of the file containing single regions
-				string regionfile = "";
+			//extracts the start position on the given chromosome
+			startPos.push( atoi(regions.front().c_str()));
+			regionfile+=regions.front();
+			regionfile+="_";
+			regions.pop();
 
+			//extracts the end position on the given chromosome
+			endPos.push(atoi(regions.front().c_str()));
+			regionfile+=regions.front();
+			regions.pop();
 
-				string INFOLine;
-				//extract the info line
-				INFOLine=splitline[7];
-			
-
-				//get the region from the info line
-				vector<std::string> splitINFOLine;
-				boost::split(splitINFOLine, INFOLine, boost::is_any_of(";"));
-				//
-				for(int i =0;i<2;i++){
-					vector<std::string> chromosomeVector;
-					boost::split(chromosomeVector,splitINFOLine[1+2*i], boost::is_any_of("="));
-					//extract the chromosome
-					chr.push(contig2position[chromosomeVector[1]]);
-					regionfile+=chromosomeVector[1];
-					regionfile+="_";
-			
-					//extracts the start position on the given chromosome
-					vector<std::string> positionVector;
-					boost::split(positionVector,splitINFOLine[2+2*i], boost::is_any_of("="));
-					boost::split(positionVector,positionVector[1], boost::is_any_of(","));
-					startPos.push( atoi(positionVector[0].c_str()));
-					regionfile+=positionVector[0];
-					regionfile+="_";
-
-						//extracts the end position on the given chromosome
-					endPos.push(atoi(positionVector[1].c_str()));
-					regionfile+=positionVector[1];
-					if(i ==0){
-						regionfile+="_";
-					}
-				}
-
-
-				regionfile+=".bam";
-				regionfile=eventfolder+"/"+regionfile;
-					// attempt to open our BamWriter{
-				if ( !regionwriter.Open(regionfile.c_str(), header, references) ) {
-					cout << "Could not open output event BAM file" << endl;
-					return;
-				}
-			
-
-
-
-
-
-				//collects all reads found in the given intervals and writes them to the file outputFileHeader+"_roi.bam"
-				for(int i=0;i<2;i++){
-					bamFile.SetRegion(chr.front(),startPos.front(),chr.front(),endPos.front()); 
-					while ( bamFile.GetNextAlignment(currentRead) ) {
-						if(currentRead.IsMapped()) {
-                    		if(currentRead.Position >= startPos.front() and currentRead.Position <= endPos.front()){
-							//prints the read to bam file
-							writer.SaveAlignment(currentRead);
-							regionwriter.SaveAlignment(currentRead);
-							}
-						}
-					}
-                    chr.pop();startPos.pop();endPos.pop();
-                    
-				}
-				regionwriter.Close();
-				
-
-			}else{
-				if(splitline[0] == "#CHROM"){
-					VCFheader =1;
-				}
-			
+			if(i ==0){
+				regionfile+="_";
 			}
 		}
-		
-		inputFile.close();
+
+		//only created if the user wants to output every event as separate files
+		if(exclusion != 1){
+			regionfile+=".bam";
+			regionfile=eventfolder+"/"+regionfile;
+			// attempt to open our BamWriter{
+			if ( !regionwriter.Open(regionfile.c_str(), header, references) ) {
+				cout << "Could not open output event BAM file" << endl;
+				return;
+			}
+		}		
+
+
+
+
+
+		//collects all reads found in the given intervals and writes them to the file outputFileHeader+"_roi.bam"
+		for(int i=0;i<regionsPerLine;i++){
+			bamFile.SetRegion(chr.front(),startPos.front(),chr.front(),endPos.front()); 
+			while ( bamFile.GetNextAlignment(currentRead) ) {
+				if(currentRead.IsMapped()) {
+         	           		if(currentRead.Position >= startPos.front() and currentRead.Position <= endPos.front()){
+						//prints the read to bam file
+
+						//only created if the user wants to output every event as separate files
+						if(exclusion != 2){	
+							writer.SaveAlignment(currentRead);
+						}
+						//only saved if the user wants to output one file containing all the selected reads
+						if(exclusion !=1){
+							regionwriter.SaveAlignment(currentRead);
+						}
+					}			         
+				}
+			}
+			chr.pop();startPos.pop();endPos.pop();                    
+		}
+		regionwriter.Close();	
 	}
 
 	cout << "writing complete" << endl;
