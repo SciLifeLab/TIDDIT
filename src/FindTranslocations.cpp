@@ -129,7 +129,8 @@ int main(int argc, char *argv[]) {
 	po::options_description desc4("\nUsage: FindTranslocations --cov [Mode] --bam inputfile --bai indexfile --output outputFile(optional) \nOptions:only one mode may be selected");
 	desc4.add_options()
 		("bin",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file")
-		("vcf", 	po::value<string>() ,"Select this option if the input file is the output intra-chromosomal vcf of Findtranslocations. coverage will be calculated between the events")
+		("intra-vcf", 	po::value<string>() ,"Select this option if the input file is the output intra-chromosomal vcf of Findtranslocations. coverage will be calculated between, before and after the event")
+		("inter-vcf", 	po::value<string>() ,"Select this option if the input file is the output inter-chromosomal vcf of Findtranslocations. The coverage before and after window A and B will be calculated")
 		("bed", 	po::value<string>() ,"Select this option if the input file is a bedfile");
 	po::options_description coverageModule(" ");
 	coverageModule.add_options()
@@ -388,7 +389,7 @@ int main(int argc, char *argv[]) {
 		calculateCoverage = new Cov();
 		LibraryStatistics library;
 		//calculate the coverage of the entre library
-		if(vm.count("bin") or vm.count("bed") or vm.count("vcf")){
+		if(vm.count("bin") or vm.count("bed") or vm.count("intra-vcf") or vm.count("inter-vcf")){
 			library = computeLibraryStats(alignmentFile, genomeLength, max_insert, outtie);
 			coverage   = library.C_A;
 		}else{
@@ -407,8 +408,13 @@ int main(int argc, char *argv[]) {
 			option=2;
 			string inFile=vm["bed"].as<string>();
 			calculateCoverage -> coverageMain(alignmentFile,indexFile,inFile,outputFileHeader,coverage,contig2position,option,binSize);
-		}else if(vm.count("vcf")){
-			string inFile=vm["vcf"].as<string>();
+		}else if(vm.count("intra-vcf")){
+			option=0;
+			string inFile=vm["intra-vcf"].as<string>();
+			calculateCoverage -> coverageMain(alignmentFile,indexFile,inFile,outputFileHeader,coverage,contig2position,option,binSize);
+		}else if(vm.count("inter-vcf")){
+			string inFile=vm["inter-vcf"].as<string>();
+			option=3;
 			calculateCoverage -> coverageMain(alignmentFile,indexFile,inFile,outputFileHeader,coverage,contig2position,option,binSize);
 		}
 				

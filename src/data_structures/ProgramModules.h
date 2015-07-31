@@ -53,6 +53,10 @@ public:
 	void coverageMain(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage, map<string,unsigned int> contig2position,int selection,int binSize);
 	//module used to find the coverage within specified regions
 	double findCoverage(string bamFile, string baiFile,int chr, int start, int end);
+	void interChromosomalVCF(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position);
+	void bin(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position,int binSize);
+	void bed(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position);
+	void intraChromosomalVCF(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position);
 };
 
 #endif /* PROGRAMMODULES_H_ */
