@@ -1,5 +1,6 @@
 import sys, os, glob
 import argparse
+import readVCF
 from operator import itemgetter
 
 def main(args):
@@ -37,20 +38,9 @@ def main(args):
         for row in UncompressedVariations:
             #the first charachter is # in the metadata, otherwise it is c,C or a number
             if(row[0][0] != "#"):
-                INFO=row[7].split(";");
-	        chr_1=INFO[1].split("=")[1];
-	        posA=INFO[2].split("=")[1];
-                posA=posA.split(",");
-	        chr_1_start=int(posA[0]);
-	        chr_1_end=int(posA[1]);
-
-	        chr_2=INFO[3].split("=")[1];
-	        posB=INFO[4].split("=")[1];
-	        posB=posB.split(",");
-	        chr_2_start=int(posB[0]);
-	        chr_2_end=int(posB[1]);
-
-
+                chr_1,chr_1_start,chr_1_end,chr_2,chr_2_start,chr_2_end =readVCF.readVCFLine(outputSource,"\t".join(row));
+                chr_1_start=int(chr_1_start);
+                chr_1_end=int(chr_1_end);
                 outrow="\t".join(row);
                 outRow=outrow.replace("\n","");
                 sys.stdout.write(outRow)
@@ -115,6 +105,13 @@ def main(args):
                 sys.stdout.write("\n")
             else:
                 lookForFilter=row[0].split("=");
+
+                line=row[0].replace("#","");
+                content=line.split("=");
+                if(content[0] == "source"):
+                        outputSource=content[1].rstrip().split()[0];
+
+
                 #the last infotag will be the Feature tag
                 if(lookForFilter[0] !="##INFO" and noFeatureTag and infoFound==1):
                         
@@ -141,7 +138,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("""
     This script takes as input one or more bed files containing genomics areas with specif features (bed entry must look like [chr start end feature]
-    and a variation file produced by FindTranslocations. For each line of the variation file the script tries to match the current feature to one of the
+    and a variation file produced by FindTranslocations or CNVnator. For each line of the variation file the script tries to match the current feature to one of the
     entries in the bed files. It adds two columns to the variation file.
     """)
     parser.add_argument('--bed-files', type=str, required=True, action='append', nargs='+', help="bed files containing the features of interest [chr start end feature]")

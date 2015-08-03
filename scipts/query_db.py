@@ -1,7 +1,7 @@
 import sys, os, glob
 import argparse
 import collections
-
+import readVCF
 
 def main(args):
     #load the DB
@@ -27,22 +27,11 @@ def main(args):
         for i in range(0,len(Variations)):
                 #if we are not in the metadata
 		if(Variations[i][0][0] != "#"):
-		        INFO=Variations[i][7].split(";");
-		        chrA=INFO[1].split("=")[1];
-		        posA=INFO[2].split("=")[1];
-		        posA=posA.split(",");
-		        startA=posA[0];
-		        endA=posA[1];
-
-		        chrB=INFO[3].split("=")[1];
-		        posB=INFO[4].split("=")[1];
-		        posB=posB.split(",");
-		        startB=posB[0];
-		        endB=posB[1];
-
+                        chrA,startA,endA,chrB,startB,endB =readVCF.readVCFLine(outputSource,"\t".join(Variations[i]));
+                        
                         current_variation = [chrA, int(startA), int(endA), chrB, int(startB), int(endB)]
                         hit = isVariationInDB(allVariations, current_variation)
-                        hit_string = ";".join(INFO)
+                        hit_string =Variations[i][7]
 		        otherFields=Variations[i][0:7];
 		        otherFields="\t".join(otherFields);
                         if hit == None:
@@ -59,6 +48,13 @@ def main(args):
                                       #print "{}\t{}".format(hit[4], hit_string)
                 #print the metadata and add the number of occurances
                 else:
+
+                        #find the output source(cnvnator or Findtranslocations)
+			line=Variations[i][0].replace("#","");
+                        content=line.split("=");
+                        if(content[0] == "source"):
+                                outputSource=content[1].rstrip().split()[0];
+
                         lookForFilter=Variations[i][0].split("=");
                         #the last infotag will be the Feature tag
                         if(lookForFilter[0] !="##INFO" and noOCCTag and infoFound==1):
@@ -174,7 +170,7 @@ def isSameVariation(event, variation): #event is in the DB, variation is the new
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("""
     This scripts wants as input a databse containing varaition and counts [chrA chrB startA endA startB endB occurences]
-    and a variation file produced by FindTranslocations. The script will output the variation file sorting the variation
+    and a variation file produced by FindTranslocations or CNVnator. The script will output the variation file sorting the variation
     by number of occurences in the DB.
     """)
     parser.add_argument('--variations', type=str, required=True, help="vcf file containing variations")
