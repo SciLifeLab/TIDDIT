@@ -4,7 +4,7 @@
  */
 #include "ProgramModules.h"
 #include "data_structures/Translocation.h"
-
+#include <boost/thread.hpp>
 
 //function used to find translocations
 StructuralVariations::StructuralVariations() { }
@@ -29,7 +29,8 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_
 	window->tmpCovOnChrA.resize(contigsNumber);
 	window->linksFromWin.resize(contigsNumber);
 	window->tmpLinksFromWin.resize(contigsNumber);
-
+	
+	window -> numberOfEvents = 0;
 
 	//Initialize bam entity
 	BamAlignment currentRead;

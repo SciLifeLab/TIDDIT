@@ -49,6 +49,9 @@ public:
 	ofstream interChrVariationsVCF;
 	ofstream intraChrVariationsVCF;
 
+        //A counter used to keep track of the number of events
+        long numberOfEvents;
+
 
 	Window(int max_insert, uint16_t minimum_mapping_quality,
 			bool outtie, float mean_insert, float std_insert, int minimumPairs,

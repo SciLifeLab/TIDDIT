@@ -20,7 +20,7 @@ string VCFHeader(){
 	//define the alowed events
 	headerString+="##ALT=<ID=DEL,Description=\"Deletion\">\n";
 	headerString+="##ALT=<ID=DUP,Description=\"Duplication\">\n";
-	headerString+="##ALT=<ID=BND,Description=\"Duplication\">\n";
+	headerString+="##ALT=<ID=BND,Description=\"Break end\">\n";
 	//Define the info fields
 	headerString+="##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n";
 	headerString+="##INFO=<ID=LFW,Number=1,Type=Integer,Description=\"Links from window\">\n";
@@ -36,11 +36,9 @@ string VCFHeader(){
 	headerString+="##INFO=<ID=WINB,Number=2,Type=Integer,Description=\"start and stop position of window B\">\n";
 	headerString+="##INFO=<ID=EL,Number=1,Type=Integer,Description=\"Expected links to window B\">\n";
 	headerString+="##INFO=<ID=RATIO,Number=1,Type=Integer,Description=\"The number of links divided by the expected number of links\">\n";
-	headerString+="##INFO=<ID=ED,Number=1,Type=Integer,Description=\"The average estimated distance between paired ends within the window\">\n";
 	//set filters
 	headerString+="##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links between A and B is less than 40\% of the expected value\">\n";
 	headerString+="##FILTER=<ID=FewLinks,Description=\"Fewer than 40% of the links in window A link to chromosome B\">\n";
-	headerString+="##FILTER=<ID=UnexpectedDistance,Description=\"The average paired reads distance is deviating\">\n";
 	headerString+="##FILTER=<ID=UnexpectedCoverage,Description=\"The coverage of the window on chromosome B or A is higher than 10*average coverage\">\n";
 	//Header
 	headerString+="#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n";		
@@ -328,31 +326,31 @@ bool Window::computeVariations(int chr2) {
 				string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, numLinksToChr2, linksFromWindow,mean_insert, 									std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);
 				string svType="BND";
 
-
-				intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\t.\t"  ;
-				intraChrVariationsVCF << "N"       << "\t"	<< "N[" << 				position2contig[chr2] << ":" << startSecondWindow << "[";
+				this -> numberOfEvents++;
+				intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tbnd_" << this -> numberOfEvents << "\t"  ;
+				intraChrVariationsVCF << "N"       << "\t"	<< "N[" << 	position2contig[chr2] << ":" << startSecondWindow << "[";
      				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
 				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
 				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
 				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow <<";ED=" << estimatedDistance << "\n";
-	
-	
+				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow <<  "\n";
+				
 			} else {
 
 				string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, numLinksToChr2, linksFromWindow,mean_insert, 									std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);
 				string svType="BND";
 
-				interChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\t.\t"  ;
+				this -> numberOfEvents++;
+				interChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tbnd_" << this -> numberOfEvents << "\t"  ;
 				interChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
      				interChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
 				interChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
 				interChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
 				interChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				interChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow <<";ED=" << estimatedDistance << "\n";
-	
+				interChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow << "\n";
 			}
 			found = true;	
+			
 		}
 	}
 	return(found);

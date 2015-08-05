@@ -1,7 +1,7 @@
 import sys, os, glob
 import argparse
 import collections
-
+import readVCF
 
 def main(args):
     #load the DB
@@ -18,76 +18,60 @@ def main(args):
                 allVariations[variation[0]] = {}
                 allVariations[variation[0]][variation[1]] = [[variation[2], variation[3], variation[4], variation[5], variation[6]]]
 
-
-    #Define fileformat and source
-    sys.stdout.write("##fileformat=VCFv4.1\n");
-    sys.stdout.write("##source=FindTranslocations\n");
-    #define the alowed events
-    sys.stdout.write("##ALT=<ID=DEL,Description=\"Deletion\">\n");
-    sys.stdout.write("##ALT=<ID=DUP,Description=\"Duplication\">\n");
-    sys.stdout.write("##ALT=<ID=BND,Description=\"Duplication\">\n");
-    #Define the info fields
-    sys.stdout.write("##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n");
-    sys.stdout.write("##INFO=<ID=LFW,Number=1,Type=Integer,Description=\"Links from window\">\n");
-    sys.stdout.write("##INFO=<ID=LCB,Number=1,Type=Integer,Description=\"Links to chromosome B\">\n");
-    sys.stdout.write("##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\"\b>\n");
-    sys.stdout.write("##INFO=<ID=COVA,Number=1,Type=Integer,Description=\"Coverage on window A\">\n");
-    sys.stdout.write("##INFO=<ID=COVB,Number=1,Type=Integer,Description=\"Coverage on window B\">\n");
-    sys.stdout.write("##INFO=<ID=OA,Number=1,Type=Integer,Description=\"Orientation of the reads in window A\">\n");
-    sys.stdout.write("##INFO=<ID=OB,Number=1,Type=Integer,Description=\"Orientation of the mates in window B\">\n");
-    sys.stdout.write("##INFO=<ID=CHRA,Number=1,Type=String,Description=\"The chromosome of window A\">\n");
-    sys.stdout.write("##INFO=<ID=CHRB,Number=1,Type=String,Description=\"The chromosome of window B\">\n");
-    sys.stdout.write("##INFO=<ID=WINA,Number=2,Type=Integer,Description=\"start and stop positon of window A\">\n");
-    sys.stdout.write("##INFO=<ID=WINB,Number=2,Type=Integer,Description=\"start and stop position of window B\">\n");
-    sys.stdout.write("##INFO=<ID=EL,Number=1,Type=Integer,Description=\"Expected links to window B\">\n");
-    sys.stdout.write("##INFO=<ID=RATIO,Number=1,Type=Integer,Description=\"The number of links divided by the expected number of links\">\n");
-    sys.stdout.write("##INFO=<ID=ED,Number=1,Type=Integer,Description=\"The average estimated distance between paired ends within the window\">\n");
-    sys.stdout.write("##INFO=<ID=FEATURE,Number=2,Type=String,Description=\"The features of regions A and B\">\n");
-    sys.stdout.write("##INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">\n");
-    #set filters
-    sys.stdout.write("##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links between A and B is less than 40\% of the expected value\">\n");
-    sys.stdout.write("##FILTER=<ID=FewLinks,Description=\"Fewer than 40% of the links in window A link to chromosome B\">\n");
-    sys.stdout.write("##FILTER=<ID=UnexpectedDistance,Description=\"The average paired reads distance is deviating\">\n");
-    sys.stdout.write("##FILTER=<ID=UnexpectedCoverage,Description=\"The coverage of the window on chromosome B or A is higher than 10*average coverage\">\n");
-    #Header
-    sys.stdout.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
-
     variationsByOcc = {}
     with open(args.variations) as fin:
-        Variations = [ line.rstrip().split('\t') for line in fin if not line.startswith("#")]
-	INFO=[infoCol[7].split(";") for infoCol in Variations]
+        Variations = [ line.rstrip().split('\t') for line in fin]
+	#INFO=[infoCol[7].split(";") for infoCol in Variations]
+        noOCCTag=1;
+        infoFound=0;
         for i in range(0,len(Variations)):
-		
-		INFO=Variations[i][7].split(";");
-		chrA=INFO[1].split("=")[1];
-		posA=INFO[2].split("=")[1];
-		posA=posA.split(",");
-		startA=posA[0];
-		endA=posA[1];
-
-		chrB=INFO[3].split("=")[1];
-		posB=INFO[4].split("=")[1];
-		posB=posB.split(",");
-		startB=posB[0];
-		endB=posB[1];
-
-                current_variation = [chrA, int(startA), int(endA), chrB, int(startB), int(endB)]
-                hit = isVariationInDB(allVariations, current_variation)
-                hit_string = ";".join(INFO)
-		otherFields=Variations[i][0:7];
-		otherFields="\t".join(otherFields);
-                if hit == None:
-                    if 0 in variationsByOcc:
-                        variationsByOcc[0].append(otherFields+"\t"+"{};OCC=0".format(hit_string))
-                    else:
-                        variationsByOcc[0] = [otherFields+"\t"+"{};OCC=0".format(hit_string)]
-                    #print "0\t{}".format(hit_string)
+                #if we are not in the metadata
+		if(Variations[i][0][0] != "#"):
+                        chrA,startA,endA,chrB,startB,endB =readVCF.readVCFLine(outputSource,"\t".join(Variations[i]));
+                        
+                        current_variation = [chrA, int(startA), int(endA), chrB, int(startB), int(endB)]
+                        hit = isVariationInDB(allVariations, current_variation)
+                        hit_string =Variations[i][7]
+		        otherFields=Variations[i][0:7];
+		        otherFields="\t".join(otherFields);
+                        if hit == None:
+                                if 0 in variationsByOcc:
+                                        variationsByOcc[0].append(otherFields+"\t"+"{};OCC=0".format(hit_string))
+                                else:
+                                        variationsByOcc[0] = [otherFields+"\t"+"{};OCC=0".format(hit_string)]
+                                #print "0\t{}".format(hit_string)
+                        else:
+                                if int(hit[4]) in variationsByOcc:
+                                        variationsByOcc[int(hit[4])].append(otherFields+"\t"+"{};OCC={}".format(hit_string,hit[4]))
+                                else:
+                                        variationsByOcc[int(hit[4])] = [otherFields+"\t"+"{};OCC={}".format(hit_string,hit[4])]
+                                      #print "{}\t{}".format(hit[4], hit_string)
+                #print the metadata and add the number of occurances
                 else:
-                    if int(hit[4]) in variationsByOcc:
-                        variationsByOcc[int(hit[4])].append(otherFields+"\t"+"{};OCC={}".format(hit_string,hit[4]))
-                    else:
-                        variationsByOcc[int(hit[4])] = [otherFields+"\t"+"{};OCC={}".format(hit_string,hit[4])]
-                    #print "{}\t{}".format(hit[4], hit_string)
+
+                        #find the output source(cnvnator or Findtranslocations)
+			line=Variations[i][0].replace("#","");
+                        content=line.split("=");
+                        if(content[0] == "source"):
+                                outputSource=content[1].rstrip().split()[0];
+
+                        lookForFilter=Variations[i][0].split("=");
+                        #the last infotag will be the Feature tag
+                        if(lookForFilter[0] !="##INFO" and noOCCTag and infoFound==1):
+                        
+                                sys.stdout.write("##INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">\n");
+                                sys.stdout.write(Variations[i][0]+"\n");
+                                infoFound=0;noFeatureTag=0;
+
+                        elif(lookForFilter[0] == "##INFO"):
+                                sys.stdout.write(Variations[i][0]+"\n");
+                                infoFound=1;
+                                #there should only be one feature tag per vf file
+                                if(Variations[i][0] == "##INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">"):
+                                        noOCCTag=0;
+
+                        else:
+                                sys.stdout.write("\t".join(Variations[i])+"\n");
 
     #now print them in order of occurence
     for key in sorted(variationsByOcc):
@@ -186,7 +170,7 @@ def isSameVariation(event, variation): #event is in the DB, variation is the new
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("""
     This scripts wants as input a databse containing varaition and counts [chrA chrB startA endA startB endB occurences]
-    and a variation file produced by FindTranslocations. The script will output the variation file sorting the variation
+    and a variation file produced by FindTranslocations or CNVnator. The script will output the variation file sorting the variation
     by number of occurences in the DB.
     """)
     parser.add_argument('--variations', type=str, required=True, help="vcf file containing variations")
