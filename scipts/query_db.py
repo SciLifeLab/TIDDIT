@@ -3,6 +3,7 @@ import argparse
 import collections
 import readVCF
 from operator import itemgetter
+import threading
 
 
 def main(args):
@@ -65,48 +66,6 @@ def main(args):
         vcf_entry = query[7].rstrip()
         sys.stdout.write("{};OCC={}\n".format(vcf_entry, query[6]))
 
-    """
-    variationsByOcc = {}
-    with open(args.variations) as fin:
-        Variations = [ line.rstrip().split('\t') for line in fin]
-	#INFO=[infoCol[7].split(";") for infoCol in Variations]
-        noOCCTag=1;
-        infoFound=0;
-        for i in range(0,len(Variations)):
-                #if we are not in the metadata
-                if(Variations[i][0][0] != "#"):
-                        chrA,startA,endA,chrB,startB,endB =readVCF.readVCFLine(outputSource,"\t".join(Variations[i]));
-                        
-                        current_variation = [chrA, int(startA), int(endA), chrB, int(startB), int(endB)]
-                        hit = isVariationInDB(allVariations, current_variation)
-                        hit_string =Variations[i][7]
-                        otherFields=Variations[i][0:7];
-                        otherFields="\t".join(otherFields);
-                        if hit == None:
-                                if 0 in variationsByOcc:
-                                        variationsByOcc[0].append(otherFields+"\t"+"{};OCC=0".format(hit_string))
-                                else:
-                                        variationsByOcc[0] = [otherFields+"\t"+"{};OCC=0".format(hit_string)]
-                                #print "0\t{}".format(hit_string)
-                        else:
-                                if int(hit[4]) in variationsByOcc:
-                                        variationsByOcc[int(hit[4])].append(otherFields+"\t"+"{};OCC={}".format(hit_string,hit[4]))
-                                else:
-                                        variationsByOcc[int(hit[4])] = [otherFields+"\t"+"{};OCC={}".format(hit_string,hit[4])]
-                                      #print "{}\t{}".format(hit[4], hit_string)
-                #print the metadata and add the number of occurances
-                else:
-
-
-                        else:
-
-
-    #now print them in order of occurence
-    for key in sorted(variationsByOcc):
-        for var in variationsByOcc[key]:
-            print "{}".format(var)
-
-    """
 
 
 
