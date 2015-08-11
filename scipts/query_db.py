@@ -24,15 +24,15 @@ def main(args):
 
                 lookForFilter=meta_line.split("=");
                 #the last infotag will be the Feature tag
-                if(lookForFilter[0] != "##INFO" and noOCCTag and infoFound==1):
-                    sys.stdout.write("##INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">\n");
+                if(lookForFilter[0] != "INFO" and noOCCTag and infoFound==1):
+                    sys.stdout.write("INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">\n");
                     sys.stdout.write(line);
                     infoFound=0;noFeatureTag=0;
-                elif(lookForFilter[0] == "##INFO"):
+                elif(lookForFilter[0] == "INFO"):
                     sys.stdout.write(line);
                     infoFound=1;
                     #there should only be one feature tag per vf file
-                    if(line == "##INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">"):
+                    if(line == "INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">"):
                         noOCCTag=0
                 else:
                     sys.stdout.write(line)
