@@ -25,7 +25,7 @@ def main(args):
                 lookForFilter=meta_line.split("=");
                 #the last infotag will be the Feature tag
                 if(lookForFilter[0] != "INFO" and noOCCTag and infoFound==1):
-                    sys.stdout.write("INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">\n");
+                    sys.stdout.write("##INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">\n");
                     sys.stdout.write(line);
                     infoFound=0;noFeatureTag=0;
                 elif(lookForFilter[0] == "INFO"):
