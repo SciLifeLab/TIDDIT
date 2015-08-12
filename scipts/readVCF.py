@@ -12,6 +12,7 @@ def readVCFLine(source,line):
 
                 endA=int(variation[7].split(";")[0].split("=")[1]);
                 endB=endA;
+                event_type=variation[4].strip("<").rstrip(">");
 
         elif(source == "FindTranslocations"):
 
@@ -24,6 +25,7 @@ def readVCFLine(source,line):
                 chrB    = description["CHRB"]
                 startB  = int(description["WINB"].split(",")[0])
                 endB    = int(description["WINB"].split(",")[1])
+                event_type="BND";
 
         #if the source is fermikit
         elif(source == "htsbox-abreak-r303"):
@@ -47,6 +49,7 @@ def readVCFLine(source,line):
                     tmp = endA;
                     endA=startA;
                     startA=tmp;
+                event_type=variation[4].strip("<").rstrip(">");
 
             else:
                 B=variation[4];
@@ -62,10 +65,11 @@ def readVCFLine(source,line):
                         startB=int(lst[1]);
                         endB=startB+500;
                         startB=startB-500;
+                event_type="BND";
                 
                 
                 
         else:
                 print("error, non supported vcf source");
                 sys.exit();
-        return(chrA, startA,endA,chrB, startB, endB);
+        return(chrA, startA,endA,chrB, startB, endB, event_type);

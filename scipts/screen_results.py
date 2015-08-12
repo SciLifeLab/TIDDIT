@@ -38,7 +38,7 @@ def main(args):
         for row in UncompressedVariations:
             #the first charachter is # in the metadata, otherwise it is c,C or a number
             if(row[0][0] != "#"):
-                chr_1,chr_1_start,chr_1_end,chr_2,chr_2_start,chr_2_end =readVCF.readVCFLine(outputSource,"\t".join(row));
+                chr_1,chr_1_start,chr_1_end,chr_2,chr_2_start,chr_2_end,event_type =readVCF.readVCFLine(outputSource,"\t".join(row));
                 chr_1_start=int(chr_1_start);
                 chr_1_end=int(chr_1_end);
                 outrow="\t".join(row);
