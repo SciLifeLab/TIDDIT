@@ -62,8 +62,9 @@ def main(args):
             hit = isVariationInDB(allVariations, query)
             if hit is not None:
                 query[7] += 1 # found hit
+    
 
-    for query in sorted(queries, key=itemgetter(6)):
+    for query in sorted(queries, key=itemgetter(7)):
         vcf_entry = query[8].rstrip()
         sys.stdout.write("{};OCC={}\n".format(vcf_entry, query[7]))
 
@@ -91,6 +92,7 @@ the function checks if there is an hit and returns it
     chrB_end      = int(variation[5])
     variation_type=variation[6]
     
+    hit = None;
     if chrA in allVariations:
         # now look if chrB is here
         if chrB in allVariations[chrA]:

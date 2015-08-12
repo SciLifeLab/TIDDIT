@@ -4,6 +4,7 @@ def readVCFLine(source,line):
 
         variation   = line.rstrip().split("\t")
         if(source == "CNVnator"):
+                #print(variation)
                 chrA=variation[0];
                 chrB=chrA;
 
@@ -12,12 +13,12 @@ def readVCFLine(source,line):
 
                 endA=int(variation[7].split(";")[0].split("=")[1]);
                 endB=endA;
+
                 event_type=variation[4].strip("<").rstrip(">");
 
         elif(source == "FindTranslocations"):
 
-                variation   = variation[7];
-                description = dict(item.split("=") for item in variation.split(";"))
+                description = dict(item.split("=") for item in variation[7].split(";"))
                 #now I need to collapse similar variations
                 chrA    = description["CHRA"]
                 startA  = int(description["WINA"].split(",")[0])
@@ -25,7 +26,7 @@ def readVCFLine(source,line):
                 chrB    = description["CHRB"]
                 startB  = int(description["WINB"].split(",")[0])
                 endB    = int(description["WINB"].split(",")[1])
-                event_type="BND";
+                event_type=description["SVTYPE"]
 
         #if the source is fermikit
         elif(source == "htsbox-abreak-r303"):
@@ -49,7 +50,7 @@ def readVCFLine(source,line):
                     tmp = endA;
                     endA=startA;
                     startA=tmp;
-                event_type=variation[4].strip("<").rstrip(">");
+                event_type=description["SVTYPE"];
 
             else:
                 B=variation[4];
@@ -65,7 +66,7 @@ def readVCFLine(source,line):
                         startB=int(lst[1]);
                         endB=startB+500;
                         startB=startB-500;
-                event_type="BND";
+                event_type=description["SVTYPE"]
                 
                 
                 

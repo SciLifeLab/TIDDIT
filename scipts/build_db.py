@@ -181,6 +181,7 @@ def mergeIfSimilar(event, variation): #event is in the DB, variation is the new 
         overlap     = 0
         #event         ---------------------
         #variaton   ------------------------------
+        #do not merge if the events are of different type
         if(event_type == variation_type):
             if variation_start < event_start and variation_end > event_end:
                 overlap = event_end - event_start + 1
