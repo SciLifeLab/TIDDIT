@@ -91,6 +91,7 @@ the function checks if there is an hit and returns it
     chrB_start    = int(variation[4])
     chrB_end      = int(variation[5])
     variation_type=variation[6]
+    hit=None
     
     hit = None;
     if chrA in allVariations:
