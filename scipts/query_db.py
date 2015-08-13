@@ -38,8 +38,8 @@ def main(args):
                     sys.stdout.write(line)
             else:
                 #in this case I need to store a query
-                chrA,startA,endA,chrB,startB,endB =readVCF.readVCFLine(outputSource, line);
-                current_variation = [chrA, int(startA), int(endA), chrB, int(startB), int(endB), 0, line] # plus a counter and the variatio
+                chrA,startA,endA,chrB,startB,endB,event_type =readVCF.readVCFLine(outputSource, line);
+                current_variation = [chrA, int(startA), int(endA), chrB, int(startB), int(endB),event_type, 0, line] # plus a counter and the variatio
                 queries.append(current_variation)
     # at this point queries contains an entry for each variation
     #now query each sample.db present in the given folder and store the occurences
@@ -49,22 +49,24 @@ def main(args):
             for line in fDB:
                 db_entry = (line.rstrip().split('\t'))
                 if db_entry[0] in allVariations:
-                    if db_entry[1] in allVariations[db_entry[0]]:
-                        allVariations[db_entry[0]][db_entry[1]].append([db_entry[2], db_entry[3], db_entry[4], db_entry[5], db_entry[6]])
-                    else:
-                            allVariations[db_entry[0]][db_entry[1]] = [[db_entry[2], db_entry[3], db_entry[4], db_entry[5], db_entry[6]]]
+                        if db_entry[1] in allVariations[db_entry[0]]:
+                            allVariations[db_entry[0]][db_entry[1]].append([db_entry[2], db_entry[3], db_entry[4], db_entry[5], db_entry[6],db_entry[7]])
+                        else:
+                                allVariations[db_entry[0]][db_entry[1]] = [[db_entry[2], db_entry[3], db_entry[4], db_entry[5], db_entry[6],db_entry[7]]]
                 else:
-                    allVariations[db_entry[0]] = {}
-                    allVariations[db_entry[0]][db_entry[1]] = [[db_entry[2], db_entry[3], db_entry[4], db_entry[5], db_entry[6]]]
-    
+                        allVariations[db_entry[0]] = {}
+                        allVariations[db_entry[0]][db_entry[1]] = [[db_entry[2], db_entry[3], db_entry[4], db_entry[5], db_entry[6],db_entry[7]]]
+
+                    
         for query in queries:
             hit = isVariationInDB(allVariations, query)
             if hit is not None:
-                query[6] += 1 # found hit
+                query[7] += 1 # found hit
+    
 
-    for query in sorted(queries, key=itemgetter(6)):
-        vcf_entry = query[7].rstrip()
-        sys.stdout.write("{};OCC={}\n".format(vcf_entry, query[6]))
+    for query in sorted(queries, key=itemgetter(7)):
+        vcf_entry = query[8].rstrip()
+        sys.stdout.write("{};OCC={}\n".format(vcf_entry, query[7]))
 
 
 
@@ -88,8 +90,10 @@ the function checks if there is an hit and returns it
     chrB          = variation[3]
     chrB_start    = int(variation[4])
     chrB_end      = int(variation[5])
+    variation_type=variation[6]
+    hit=None
     
-    hit = None
+    hit = None;
     if chrA in allVariations:
         # now look if chrB is here
         if chrB in allVariations[chrA]:
@@ -97,7 +101,7 @@ the function checks if there is an hit and returns it
             variationsBetweenChrAChrB = allVariations[chrA][chrB]
             hit = None
             for event in variationsBetweenChrAChrB:
-                hit_tmp = isSameVariation(event, [chrA_start, chrA_end, chrB_start, chrB_end])
+                hit_tmp = isSameVariation(event, [chrA_start, chrA_end, chrB_start, chrB_end,variation_type])
                 if hit_tmp != None:
                     #if hit != None:
                     #    print "attention multiple hits possible case not conisedere so fa...."
@@ -112,11 +116,17 @@ def isSameVariation(event, variation): #event is in the DB, variation is the new
     event_chrA_end      = int(event[1])
     event_chrB_start    = int(event[2])
     event_chrB_end      = int(event[3])
+    event_type = event[4];
 
     variation_chrA_start      = int(variation[0])
     variation_chrA_end        = int(variation[1])
     variation_chrB_start      = int(variation[2])
     variation_chrB_end        = int(variation[3])
+    variation_type=variation[4];
+    #only merge events if they are the same type, ie, dont merge a translocation with a duplication
+    if not (variation_type == event_type):
+        return None
+
     
     new_event = []
     found     = 0

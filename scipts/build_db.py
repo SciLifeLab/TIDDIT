@@ -21,7 +21,7 @@ def main(args):
                                 outputSource=content[1].rstrip().split()[0];
                         continue
                 
-                chrA,startA,endA,chrB,startB,endB =readVCF.readVCFLine(outputSource,line);
+                chrA,startA,endA,chrB,startB,endB,event_type =readVCF.readVCFLine(outputSource,line);
 
                 startA = startA - tollerance
                 if startA < 0:
@@ -30,7 +30,7 @@ def main(args):
                 if startB < 0:
                         startB = 0
 
-                current_variation = [chrA, startA , endA + tollerance, chrB, startB, endB + tollerance]
+                current_variation = [chrA, startA , endA + tollerance, chrB, startB, endB + tollerance,event_type]
                 collapsedVariations = populate_DB(collapsedVariations, current_variation, True, 0)
 
         ##collapse again in order to avoid problems with areas that have become too close one to onther
@@ -48,7 +48,7 @@ def main(args):
             for chrA in collapsedVariations:
                 for chrB in collapsedVariations[chrA] :
                     for collapsedVariation in collapsedVariations[chrA][chrB]:
-                        current_variation = [chrA, collapsedVariation[0],  collapsedVariation[1], chrB, collapsedVariation[2], collapsedVariation[3]]
+                        current_variation = [chrA, collapsedVariation[0],  collapsedVariation[1], chrB, collapsedVariation[2], collapsedVariation[3],collapsedVariation[4]]
                         collapsedVariationsFinal = populate_DB(collapsedVariationsFinal, current_variation, True, 0)
                         elemnets_before += 1
             for chrA in collapsedVariationsFinal:
@@ -63,7 +63,7 @@ def main(args):
         for chrA in collapsedVariations:
             for chrB in collapsedVariations[chrA] :
                 for collapsedVariation in collapsedVariations[chrA][chrB]:
-                    current_variation = [chrA, collapsedVariation[0],  collapsedVariation[1], chrB, collapsedVariation[2], collapsedVariation[3]]
+                    current_variation = [chrA, collapsedVariation[0],  collapsedVariation[1], chrB, collapsedVariation[2], collapsedVariation[3],collapsedVariation[4]]
                     allVariations = populate_DB(allVariations, current_variation, False, 0)
                         
         
@@ -72,7 +72,7 @@ def main(args):
     for chrA in allVariations:
         for chrB in allVariations[chrA] :
             for event in allVariations[chrA][chrB]:
-                print "{}\t{}\t{}\t{}\t{}\t{}\t{}".format(chrA, chrB,  event[0],  event[1],  event[2], event[3], event[4])
+                print "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(chrA, chrB,  event[0],  event[1],  event[2], event[3], event[4], event[5])
 
 
 
@@ -98,6 +98,7 @@ if local is set to false it means we are building the reaDB
     chrB          = variation[3]
     chrB_start    = int(variation[4])
     chrB_end      = int(variation[5])
+    event_type    = variation[6];
     
     
     if chrA in allVariations:
@@ -107,7 +108,7 @@ if local is set to false it means we are building the reaDB
             variationsBetweenChrAChrB = allVariations[chrA][chrB]
             found = False
             for event in variationsBetweenChrAChrB:
-                new_event = mergeIfSimilar(event, [chrA_start, chrA_end, chrB_start, chrB_end])
+                new_event = mergeIfSimilar(event, [chrA_start, chrA_end, chrB_start, chrB_end,event_type])
                 if  event[4] != new_event[4]:
                     event[0] = new_event[0]
                     event[1] = new_event[1]
@@ -124,7 +125,7 @@ if local is set to false it means we are building the reaDB
                 startB = chrB_start - tollerance
                 if startB < 0:
                     startB = 0
-                allVariations[chrA][chrB].append([ startA ,chrA_end + tollerance,  startB,  chrB_end + tollerance,  1])
+                allVariations[chrA][chrB].append([ startA ,chrA_end + tollerance,  startB,  chrB_end + tollerance,event_type,  1])
         else:
             startA = chrA_start - tollerance
             if startA < 0:
@@ -132,7 +133,7 @@ if local is set to false it means we are building the reaDB
             startB = chrB_start - tollerance
             if startB < 0:
                 startB = 0
-            allVariations[chrA][chrB] =  [[ startA ,chrA_end + tollerance,  startB,  chrB_end + tollerance,  1]]
+            allVariations[chrA][chrB] =  [[ startA ,chrA_end + tollerance,  startB,  chrB_end + tollerance,event_type,  1]]
         
     else:
         allVariations[chrA]       = {}
@@ -142,7 +143,7 @@ if local is set to false it means we are building the reaDB
         startB = chrB_start - tollerance
         if startB < 0:
             startB = 0
-        allVariations[chrA][chrB] =  [[ startA ,chrA_end + tollerance,  startB,  chrB_end + tollerance,  1]]
+        allVariations[chrA][chrB] =  [[ startA ,chrA_end + tollerance,  startB,  chrB_end + tollerance,event_type,  1]]
 
     return allVariations
     
@@ -152,11 +153,13 @@ def mergeIfSimilar(event, variation): #event is in the DB, variation is the new 
     event_chrA_end      = int(event[1])
     event_chrB_start    = int(event[2])
     event_chrB_end      = int(event[3])
+    event_type = event[4];
 
     variation_chrA_start      = int(variation[0])
     variation_chrA_end        = int(variation[1])
     variation_chrB_start      = int(variation[2])
     variation_chrB_end        = int(variation[3])
+    variation_type=variation[4];
 
     new_event = []
 
@@ -178,34 +181,36 @@ def mergeIfSimilar(event, variation): #event is in the DB, variation is the new 
         overlap     = 0
         #event         ---------------------
         #variaton   ------------------------------
-        if variation_start < event_start and variation_end > event_end:
-            overlap = event_end - event_start + 1
-            new_event.append(variation_start)
-            new_event.append(variation_end)
-        #event         ---------------------
-        #variaton        ---------------      take into account special cases
-        elif variation_start >= event_start and variation_end <= event_end:
-            overlap = variation_end - variation_start + 1
-            new_event.append(event_start)
-            new_event.append(event_end)
-        #event           ---------------------
-        #variaton     ------------------
-        elif variation_start < event_start and variation_end < event_end and variation_end >= event_start: #variation_end > event_start
-            overlap = variation_end - event_start + 1
-            new_event.append(variation_start)
-            new_event.append(event_end)
-        #event         ---------------------
-        #variaton           ----------------------
-        elif variation_start >= event_start and variation_end > event_end and variation_start <= event_end:
-            overlap = event_end - variation_start + 1
-            new_event.append(event_start)
-            new_event.append(variation_end)
+        #do not merge if the events are of different type
+        if(event_type == variation_type):
+            if variation_start < event_start and variation_end > event_end:
+                overlap = event_end - event_start + 1
+                new_event.append(variation_start)
+                new_event.append(variation_end)
+            #event         ---------------------
+            #variaton        ---------------      take into account special cases
+            elif variation_start >= event_start and variation_end <= event_end:
+                overlap = variation_end - variation_start + 1
+                new_event.append(event_start)
+                new_event.append(event_end)
+            #event           ---------------------
+            #variaton     ------------------
+            elif variation_start < event_start and variation_end < event_end and variation_end >= event_start: #variation_end > event_start
+                overlap = variation_end - event_start + 1
+                new_event.append(variation_start)
+                new_event.append(event_end)
+            #event         ---------------------
+            #variaton           ----------------------
+            elif variation_start >= event_start and variation_end > event_end and variation_start <= event_end:
+                overlap = event_end - variation_start + 1
+                new_event.append(event_start)
+                new_event.append(variation_end)
 
-        if overlap  > 0:
-            found += 1
+            if overlap  > 0:
+                found += 1
 
     if found == 2:
-        new_event.append(event[4] +1)
+        new_event.append(event[5] +1)
         return new_event
     else:
         return event
