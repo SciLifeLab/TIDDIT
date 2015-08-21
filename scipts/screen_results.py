@@ -13,10 +13,10 @@ def main(args):
             for row in rows:
                 if not row[0].startswith("#"):
                     try:
-			 toBeMaskedElements[row[0]].append([row[1], row[2], row[3]])
+			 toBeMaskedElements[row[0].replace("chr","").replace("Chr","")].append([row[1], row[2], row[3]])
 
                     except :
-                         toBeMaskedElements[row[0]] = [[row[1], row[2], row[3]]]
+                         toBeMaskedElements[row[0].replace("chr","").replace("Chr","")] = [[row[1], row[2], row[3]]]
             #sys.stdout.write("done\n")
 
     #print "sorting masked regions"
@@ -48,11 +48,11 @@ def main(args):
                 ## Chategorise the two breackpoints
                 for j in range(2):
                         if j == 0:
-                                variation_chr   = chr_1
+                                variation_chr   = chr_1.replace("chr","").replace("Chr","")
                                 variation_start = chr_1_start
                                 variation_end   = chr_1_end
                         else:
-                                variation_chr   = chr_2
+                                variation_chr   = chr_2.replace("chr","").replace("Chr","")
                                 variation_start = chr_2_start
                                 variation_end   = chr_2_end
                                 stopSearching = 0
