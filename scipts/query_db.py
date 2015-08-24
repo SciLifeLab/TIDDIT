@@ -9,6 +9,7 @@ import threading
 def main(args):
     #start by loading the variations
     variations = args.variations
+    ratio= args.overlap
     queries = []
     with open(variations) as fin:
         noOCCTag=1;
@@ -59,7 +60,7 @@ def main(args):
 
                     
         for query in queries:
-            hit = isVariationInDB(allVariations, query)
+            hit = isVariationInDB(allVariations, query,ratio)
             if hit is not None:
                 query[7] += 1 # found hit
     
@@ -71,7 +72,7 @@ def main(args):
 
 
 
-def isVariationInDB(allVariations, variation):
+def isVariationInDB(allVariations, variation,ratio):
     """
 isVariationInDB requires a dictionaty like this
 chrA
@@ -101,7 +102,7 @@ the function checks if there is an hit and returns it
             variationsBetweenChrAChrB = allVariations[chrA][chrB]
             hit = None
             for event in variationsBetweenChrAChrB:
-                hit_tmp = isSameVariation(event, [chrA_start, chrA_end, chrB_start, chrB_end,variation_type])
+                hit_tmp = isSameVariation(event, [chrA_start, chrA_end, chrB_start, chrB_end,variation_type],ratio)
                 if hit_tmp != None:
                     #if hit != None:
                     #    print "attention multiple hits possible case not conisedere so fa...."
@@ -111,7 +112,7 @@ the function checks if there is an hit and returns it
 
 
     
-def isSameVariation(event, variation): #event is in the DB, variation is the new variation I want to insert
+def isSameVariation(event, variation,ratio): #event is in the DB, variation is the new variation I want to insert
     event_chrA_start    = int(event[0])
     event_chrA_end      = int(event[1])
     event_chrB_start    = int(event[2])
@@ -143,32 +144,34 @@ def isSameVariation(event, variation): #event is in the DB, variation is the new
             event_start  = event_chrB_start
             event_end    = event_chrB_end
 
-        overlap     = 0
-        
-        if variation_start < event_start and variation_end > event_end:
-            overlap = event_end - event_start + 1
+        overlapRatio = -float("inf")
+    
+        #event              --------
+        #variaton        --------------
+        if variation_start <= event_start and variation_end >= event_end:
+            overlapRatio=overlap_ratio(variation_start,variation_end,event_start,event_end)
             new_event.append(variation_start)
             new_event.append(variation_end)
         #event         ---------------------
         #variaton        ---------------      take into account special cases
         elif variation_start >= event_start and variation_end <= event_end:
-            overlap = variation_end - variation_start + 1
+            overlapRatio=overlap_ratio(variation_start,variation_end,event_start,event_end)
             new_event.append(event_start)
             new_event.append(event_end)
         #event           ---------------------
         #variaton     ------------------
         elif variation_start < event_start and variation_end < event_end and variation_end >= event_start: #variation_end > event_start
-            overlap = variation_end - event_start + 1
+            overlapRatio=overlap_ratio(variation_start,variation_end,event_start,event_end)
             new_event.append(variation_start)
             new_event.append(event_end)
         #event         ---------------------
         #variaton           ----------------------
         elif variation_start >= event_start and variation_end > event_end and variation_start <= event_end:
-            overlap = event_end - variation_start + 1
+            overlapRatio=overlap_ratio(variation_start,variation_end,event_start,event_end)
             new_event.append(event_start)
             new_event.append(variation_end)
 
-        if overlap  > 0:
+        if overlapRatio  >= ratio:
             found += 1
 
     if found == 2:
@@ -176,8 +179,27 @@ def isSameVariation(event, variation): #event is in the DB, variation is the new
     else:
         return None
 
+#compute the total area spanned by the two events(overlaping events), calculate the intersect of the two events, return the ratio of the length of these two regions
+def overlap_ratio(variation_start,variation_end,event_start,event_end):
 
+    if(variation_start < event_start):
+        region_start=variation_start;
+        overlap_start=event_start;
+    else:
+        region_start=event_start;
+        overlap_start=variation_start;
 
+    if(variation_end > event_end):
+        region_end=variation_end
+        overlap_end=event_end
+
+    else:
+        region_end=event_end
+        overlap_end=variation_end
+
+    event_ratio=float(overlap_end-overlap_start+1)/float(region_end-region_start+1)
+    
+    return(event_ratio)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("""
@@ -187,6 +209,7 @@ if __name__ == '__main__':
     """)
     parser.add_argument('--variations', type=str, required=True, help="vcf file containing variations")
     parser.add_argument('--db'        , type=str,                help="path to DB (a folder containing samples .db files")
+    parser.add_argument('--overlap', type=float, default = 0.6,help="the overlap required to merge two events(0 means anything that touches will be merged, 1 means that two events must be identical to be merged), default = 0.6")
     args = parser.parse_args()
 
     main(args)
