@@ -11,6 +11,7 @@ StructuralVariations::StructuralVariations() { }
 
 void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t max_insert, bool outtie, uint16_t minimum_mapping_quality, uint32_t minimumSupportingPairs
 , float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string indexFile,int contigsNumber) {
+	size_t start = time(NULL);
 	//open the bam file
 	BamReader bamFile;
 	bamFile.Open(bamFileName);
@@ -36,7 +37,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_
 	BamAlignment currentRead;
 	//now start to iterate over the bam file
 	int counter = 0;
-	while ( bamFile.GetNextAlignment(currentRead) ) {
+	while ( bamFile.GetNextAlignmentCore(currentRead) ) {
 		if(currentRead.IsMapped()) {
 			window->insertRead(currentRead);
 		}
@@ -49,6 +50,6 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_
 		}
 	window->interChrVariationsVCF.close();
 	window->intraChrVariationsVCF.close();
-
+	printf ("variant calling time consumption= %lds\n", time(NULL) - start);
 }
 

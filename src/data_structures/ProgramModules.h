@@ -59,4 +59,10 @@ public:
 	void intraChromosomalVCF(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position);
 };
 
+class autoSettings{
+public:
+	autoSettings();
+	vector<int> autoConfig(string bamFile,int Quality);
+};
+
 #endif /* PROGRAMMODULES_H_ */

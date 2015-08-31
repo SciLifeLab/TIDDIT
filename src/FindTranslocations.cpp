@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
 	//The sv options menu, this menu is used if the find structural variations menu is selected.
 	po::options_description desc("\nUsage: FindTranslocations --sv [Options] --bam inputfile --bai indexfile --output outputFile(optional) \nOptions");
 	desc.add_options()
+		("auto","find min-insert,max-insert and orientation based on the statistics of the bam input file")
 		("min-insert",   po::value<int>(),         "paired reads minimum allowed insert size. Used in order to filter outliers. Insert size goes from beginning of first read to end of second read")
 		("max-insert",   po::value<int>(),         "paired reads maximum allowed insert size. pairs aligning on the same chr at a distance higher than this are considered candidates for SV.")
 		("orientation",  po::value<string>(),      "expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default outtie")				
@@ -322,25 +323,44 @@ int main(int argc, char *argv[]) {
 			minimumSupportingPairs = vm["minimum-supporting-pairs"].as<unsigned int>();
 		}
 
-		if (vm.count("coverage") or vm.count("insert") or vm.count("insert-std")) {
+		if (vm.count("coverage") or vm.count("insert") or vm.count("insert-std") and not vm.count("auto") ) {
 			if ( !(vm.count("coverage") and vm.count("insert") and vm.count("insert-std")) ){
 				DEFAULT_CHANNEL << "--coverage , --insert, and --insert-std must be all specified at the same time. Please specify all three or let the program compute the numbers (Bam file wil be read twice).\n";
 				return 2;
 			}
 		}
 
-		if (vm.count("coverage") or vm.count("insert") or vm.count("insert-std")) {
+		if(vm.count("auto")){
+			vector<int> libraryStats;
+			//compute max_insert,mean insert and outtie
+			autoSettings *autoStats;
+			autoStats = new autoSettings();
+			size_t start = time(NULL);
+			libraryStats=autoStats->autoConfig(alignmentFile,minimum_mapping_quality);
+			
+			printf ("auto config time consumption= %lds\n", time(NULL) - start);
+			max_insert=libraryStats[0];
+			min_insert=libraryStats[1];
+			outtie=libraryStats[2] != 0;
+
+		}
+
+
+		if (vm.count("coverage") or vm.count("insert") or vm.count("insert-std") and not vm.count("auto")) {
 			coverage    = vm["coverage"].as<float>();
 			meanInsert  = vm["insert"].as<float>();
 			insertStd   = vm["insert-std"].as<float>();
 
-		} else {
+		 }else {
 			LibraryStatistics library;
+			size_t start = time(NULL);
 			library = computeLibraryStats(alignmentFile, genomeLength, max_insert, outtie);
-
+			printf ("library stats time consumption= %lds\n", time(NULL) - start);
 			coverage   = library.C_A;
 			meanInsert = library.insertMean;
 			insertStd  = library.insertStd;
+			
+
 		}
 
 		StructuralVariations *FindTranslocations;

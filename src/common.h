@@ -395,5 +395,4 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 
 
 
-
 #endif /*TYPES_H_*/
