@@ -9,8 +9,8 @@ def main(args):
     featureEntries=[];
     for bed_file in [item for sublist in args.bed_files for item in sublist] :
         toBeMaskedElements[bed_file]={};
-		bedlabel=bedfile.split("/")[-1]
-		bedlabel=bedlabel.split(".")[0]
+        bedlabel=bed_file.split("/")[-1]
+        bedlabel=bedlabel.split(".")[0]
         featureEntries.append("##INFO=<ID={0},Number=2,Type=String,Description=\"Genomic features of regions A and B\">\n".format(bedlabel))
         #sys.stdout.write("memorizing {} ...".format(bed_file))
         with open(bed_file) as fin:
