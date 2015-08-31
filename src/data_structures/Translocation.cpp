@@ -20,10 +20,10 @@ string VCFHeader(){
 	//define the alowed events
 	headerString+="##ALT=<ID=DEL,Description=\"Deletion\">\n";
 	headerString+="##ALT=<ID=DUP,Description=\"Duplication\">\n";
-	headerString+="##ALT=<ID=TDUP,Description=\"Duplication\">\n";
-	headerString+="##ALT=<ID=IDUP,Description=\"Duplication\">\n";
-	headerString+="##ALT=<ID=INV,Description=\"Duplication\">\n";
-	headerString+="##ALT=<ID=INS,Description=\"Duplication\">\n";
+	headerString+="##ALT=<ID=TDUP,Description=\"Tandem duplication\">\n";
+	headerString+="##ALT=<ID=IDUP,Description=\"Interspersed duplication\">\n";
+	headerString+="##ALT=<ID=INV,Description=\"Inversion\">\n";
+	headerString+="##ALT=<ID=INS,Description=\"Insertion\">\n";
 	headerString+="##ALT=<ID=BND,Description=\"Break end\">\n";
 	//Define the info fields
 	headerString+="##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n";
