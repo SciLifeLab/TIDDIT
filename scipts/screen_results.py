@@ -53,6 +53,8 @@ def main(args):
             
                 ## Chategorise the two breackpoints
                 for bedFile in toBeMaskedElements:
+                    bedlabel=bedFile.split("/")[-1]
+                    bedlabel=bedlabel.split(".")[0]
                     for j in range(2):
                         if j == 0:
                             variation_chr   = chr_1.replace("chr","").replace("Chr","")
@@ -94,19 +96,19 @@ def main(args):
                     
                             if categorized == 0:
                                 if( j == 0):
-                                    sys.stdout.write(";{0}=NoCategory".format(bedFile))
+                                    sys.stdout.write(";{0}=NoCategory".format(bedlabel))
                                 else:
                                     sys.stdout.write(",NoCategory")
                             else:
                                 if(j == 0):
-                                    sys.stdout.write(";{0}={1}".format(bedFile,max_Size_type))
+                                    sys.stdout.write(";{0}={1}".format(bedlabel,max_Size_type))
                                 else:
                                     sys.stdout.write(",{}".format(max_Size_type))
 
     
                         else:
                             if(j == 0):
-                                sys.stdout.write(";{}=NotPresentInRef".format(bedFile))
+                                sys.stdout.write(";{}=NotPresentInRef".format(bedlabel))
                             else:
                                 sys.stdout.write(",NotPresentInRef")
                 sys.stdout.write("\n")
