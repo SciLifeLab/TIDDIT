@@ -58,7 +58,7 @@ double Cov::findCoverage(string bamFileName, string baiFile,int chr, int start, 
 	}
 
 	bamFile.SetRegion(chr,start,chr,end); 
-		while ( bamFile.GetNextAlignment(currentRead) ) {
+		while ( bamFile.GetNextAlignmentCore(currentRead) ) {
 			if(currentRead.IsMapped()) {
 
 				//if the entire read is inside the region, add all the bases to sequenced bases
@@ -380,7 +380,7 @@ void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, 
 
 
 		
-	while ( alignmentFile.GetNextAlignment(currentRead) ) {
+	while ( alignmentFile.GetNextAlignmentCore(currentRead) ) {
 		if(currentRead.IsMapped()) {
 			//initialise the chromosome ID
 			if(currentChr == -1){

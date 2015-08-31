@@ -30,6 +30,7 @@ file(GLOB FIND_TRANS_FILES
 	${PROJECT_SOURCE_DIR}/src/data_structures/CoverageModule.cpp
 	${PROJECT_SOURCE_DIR}/src/data_structures/ExtractModule.cpp
 	${PROJECT_SOURCE_DIR}/src/data_structures/findTranslocationsOnTheFly.cpp
+	${PROJECT_SOURCE_DIR}/src/data_structures/AutoConfig.cpp
     ${PROJECT_SOURCE_DIR}/src/common.h
 )
 

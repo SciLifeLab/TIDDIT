@@ -20,6 +20,10 @@ string VCFHeader(){
 	//define the alowed events
 	headerString+="##ALT=<ID=DEL,Description=\"Deletion\">\n";
 	headerString+="##ALT=<ID=DUP,Description=\"Duplication\">\n";
+	headerString+="##ALT=<ID=TDUP,Description=\"Tandem duplication\">\n";
+	headerString+="##ALT=<ID=IDUP,Description=\"Interspersed duplication\">\n";
+	headerString+="##ALT=<ID=INV,Description=\"Inversion\">\n";
+	headerString+="##ALT=<ID=INS,Description=\"Insertion\">\n";
 	headerString+="##ALT=<ID=BND,Description=\"Break end\">\n";
 	//Define the info fields
 	headerString+="##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n";
@@ -113,7 +117,7 @@ void Window::insertRead(BamAlignment alignment) {
 		cout << "working on sequence " << position2contig[alignment.RefID] << "\n";
 	}
 
-	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
+	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance or alignmentStatus == pair_wrongOrientation) {
 		if(alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) {  // insert only "forward" variations
 
 			int alignmentNumber= eventReads[alignment.MateRefID].size();
@@ -133,7 +137,6 @@ void Window::insertRead(BamAlignment alignment) {
 				int distance= currrentAlignmentPos - pastAlignmentPos;
 
 				//If the distance between the two reads is less than the maximum allowed distace, add it to the other reads of the event
-				int MaxDistance=1000;
 				if(distance <= 1000){
 					//add the read to the current window
 					eventReads[alignment.MateRefID].push(alignment);
@@ -176,7 +179,7 @@ float Window::computeCoverageB(int chrB, int start, int end, int32_t secondWindo
 		}
 		//moves to a region and itterates through every read inside that region
 		bamFile.SetRegion(chrB,start,chrB,end+1); 
-		while ( bamFile.GetNextAlignment(currentRead) ) {
+		while ( bamFile.GetNextAlignmentCore(currentRead) ) {
 			if(start <= currentRead.Position and end >= currentRead.Position){
 				readStatus alignmentStatus = computeReadType(currentRead, this->max_insert, this->outtie);
 				if(alignmentStatus != unmapped and alignmentStatus != lowQualty ) {
@@ -240,7 +243,7 @@ vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int star
 		}
 		//moves to a region and itterates through every read inside that region
 		bamFile.SetRegion(chrB,start,chrB,end+1); 
-		while ( bamFile.GetNextAlignment(currentRead) ) {
+		while ( bamFile.GetNextAlignmentCore(currentRead) ) {
 			//makes sure that we are inside the ragion
 			if(start <= currentRead.Position and end >= currentRead.Position){
 				readStatus alignmentStatus = computeReadType(currentRead, this->max_insert, this->outtie);
@@ -251,8 +254,8 @@ vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int star
 					AverageReadLength+=currentRead.Length;
 					nreads++;
 				
-					//if the distance between a pair is too long, the amount of links from the winddoe is increased
-					if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
+					//if the distance between a pair is too long, the amount of links from the window is increased
+					if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance or alignmentStatus == pair_wrongOrientation) {
 						if(currentRead.RefID < currentRead.MateRefID or (currentRead.RefID == currentRead.MateRefID and currentRead.Position < currentRead.MatePosition)) {
 							linksFromWindow+=1;
 						}

@@ -56,7 +56,10 @@ def readVCFLine(source,line):
                 B=variation[4];
                 #fermikit assigns translocations as precise events, thus we need to create a small interval around the positions of the translocations or we will be unlikely to overlap similar fermikit events
                 endA=startA+500;
-                startA=startA-500;
+                if(startA-500 > 0):
+                    startA=startA-500;
+                else:
+                    startA=1;
 
                 B=re.split("[],[]",B);
                 for string in B:
@@ -65,7 +68,11 @@ def readVCFLine(source,line):
                         chrB=lst[0]
                         startB=int(lst[1]);
                         endB=startB+500;
-                        startB=startB-500;
+                        if(startB -500 > 0):
+                            startB=startB-500;
+                        else:
+                            startB=1
+
                 event_type=description["SVTYPE"]
                 
                 
