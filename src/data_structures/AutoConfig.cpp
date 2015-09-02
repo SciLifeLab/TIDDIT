@@ -1,5 +1,5 @@
 #include "ProgramModules.h"
-
+//The auto config module. This module finds the input parameters based on the input file
 
 autoSettings::autoSettings(){}
 
