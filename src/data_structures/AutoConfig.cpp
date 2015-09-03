@@ -67,7 +67,7 @@ vector<int> autoSettings::autoConfig(string bamFile,int Quality){
 	
 	meanInsert=meanInsert*1000;
 	cout << meanInsert << endl;
-	int maxInsert=meanInsert;
+	int maxInsert=2*meanInsert;
 	//the min insert size is set to 3*avgread len
 	int minInsert = 3*readLen;
 	cout << "Max insert size: " << maxInsert << endl;
@@ -78,7 +78,7 @@ vector<int> autoSettings::autoConfig(string bamFile,int Quality){
 		cout << "outtie" << endl;
 	}else{
 		orientation=0;
-		cout << "intie" << endl;
+		cout << "innie" << endl;
 	}
 
 

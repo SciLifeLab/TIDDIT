@@ -58,6 +58,7 @@ int main(int argc, char *argv[]) {
 	int max_insert				    = 1000000;  // max insert size
 	int minimum_mapping_quality     = 20;
 	float coverage;
+	float coverageStd;
 	float meanInsert;
 	float insertStd;
 	string roi;
@@ -359,7 +360,10 @@ int main(int argc, char *argv[]) {
 			coverage   = library.C_A;
 			meanInsert = library.insertMean;
 			insertStd  = library.insertStd;
-			
+			//update the max_insert
+			if(vm.count("auto")){
+				max_insert =meanInsert+5*insertStd;
+			}
 
 		}
 
