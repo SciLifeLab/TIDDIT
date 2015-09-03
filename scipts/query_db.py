@@ -47,7 +47,7 @@ def main(args):
     if(args.db):
         dataBases=glob.glob("{}/*.db".format(os.path.abspath(args.db)))
     else:
-        databases=args.files
+        dataBases=args.files
 
     for sample_db in dataBases:
         allVariations = {}
