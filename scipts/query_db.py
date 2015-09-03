@@ -47,7 +47,8 @@ def main(args):
     if(args.db):
         dataBases=glob.glob("{}/*.db".format(os.path.abspath(args.db)))
     else:
-        print(args.files)
+        databases=args.files
+
     for sample_db in dataBases:
         allVariations = {}
         with open(sample_db) as fDB:
@@ -212,7 +213,7 @@ if __name__ == '__main__':
     by number of occurences in the DB.
     """)
     parser.add_argument('--variations', type=str, required = True, help="vcf file containing variations")
-    parser.add_argument('--files'        , type=str, action='append', nargs='*', help="the paths to the db files are given as a command line arguments")
+    parser.add_argument('--files'        , type=str, nargs='*', help="the paths to the db files are given as a command line arguments")
     parser.add_argument('--db'        , type=str,                help="path to DB (a folder containing samples .db files")
     parser.add_argument('--overlap', type=float, default = 0.6,help="the overlap required to merge two events(0 means anything that touches will be merged, 1 means that two events must be identical to be merged), default = 0.6")
     args = parser.parse_args()
