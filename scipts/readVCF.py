@@ -19,14 +19,29 @@ def readVCFLine(source,line):
         elif(source == "FindTranslocations"):
 
                 description = dict(item.split("=") for item in variation[7].split(";"))
-                #now I need to collapse similar variations
-                chrA    = description["CHRA"]
-                startA  = int(description["WINA"].split(",")[0])
-                endA    = int(description["WINA"].split(",")[1])
-                chrB    = description["CHRB"]
-                startB  = int(description["WINB"].split(",")[0])
-                endB    = int(description["WINB"].split(",")[1])
-                event_type=description["SVTYPE"]
+                if(not "]" in variation[4] and not "[" in variation[4]):
+                    #if the event is an intrachromosomal event
+                    chrA    = description["CHRA"]
+                    chrB=chrA;
+                    startA=int(variation[1]);
+                    startB=startA;
+
+                    endA=int(description["END"]);
+                    endB=endA        
+
+                    event_type=description["SVTYPE"];
+
+                else:
+
+                    
+                    #now I need to collapse similar variations
+                    chrA    = description["CHRA"]
+                    startA  = int(description["WINA"].split(",")[0])
+                    endA    = int(description["WINA"].split(",")[1])
+                    chrB    = description["CHRB"]
+                    startB  = int(description["WINB"].split(",")[0])
+                    endB    = int(description["WINB"].split(",")[1])
+                    event_type=description["SVTYPE"]
 
         #if the source is fermikit
         elif(source == "htsbox-abreak-r303"):
@@ -35,7 +50,7 @@ def readVCFLine(source,line):
             startA=int(variation[1]);
 
             description = dict(item.split("=") for item in variation[7].split(";"))
-            if(variation[4] == "<INS>" or variation[4] == "<DEL>" or variation[4] == "<DUP>"):
+            if(not  "]" in variation[4] and not "[" in variation[4]):
                 chrB=chrA;
                 
                 startB=startA;

@@ -6,12 +6,19 @@
  */
 
 #include "Translocation.h"
+#include <boost/lexical_cast.hpp>
+
+using boost::lexical_cast;
 
 //this function tries to classify intrachromosomal events
-string Window::classification(int chr, int startA,int endA,int covA,int startB,int endB,int covB,int meanInsert,int STDInsert,bool outtie,vector<double> isReverse){
+vector<string> Window::classification(int chr, int startA,int endA,int covA,int startB,int endB,int covB,int meanInsert,int STDInsert,bool outtie,vector<double> isReverse){
 	string svType="BND";
+    string start=lexical_cast<string>(startA);
+    string end=lexical_cast<string>(endB);
+    
+    
 	double coverage= this -> meanCoverage;
-	float coverageTolerance=0.4;
+	float coverageTolerance=1/double(this -> ploidity);
 	float covAB=computeCoverageB(chr,endA,startB, startB-endA);
 	//if the outie/innie pattern is reversed the event is an inversion
 	if(outtie == true){
@@ -73,7 +80,9 @@ string Window::classification(int chr, int startA,int endA,int covA,int startB,i
 
 	}
 
-	return(svType);
+    vector<string> svVector;
+    svVector.push_back(svType);svVector.push_back(start);svVector.push_back(end);
+	return(svVector);
 }
 
 bool sortMate(long i, long  j) {
@@ -97,6 +106,7 @@ string VCFHeader(){
 	
 	//Define the info fields
 	headerString+="##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n";
+    headerString+="##INFO=<ID=END,Number=1,Type=String,Description=\"End of an intra-chromosomal variant\">\n";
 	headerString+="##INFO=<ID=LFW,Number=1,Type=Integer,Description=\"Links from window\">\n";
 	headerString+="##INFO=<ID=LCB,Number=1,Type=Integer,Description=\"Links to chromosome B\">\n";
 	headerString+="##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\"\b>\n";
@@ -137,7 +147,7 @@ string filterFunction(double RATIO, int linksToB, int LinksFromWindow,float mean
 
 Window::Window(int max_insert, uint16_t minimum_mapping_quality,
 		bool outtie, float mean_insert, float std_insert, int minimumPairs,
-		float meanCoverage, string outputFileHeader,string bamFileName, string indexFile) {
+		float meanCoverage, string outputFileHeader,string bamFileName, string indexFile,int ploidity) {
 	this->max_insert		 = max_insert;
 	this->minimum_mapping_quality = minimum_mapping_quality;
 	this->outtie			 = outtie;
@@ -147,6 +157,7 @@ Window::Window(int max_insert, uint16_t minimum_mapping_quality,
 	this->meanCoverage		 = meanCoverage;
 	this->bamFileName		=bamFileName;
 	this -> indexFile		=indexFile;
+    this -> ploidity        =ploidity;
 
 	this->outputFileHeader   = outputFileHeader;
 	string inter_chr_eventsVCF = outputFileHeader + "_inter_chr_events.vcf";
@@ -417,12 +428,16 @@ bool Window::computeVariations(int chr2) {
 
 				    string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, numLinksToChr2, linksFromWindow,mean_insert, 									std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);
 				    
-					string svType=classification(chr2,startchrA, stopchrA,coverageRealFirstWindow,startSecondWindow, stopSecondWindow,coverageRealSecondWindow,this -> mean_insert,this -> std_insert,this -> outtie,orientation);
+					vector<string> svVector=classification(chr2,startchrA, stopchrA,coverageRealFirstWindow,startSecondWindow, stopSecondWindow,coverageRealSecondWindow,this -> mean_insert,this -> std_insert,this -> outtie,orientation);
+                    string svType=svVector[0];
+                    string start=svVector[1];
+                    string end = svVector[2];
+
 				    this -> numberOfEvents++;
-				    intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "\t"  ;
-				    intraChrVariationsVCF << "N"       << "\t"	<< "N[" << 	position2contig[chr2] << ":" << startSecondWindow << "[";
+				    intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     start   << "\tSV_" << this -> numberOfEvents << "\t"  ;
+				    intraChrVariationsVCF << "N"       << "\t"	<< "<" << svType << ">";
      				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-				    intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
+				    intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";END="<< end <<";LFW=" << linksFromWindow;
 				    intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
 				    intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
 				    intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow <<  "\n";

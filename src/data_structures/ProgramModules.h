@@ -28,7 +28,7 @@ public:
 	StructuralVariations();
 	//main function
 	void findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t max_insert, bool outtie, uint16_t minimum_mapping_quality,
-		uint32_t minimumSupportingPairs, float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string indexFile, int contigsNumber);
+		uint32_t minimumSupportingPairs, float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string indexFile, int contigsNumber,int ploidity);
 };
 
 //This class contains functions used to recognize and read vcf and bed files
