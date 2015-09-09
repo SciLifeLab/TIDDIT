@@ -26,7 +26,6 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_
 	window->initTrans(head);
 	//expands a vector so that it is large enough to hold reads from each contig in separate elements
 	window->eventReads.resize(contigsNumber);
-    window->readsRegionA.resize(contigsNumber);
 
 	window->covOnChrA.resize(contigsNumber);
 	window->tmpCovOnChrA.resize(contigsNumber);
