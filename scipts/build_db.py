@@ -7,8 +7,11 @@ import readVCF
 def main(args):
     allVariations       = {}
     tollerance    = args.tollerance
+    fixed =0
+    if args.fixed:
+        fixed =1
     for variation_file in [item for sublist in args.variations for item in sublist] :
-        outputource=None;
+        outputSource=None;
         collapsedVariations = {} # this will contain the SVs of this file, but collapsing those that are close
         with open(variation_file) as fin:
             #memorize all variations
@@ -31,7 +34,7 @@ def main(args):
                         startB = 0
 
                 current_variation = [chrA, startA , endA + tollerance, chrB, startB, endB + tollerance,event_type]
-                collapsedVariations = populate_DB(collapsedVariations, current_variation, True, 0)
+                collapsedVariations = populate_DB(collapsedVariations, current_variation, True, 0, fixed )
 
         ##collapse again in order to avoid problems with areas that have become too close one to onther
         elemnets_before = 0
@@ -49,7 +52,7 @@ def main(args):
                 for chrB in collapsedVariations[chrA] :
                     for collapsedVariation in collapsedVariations[chrA][chrB]:
                         current_variation = [chrA, collapsedVariation[0],  collapsedVariation[1], chrB, collapsedVariation[2], collapsedVariation[3],collapsedVariation[4]]
-                        collapsedVariationsFinal = populate_DB(collapsedVariationsFinal, current_variation, True, 0)
+                        collapsedVariationsFinal = populate_DB(collapsedVariationsFinal, current_variation, True, 0,fixed)
                         elemnets_before += 1
             for chrA in collapsedVariationsFinal:
                 for chrB in collapsedVariationsFinal[chrA] :
@@ -64,7 +67,7 @@ def main(args):
             for chrB in collapsedVariations[chrA] :
                 for collapsedVariation in collapsedVariations[chrA][chrB]:
                     current_variation = [chrA, collapsedVariation[0],  collapsedVariation[1], chrB, collapsedVariation[2], collapsedVariation[3],collapsedVariation[4]]
-                    allVariations = populate_DB(allVariations, current_variation, False, 0)
+                    allVariations = populate_DB(allVariations, current_variation, False, 0,fixed)
                         
         
     
@@ -76,7 +79,7 @@ def main(args):
 
 
 
-def populate_DB(allVariations, variation, local, tollerance):
+def populate_DB(allVariations, variation, local, tollerance,fixed):
     """
 populate_DB requires a dictionaty like this
 chrA
@@ -104,28 +107,31 @@ if local is set to false it means we are building the reaDB
     if chrA in allVariations:
         # now look if chrB is here
         if chrB in allVariations[chrA]:
-            # check if this variation is already present
-            variationsBetweenChrAChrB = allVariations[chrA][chrB]
-            found = False
-            for event in variationsBetweenChrAChrB:
-                new_event = mergeIfSimilar(event, [chrA_start, chrA_end, chrB_start, chrB_end,event_type])
-                if  event[4] != new_event[4]:
-                    event[0] = new_event[0]
-                    event[1] = new_event[1]
-                    event[2] = new_event[2]
-                    event[3] = new_event[3]
-                    if local != True: # do not change multiplicity while collapsing a set of variations
-                        event[4] = new_event[4]
-                    found     = True
-            #otherwise add new event
-            if found == False:
-                startA = chrA_start - tollerance
-                if startA < 0:
-                    startA = 0
-                startB = chrB_start - tollerance
-                if startB < 0:
-                    startB = 0
-                allVariations[chrA][chrB].append([ startA ,chrA_end + tollerance,  startB,  chrB_end + tollerance,event_type,  1])
+            if not fixed:
+                # check if this variation is already present
+                variationsBetweenChrAChrB = allVariations[chrA][chrB]
+                found = False
+                for event in variationsBetweenChrAChrB:
+                    new_event = mergeIfSimilar(event, [chrA_start, chrA_end, chrB_start, chrB_end,event_type])
+                    if  event[4] != new_event[4]:
+                        event[0] = new_event[0]
+                        event[1] = new_event[1]
+                        event[2] = new_event[2]
+                        event[3] = new_event[3]
+                        if local != True: # do not change multiplicity while collapsing a set of variations
+                            event[4] = new_event[4]
+                        found     = True
+                #otherwise add new event
+                if found == False:
+                    startA = chrA_start - tollerance
+                    if startA < 0:
+                        startA = 0
+                    startB = chrB_start - tollerance
+                    if startB < 0:
+                        startB = 0
+                    allVariations[chrA][chrB].append([ startA ,chrA_end + tollerance,  startB,  chrB_end + tollerance,event_type,  1])
+            else:
+                allVariations[chrA][chrB].append([ chrA_start ,chrA_end, chrB_start,  chrB_end,event_type,  1])
         else:
             startA = chrA_start - tollerance
             if startA < 0:
@@ -222,6 +228,7 @@ if __name__ == '__main__':
     This scripts takes as input the two vcf files generated by FindTranslocations and converts them in a file that will be added to the DB in order to query it. It collapses similar variations belonging to the same sample""")
     parser.add_argument('--variations', help="VCF file generated by FindTranslocations", type=str,  required=True, action='append', nargs='+')
     parser.add_argument('--tollerance', help="expand variations right and left in order to merge similar ones", type=float,  required=False, default=500)
+    parser.add_argument('--fixed', help="no expansion or merging of the variants", required=False, action="store_true")
     args = parser.parse_args()
 
     main(args)
