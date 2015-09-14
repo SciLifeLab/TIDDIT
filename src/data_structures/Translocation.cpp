@@ -26,6 +26,9 @@ vector<string> Window::classification(int chr, int startA,int endA,int covA,int 
 			svType= "INV";
 			if(covAB > coverage*(1+coverageTolerance)){
 				svType="INVDUP";
+    			if( covA > coverage*(1.0+coverageTolerance) and covB > coverage*(1.0+coverageTolerance) ){
+    					svType = "TDUP";
+    			}
 			}
 		}
 
@@ -36,6 +39,10 @@ vector<string> Window::classification(int chr, int startA,int endA,int covA,int 
 			//if the coverage of the inverted area is high, the event is an inverted duplication
 			if(covAB > coverage*(1+coverageTolerance)){
 				svType="INVDUP";
+                //if the coverage of the two windows are too high aswell, the event is a tandem dulplication
+    			if( covA > coverage*(1.0+coverageTolerance) and covB > coverage*(1.0+coverageTolerance) ){
+    					svType = "TDUP";
+    			}
 			}
 		}
 
