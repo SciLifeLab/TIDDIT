@@ -6,7 +6,91 @@
  */
 
 #include "Translocation.h"
+#include <boost/lexical_cast.hpp>
 
+using boost::lexical_cast;
+
+//this function tries to classify intrachromosomal events
+vector<string> Window::classification(int chr, int startA,int endA,int covA,int startB,int endB,int covB,int meanInsert,int STDInsert,bool outtie,vector<double> isReverse){
+	string svType="BND";
+    string start=lexical_cast<string>(startA);
+    string end=lexical_cast<string>(endB);
+    
+    
+	double coverage= this -> meanCoverage;
+	float coverageTolerance=1/double(this -> ploidity);
+	float covAB=computeCoverageB(chr,endA,startB, startB-endA);
+	//if the outie/innie pattern is reversed the event is an inversion
+	if(outtie == true){
+		if(isReverse[0] > 0.6 and isReverse[1] < 0.4){
+			svType= "INV";
+			if(covAB > coverage*(1+coverageTolerance)){
+				svType="INVDUP";
+    			if( covA > coverage*(1.0+coverageTolerance) and covB > coverage*(1.0+coverageTolerance) ){
+    					svType = "TDUP";
+    			}
+			}
+		}
+
+	}else{
+		
+		if(isReverse[0] < 0.4 and isReverse[1] > 0.6){
+			svType= "INV";
+			//if the coverage of the inverted area is high, the event is an inverted duplication
+			if(covAB > coverage*(1+coverageTolerance)){
+				svType="INVDUP";
+                //if the coverage of the two windows are too high aswell, the event is a tandem dulplication
+    			if( covA > coverage*(1.0+coverageTolerance) and covB > coverage*(1.0+coverageTolerance) ){
+    					svType = "TDUP";
+    			}
+			}
+		}
+
+	}
+	if(svType == "BND"){
+		
+		//if the coverage of the region between A and B is about half the average coverage or less and the two regions are disjunct, the event is a deletion
+		if(startB > endA){
+			if(covAB < coverage*(1.0-coverageTolerance)){
+					svType= "DEL";
+			//if the coverage of all regions is normal and region A and B are disjunct, the event is an insertion
+			}else if( ( covAB < coverage*(coverageTolerance+1.0) and covAB > coverage*(1.0-coverageTolerance) ) and 
+					( covB < coverage*(coverageTolerance+1.0) and covB > coverage*(1.0-coverageTolerance) )	and
+					( covA < coverage*(coverageTolerance+1.0) and covA > coverage*(1.0-coverageTolerance) )){
+				svType = "INS";
+			}
+			//if A and B are disjunct and only one of them have coverage above average, the event is an interspersed duplication
+			if( (covA > coverage*(coverageTolerance+1.0) and covB < coverage*(1.0+coverageTolerance) ) or (covB > coverage*(coverageTolerance+1.0) and covA < coverage*(1.0+coverageTolerance) ) ){
+				svType = "IDUP";
+			}
+
+		}else{
+
+			//a tandem duplication forms a circular pattern where the regions are slightly overlaping and the coverage of both A and B is above normal
+			if( covA > coverage*(1.0+coverageTolerance) and covB > coverage*(1.0+coverageTolerance) ){
+					svType = "TDUP";
+			}
+			//if a deletion is small enough, there may be an overlap between window A and B
+			if(covA < coverage*(1.0-coverageTolerance) and covB < coverage*(1.0-coverageTolerance)){
+				svType = "DEL";
+			}
+
+		}
+		 
+		
+		//if the event is a duplication, but the exact type cannot be specified
+		if(svType == "BND"){
+			if(covA > coverage*(1.0+coverageTolerance) or covB > coverage*(1.0+coverageTolerance) or covAB > coverage*(1.0+coverageTolerance)){
+				svType = "DUP";
+			}
+		}
+
+	}
+
+    vector<string> svVector;
+    svVector.push_back(svType);svVector.push_back(start);svVector.push_back(end);
+	return(svVector);
+}
 
 bool sortMate(long i, long  j) {
 	return (i < j);
@@ -22,11 +106,14 @@ string VCFHeader(){
 	headerString+="##ALT=<ID=DUP,Description=\"Duplication\">\n";
 	headerString+="##ALT=<ID=TDUP,Description=\"Tandem duplication\">\n";
 	headerString+="##ALT=<ID=IDUP,Description=\"Interspersed duplication\">\n";
+	headerString+="##ALT=<ID=INVDUP,Description=\"inverted Duplication\">\n";
 	headerString+="##ALT=<ID=INV,Description=\"Inversion\">\n";
 	headerString+="##ALT=<ID=INS,Description=\"Insertion\">\n";
 	headerString+="##ALT=<ID=BND,Description=\"Break end\">\n";
+	
 	//Define the info fields
 	headerString+="##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n";
+    headerString+="##INFO=<ID=END,Number=1,Type=String,Description=\"End of an intra-chromosomal variant\">\n";
 	headerString+="##INFO=<ID=LFW,Number=1,Type=Integer,Description=\"Links from window\">\n";
 	headerString+="##INFO=<ID=LCB,Number=1,Type=Integer,Description=\"Links to chromosome B\">\n";
 	headerString+="##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\"\b>\n";
@@ -67,7 +154,7 @@ string filterFunction(double RATIO, int linksToB, int LinksFromWindow,float mean
 
 Window::Window(int max_insert, uint16_t minimum_mapping_quality,
 		bool outtie, float mean_insert, float std_insert, int minimumPairs,
-		float meanCoverage, string outputFileHeader,string bamFileName, string indexFile) {
+		float meanCoverage, string outputFileHeader,string bamFileName, string indexFile,int ploidity) {
 	this->max_insert		 = max_insert;
 	this->minimum_mapping_quality = minimum_mapping_quality;
 	this->outtie			 = outtie;
@@ -77,6 +164,7 @@ Window::Window(int max_insert, uint16_t minimum_mapping_quality,
 	this->meanCoverage		 = meanCoverage;
 	this->bamFileName		=bamFileName;
 	this -> indexFile		=indexFile;
+    this -> ploidity        =ploidity;
 
 	this->outputFileHeader   = outputFileHeader;
 	string inter_chr_eventsVCF = outputFileHeader + "_inter_chr_events.vcf";
@@ -87,13 +175,9 @@ Window::Window(int max_insert, uint16_t minimum_mapping_quality,
 	this->intraChrVariationsVCF.open(intra_chr_eventsVCF.c_str());
 	this->intraChrVariationsVCF << VCFHeader();
 
-	this->coverage          	= 0;
-	this->chr			=-1;
-
 }
 
 void Window::insertRead(BamAlignment alignment) {
-	
 	readStatus alignmentStatus = computeReadType(alignment, this->max_insert, this->outtie);
 	if(alignmentStatus == unmapped or alignmentStatus == lowQualty ) {
 		return; // in case the alignment is of no use discard it
@@ -112,6 +196,7 @@ void Window::insertRead(BamAlignment alignment) {
 			}
 			//empty the alignmentqueues
 			eventReads[i]=queue<BamAlignment>();
+			
 
 		}
 		cout << "working on sequence " << position2contig[alignment.RefID] << "\n";
@@ -149,7 +234,6 @@ void Window::insertRead(BamAlignment alignment) {
 
 					//the current alignment is inserted
 					eventReads[alignment.MateRefID].push(alignment);
-							
 				}
 			}
 		}
@@ -157,8 +241,6 @@ void Window::insertRead(BamAlignment alignment) {
 	}
 
 	chr=alignment.RefID;
-
-
 
 }
 
@@ -275,6 +357,7 @@ vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int star
 
 
 
+
 bool Window::computeVariations(int chr2) {
 	bool found = false;
 		
@@ -287,7 +370,7 @@ bool Window::computeVariations(int chr2) {
 		long startSecondWindow=chr2regions[i*3];
 		long stopSecondWindow=chr2regions[i*3+1];	
 		long pairsFormingLink=chr2regions[i*3+2];
-		if(pairsFormingLink >= minimumPairs  ) {
+		if(pairsFormingLink >= minimumPairs) {
 
 		
 
@@ -300,60 +383,92 @@ bool Window::computeVariations(int chr2) {
 
 			vector<int> statsOnB=findLinksToChr2(eventReads[chr2],startchrA, stopchrA,startSecondWindow,stopSecondWindow,pairsFormingLink);
 			int numLinksToChr2=statsOnB[0];
-			int estimatedDistance=statsOnB[1];
+            if(pairsFormingLink/double(numLinksToChr2) > 0.15){
+			    int estimatedDistance=statsOnB[1];
 
-			vector<string> orientation=computeOrientation(eventReads[chr2],startchrA ,stopchrA,startSecondWindow,stopSecondWindow);
-			string read1_orientation= orientation[0];
-			string read2_orientation= orientation[1];
+			    vector<double> orientation=computeOrientation(eventReads[chr2],startchrA ,stopchrA,startSecondWindow,stopSecondWindow);
+			    string read1_orientation;
+			    string read2_orientation;
+
+				string readOrientation="";
+				ostringstream convertRead;
 	
 
-			vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, eventReads[chr2].front().RefID, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
-			double coverageRealFirstWindow	= statisticsFirstWindow[0];
-			int linksFromWindow=int(statisticsFirstWindow[1]);
-			int averageReadLength=int(statisticsFirstWindow[2]);
-			double coverageRealSecondWindow=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
+				if(orientation[0] > 0.5 ){
+					convertRead << round(orientation[0]*100);
+					read1_orientation="- (" + convertRead.str() + "%)";
+				}else{
+					convertRead << 100-round(orientation[0]*100);
+					read1_orientation="+ (" + convertRead.str() + "%)";
+				}
 
-			int secondWindowLength=(stopSecondWindow-startSecondWindow+1);
-			int firstWindowLength=stopchrA-startchrA+1;
+				string mateOrientation="";
+				ostringstream convertMate;
 
-			if(estimatedDistance > firstWindowLength) {
-				estimatedDistance = estimatedDistance - firstWindowLength;
-			}else{
-				estimatedDistance = 1;
-			}
 
-			float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, averageReadLength);
+				if(orientation[1] > 0.5 ){
+					convertMate << round(orientation[1]*100);
+					read2_orientation="- (" + convertMate.str() + "%)";
+				}else{
+					convertMate << 100-round(orientation[1]*100);
+					read2_orientation="+ (" + convertMate.str() + "%)";
+				}
 
-			if(this->chr == chr2) {
 
-				string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, numLinksToChr2, linksFromWindow,mean_insert, 									std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);
-				string svType="BND";
+	
 
-				this -> numberOfEvents++;
-				intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tbnd_" << this -> numberOfEvents << "\t"  ;
-				intraChrVariationsVCF << "N"       << "\t"	<< "N[" << 	position2contig[chr2] << ":" << startSecondWindow << "[";
+			    vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, eventReads[chr2].front().RefID, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
+			    double coverageRealFirstWindow	= statisticsFirstWindow[0];
+			    int linksFromWindow=int(statisticsFirstWindow[1]);
+			    int averageReadLength=int(statisticsFirstWindow[2]);
+			    double coverageRealSecondWindow=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
+
+			    int secondWindowLength=(stopSecondWindow-startSecondWindow+1);
+			    int firstWindowLength=stopchrA-startchrA+1;
+
+			    if(estimatedDistance > firstWindowLength) {
+				    estimatedDistance = estimatedDistance - firstWindowLength;
+			    }else{
+				    estimatedDistance = 1;
+			    }
+
+			    float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, averageReadLength);
+
+			    if(this->chr == chr2) {
+
+				    string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, numLinksToChr2, linksFromWindow,mean_insert, 									std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);
+				    
+					vector<string> svVector=classification(chr2,startchrA, stopchrA,coverageRealFirstWindow,startSecondWindow, stopSecondWindow,coverageRealSecondWindow,this -> mean_insert,this -> std_insert,this -> outtie,orientation);
+                    string svType=svVector[0];
+                    string start=svVector[1];
+                    string end = svVector[2];
+
+				    this -> numberOfEvents++;
+				    intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     start   << "\tSV_" << this -> numberOfEvents << "\t"  ;
+				    intraChrVariationsVCF << "N"       << "\t"	<< "<" << svType << ">";
      				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow <<  "\n";
-				
-			} else {
+				    intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";END="<< end <<";LFW=" << linksFromWindow;
+				    intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
+				    intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+				    intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow <<  "\n";
+				    
+			    } else {
 
-				string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, numLinksToChr2, linksFromWindow,mean_insert, 									std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);
-				string svType="BND";
+				    string filter=filterFunction(pairsFormingLink/expectedLinksInWindow, numLinksToChr2, linksFromWindow,mean_insert, 									std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);
 
-				this -> numberOfEvents++;
-				interChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tbnd_" << this -> numberOfEvents << "\t"  ;
-				interChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
+				    
+					string svType="BND";
+				    this -> numberOfEvents++;
+				    interChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "\t"  ;
+				    interChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
      				interChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-				interChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-				interChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-				interChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				interChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow << "\n";
+				    interChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
+				    interChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
+				    interChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+				    interChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow << "\n";
+			    }
+			    found = true;	
 			}
-			found = true;	
-			
 		}
 	}
 	return(found);
@@ -463,8 +578,8 @@ vector<long> Window::newChrALimit(queue<BamAlignment> alignmentQueue,long Bstart
 }
 
 //This function computes the orientation of the pairs
-vector<string> Window::computeOrientation(queue<BamAlignment> alignmentQueue,long Astart,long Aend,long Bstart,long Bend){
-	vector<string> orientationVector;
+vector<double> Window::computeOrientation(queue<BamAlignment> alignmentQueue,long Astart,long Aend,long Bstart,long Bend){
+	vector<double> orientationVector;
 	int numberOfReads=alignmentQueue.size();
 	int numberOfReverseReads=0;
 	int numberOfReverseMates=0;
@@ -491,31 +606,9 @@ vector<string> Window::computeOrientation(queue<BamAlignment> alignmentQueue,lon
 	}
 
 	double FractionReverseReads=(double)numberOfReverseReads/(double)readsInRegion;
-	string readOrientation="";
-	ostringstream convertRead;
-	
-
-	if(FractionReverseReads > 0.5 ){
-		convertRead << round(FractionReverseReads*100);
-		readOrientation="- (" + convertRead.str() + "%)";
-	}else{
-		convertRead << 100-round(FractionReverseReads*100);
-		readOrientation="+ (" + convertRead.str() + "%)";
-	}
-
-	string mateOrientation="";
-	ostringstream convertMate;
 	double FractionReverseMates=(double)numberOfReverseMates/(double)readsInRegion;
 
-	if(FractionReverseMates > 0.5 ){
-		convertMate << round(FractionReverseMates*100);
-		mateOrientation="- (" + convertMate.str() + "%)";
-	}else{
-		convertMate << 100-round(FractionReverseMates*100);
-		mateOrientation="+ (" + convertMate.str() + "%)";
-	}
-
-	orientationVector.push_back(readOrientation);orientationVector.push_back(mateOrientation);
+	orientationVector.push_back(FractionReverseReads);orientationVector.push_back(FractionReverseMates);
 	return(orientationVector);
 }
 

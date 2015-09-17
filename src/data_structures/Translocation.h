@@ -18,6 +18,7 @@ public:
 	int chr;
 
 	vector< queue<BamAlignment> >	eventReads;
+
 	vector<long> covOnChrA;
 	vector<long> tmpCovOnChrA;
 
@@ -34,6 +35,7 @@ public:
 	float std_insert;
 	int minimumPairs;
 	float meanCoverage;
+    int ploidity;
 
 	//the file name of the bamfile
 	string bamFileName;
@@ -55,14 +57,15 @@ public:
 
 	Window(int max_insert, uint16_t minimum_mapping_quality,
 			bool outtie, float mean_insert, float std_insert, int minimumPairs,
-			float meanCoverage, string outputFileHeader, string bamFileName, string indexFile); // constructor
+			float meanCoverage, string outputFileHeader, string bamFileName, string indexFile,int ploidity); // constructor
 	void initTrans(SamHeader head);				   // initialise the contig to position array
 	void insertRead(BamAlignment alignment);	   // inserts a new read
 	queue<BamAlignment> queueAppend(queue<BamAlignment> queueOne,queue<BamAlignment> queueTwo); //append queues;
 	vector<long> findRegionOnB( queue<BamAlignment> alignmentQueue, int minimumPairs,int maxDistance); //Finds the region of the event on chromosome B
 	vector<long> newChrALimit(queue<BamAlignment> alignmentQueue,long Bstart,long Bend); //resizes the window on CHRA
 	vector<double> computeStatisticsA(string bamFileName, int chrB, int start, int end, int32_t WindowLength, string indexFile); //compute coverage and number of links from window on the chrA
-	vector<string> computeOrientation(queue<BamAlignment> alignmentQueue,long Astart,long Aend,long Bstart,long Bend);//compute the orientation of the read and the mate
+	vector<double> computeOrientation(queue<BamAlignment> alignmentQueue,long Astart,long Aend,long Bstart,long Bend);//compute the orientation of the read and the mate
+	vector<string> classification(int chr, int startA,int endA,int covA,int startB,int endB,int covB,int meanInsert,int STDInsert,bool outtie,vector<double> isReverse);
 
 	float computeCoverageB(int chrB, int start, int end, int32_t secondWindowLength); //computes the coverage of the window of chromosome B
 	bool computeVariations(int chr2);

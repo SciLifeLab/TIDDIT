@@ -255,6 +255,9 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	uint32_t mappedReads 	  = 0;
 	uint64_t mappedReadsLength= 0;
 
+
+
+
 	uint64_t insertsLength = 0; // total inserts length
 	float insertMean;
 	float insertStd;
@@ -280,6 +283,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	float C_W = 0; // coverage induced by wrongly mated pairs
 	float C_S = 0; // coverage induced by singletons
 	float C_D = 0; // coverage induced by reads with mate on a different contigs
+
 
 	// compute mean and std on the fly
 	float Mk = 0;
@@ -347,8 +351,6 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 		}
 
 	}
-
-
 
 	cout << "LIBRARY STATISTICS\n";
 	cout << "\t total reads number "	<< reads << "\n";

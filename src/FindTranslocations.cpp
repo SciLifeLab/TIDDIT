@@ -58,6 +58,7 @@ int main(int argc, char *argv[]) {
 	int max_insert				    = 1000000;  // max insert size
 	int minimum_mapping_quality     = 20;
 	float coverage;
+	float coverageStd;
 	float meanInsert;
 	float insertStd;
 	string roi;
@@ -88,6 +89,7 @@ int main(int argc, char *argv[]) {
 	po::options_description desc("\nUsage: FindTranslocations --sv [Options] --bam inputfile --bai indexfile --output outputFile(optional) \nOptions");
 	desc.add_options()
 		("auto","find min-insert,max-insert and orientation based on the statistics of the bam input file")
+        ("ploidity",po::value<int>(), "the number of sets of chromosomes,(default = 2)")
 		("min-insert",   po::value<int>(),         "paired reads minimum allowed insert size. Used in order to filter outliers. Insert size goes from beginning of first read to end of second read")
 		("max-insert",   po::value<int>(),         "paired reads maximum allowed insert size. pairs aligning on the same chr at a distance higher than this are considered candidates for SV.")
 		("orientation",  po::value<string>(),      "expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default outtie")				
@@ -359,13 +361,20 @@ int main(int argc, char *argv[]) {
 			coverage   = library.C_A;
 			meanInsert = library.insertMean;
 			insertStd  = library.insertStd;
-			
+			//update the max_insert
+			if(vm.count("auto")){
+				max_insert =meanInsert+5*insertStd;
+			}
 
 		}
 
+        int ploidity = 2;
+        if(vm.count("ploidity")){
+            ploidity = vm["ploidity"].as<int>();
+        }
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();
-		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, min_insert, max_insert, outtie, minimum_mapping_quality, minimumSupportingPairs, coverage, meanInsert, insertStd, outputFileHeader, indexFile,contigsNumber);
+		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, min_insert, max_insert, outtie, minimum_mapping_quality, minimumSupportingPairs, coverage, meanInsert, insertStd, outputFileHeader, indexFile,contigsNumber,ploidity);
 
 
 	//if the find copy number variation module is chosen

@@ -44,7 +44,12 @@ def main(args):
                 queries.append(current_variation)
     # at this point queries contains an entry for each variation
     #now query each sample.db present in the given folder and store the occurences
-    for sample_db in glob.glob("{}/*.db".format(os.path.abspath(args.db))):
+    if(args.db):
+        dataBases=glob.glob("{}/*.db".format(os.path.abspath(args.db)))
+    else:
+        dataBases=args.files
+
+    for sample_db in dataBases:
         allVariations = {}
         with open(sample_db) as fDB:
             for line in fDB:
@@ -207,11 +212,17 @@ if __name__ == '__main__':
     and a variation file produced by FindTranslocations or CNVnator. The script will output the variation file sorting the variation
     by number of occurences in the DB.
     """)
-    parser.add_argument('--variations', type=str, required=True, help="vcf file containing variations")
+    parser.add_argument('--variations', type=str, required = True, help="vcf file containing variations")
+    parser.add_argument('--files'        , type=str, nargs='*', help="the paths to the db files are given as a command line arguments")
     parser.add_argument('--db'        , type=str,                help="path to DB (a folder containing samples .db files")
     parser.add_argument('--overlap', type=float, default = 0.6,help="the overlap required to merge two events(0 means anything that touches will be merged, 1 means that two events must be identical to be merged), default = 0.6")
     args = parser.parse_args()
-
+    if not (args.files or args.db):
+        print("a DB input method must be selected(file or db arguments)")
+        quit()
+    elif (args.files and args.db):
+        print("only one DB input method may be chosen");
+        quit()
     main(args)
 
 
