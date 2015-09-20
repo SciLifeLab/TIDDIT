@@ -396,10 +396,10 @@ bool Window::computeVariations(int chr2) {
 
 				if(orientation[0] > 0.5 ){
 					convertRead << round(orientation[0]*100);
-					read1_orientation="- (" + convertRead.str() + "%)";
+					read1_orientation="-(" + convertRead.str() + "%)";
 				}else{
 					convertRead << 100-round(orientation[0]*100);
-					read1_orientation="+ (" + convertRead.str() + "%)";
+					read1_orientation="+(" + convertRead.str() + "%)";
 				}
 
 				string mateOrientation="";
@@ -408,10 +408,10 @@ bool Window::computeVariations(int chr2) {
 
 				if(orientation[1] > 0.5 ){
 					convertMate << round(orientation[1]*100);
-					read2_orientation="- (" + convertMate.str() + "%)";
+					read2_orientation="-(" + convertMate.str() + "%)";
 				}else{
 					convertMate << 100-round(orientation[1]*100);
-					read2_orientation="+ (" + convertMate.str() + "%)";
+					read2_orientation="+(" + convertMate.str() + "%)";
 				}
 
 
