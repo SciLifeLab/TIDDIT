@@ -18,7 +18,7 @@ vector<string> Window::classification(int chr, int startA,int endA,int covA,int 
     
     
 	double coverage= this -> meanCoverage;
-	float coverageTolerance=1/double(this -> ploidity);
+	float coverageTolerance=1/double(this -> ploidity)*0.6;
 	float covAB=computeCoverageB(chr,endA,startB, startB-endA);
 	//if the outie/innie pattern is reversed the event is an inversion
 	if(outtie == true){
