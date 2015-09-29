@@ -426,7 +426,6 @@ void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, 
 			if(binEnd < currentRead.Position or currentChr != currentRead.RefID){
 				double coverage=(double)sequencedBases[0]/(double)binSize;
 				unsigned int position=currentRead.RefID;
-				cout << position2contig[position] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << endl;
 				coverageOutput << position2contig[position] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << averageCoverage << "\t" << (float)coverage/(float)averageCoverage << endl;
 				binStart=binEnd;
 				binEnd=binStart+binSize;
