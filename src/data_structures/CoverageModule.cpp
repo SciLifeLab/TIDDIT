@@ -21,15 +21,15 @@
 //constructor
 Cov::Cov() { }
 //The main function
-void Cov::coverageMain(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position,int selection,int binSize){
+void Cov::coverageMain(string bamFile,string baiFile,string inputFileName,string output,double averageCoverage, map<string,unsigned int> contig2position,int selection,int binSize){
 	//the vcf mode outputs two files, one tab/bed file like the two other modes, and one vcf file, similar to the inout vcf but with added coverage data.
 
 	//if intra-chromosomal vcf was chosen
 	if(selection == 0){
 		intraChromosomalVCF(bamFile,baiFile,inputFileName,output, averageCoverage,contig2position);
 	//if bin was chosen
-	}else if(selection == 1){
-		bin(bamFile,baiFile,inputFileName,output,averageCoverage,contig2position,binSize);
+	}else if(selection == 1 or selection == 4){
+		bin(bamFile,baiFile,inputFileName,output,averageCoverage,contig2position,binSize,selection);
 	//if inter-chromosomal vcf was chosen
 	}else if(selection == 3){
 		interChromosomalVCF(bamFile,baiFile,inputFileName,output,averageCoverage,contig2position);
@@ -353,11 +353,13 @@ void Cov::bed(string bamFile,string baiFile,string inputFileName,string output, 
 }
 
 //this function calculates the coverage in bins of size binSize across the entire bamfile
-void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position,int binSize){
+void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position,int binSize,int option){
 	ofstream coverageOutput;
 	coverageOutput.open((output+".tab").c_str());
 	cout << "analysing the coverage in bins of size " << binSize << endl;
+	if(option == 1){
 	coverageOutput << "CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "libraryCoverage"<< "\t" << "coverage/librarycoverage" << endl;
+	}
 	int binStart =0;
 	int binEnd=binSize+binStart;
 	int currentChr=-1;
@@ -426,7 +428,18 @@ void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, 
 			if(binEnd < currentRead.Position or currentChr != currentRead.RefID){
 				double coverage=(double)sequencedBases[0]/(double)binSize;
 				unsigned int position=currentRead.RefID;
-				coverageOutput << position2contig[position] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << averageCoverage << "\t" << (float)coverage/(float)averageCoverage << endl;
+				coverageOutput << position2contig[position] << "\t"   ;
+
+				if(option == 1){
+					coverageOutput << binStart << "\t" << binEnd << "\t";
+				}
+				coverageOutput << coverage << "\t";
+				if(option == 1){
+					coverageOutput << averageCoverage << "\t" << (float)coverage/(float)averageCoverage;
+				
+				}
+				coverageOutput  << endl;
+
 				binStart=binEnd;
 				binEnd=binStart+binSize;
 				sequencedBases.erase(sequencedBases.begin());

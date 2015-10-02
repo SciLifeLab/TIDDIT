@@ -54,9 +54,18 @@ public:
 	//module used to find the coverage within specified regions
 	double findCoverage(string bamFile, string baiFile,int chr, int start, int end);
 	void interChromosomalVCF(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position);
-	void bin(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position,int binSize);
+	void bin(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position,int binSize,int option);
 	void bed(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position);
 	void intraChromosomalVCF(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position);
+};
+
+class Region{
+public:
+	//constructor
+	Region();
+	//the main function, accepts the bam and bai file name, the region file, average coverage, aswell as the output and whether or not to output the vcf header
+	void region(string bamFile,string baiFile,string regionFile,string output,map<string,unsigned int> contig2position, int ploidy,int minimum_mapping_quality,uint64_t genomeLength,uint32_t contigsNumber);
+
 };
 
 class autoSettings{
@@ -64,5 +73,6 @@ public:
 	autoSettings();
 	vector<int> autoConfig(string bamFile,int Quality);
 };
+
 
 #endif /* PROGRAMMODULES_H_ */

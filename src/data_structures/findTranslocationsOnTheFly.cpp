@@ -5,6 +5,7 @@
 #include "ProgramModules.h"
 #include "data_structures/Translocation.h"
 #include <boost/thread.hpp>
+#include <boost/algorithm/string.hpp>
 
 //function used to find translocations
 StructuralVariations::StructuralVariations() { }
@@ -20,19 +21,29 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_
 	// now create Translocation on the fly
 	Window *window;
 
-	window = new Window(max_insert, minimum_mapping_quality,
+	window = new Window(max_insert, min_insert,minimum_mapping_quality,
 		outtie,  meanInsertSize,  StdInsertSize,  minimumSupportingPairs,
 		 meanCoverage,  outputFileHeader,bamFileName,indexFile,ploidity);
 	window->initTrans(head);
 	//expands a vector so that it is large enough to hold reads from each contig in separate elements
 	window->eventReads.resize(contigsNumber);
 
-	window->covOnChrA.resize(contigsNumber);
-	window->tmpCovOnChrA.resize(contigsNumber);
-	window->linksFromWin.resize(contigsNumber);
-	window->tmpLinksFromWin.resize(contigsNumber);
+	window-> binnedCoverage.resize(contigsNumber);
+	window-> linksFromWin.resize(contigsNumber);
+	window-> tmpLinksFromWin.resize(contigsNumber);
 	
 	window -> numberOfEvents = 0;
+
+	string line;
+	string coverageFile=outputFileHeader+".tab";
+	ifstream inputFile( coverageFile.c_str() );
+	while (getline( inputFile, line )){
+		vector<std::string> splitline;
+		boost::split(splitline, line, boost::is_any_of("\t"));
+		window -> binnedCoverage[window -> contig2position[splitline[0]]].push_back(atof(splitline[1].c_str()));
+	}
+	inputFile.close();
+
 
 	//Initialize bam entity
 	BamAlignment currentRead;

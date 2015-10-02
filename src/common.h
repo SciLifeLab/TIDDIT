@@ -149,7 +149,7 @@ struct LibraryStatistics{
 
 
 
-static readStatus computeReadType(BamAlignment al, uint32_t max_insert, bool is_mp) {
+static readStatus computeReadType(BamAlignment al, uint32_t max_insert, uint32_t min_insert,bool is_mp) {
 	if (!al.IsMapped()) {
 		return unmapped;
 	}
@@ -168,7 +168,7 @@ static readStatus computeReadType(BamAlignment al, uint32_t max_insert, bool is_
 	int iSize = al.InsertSize;
 	if (iSize < 0) { iSize = -1 * iSize;}
 	//Now check if reads belong to a proper pair: both reads aligned on the same contig at the expected distance and orientation
-	if (iSize > max_insert) {
+	if (iSize > max_insert or iSize < min_insert) {
 		return pair_wrongDistance;
 	}
 	if (! is_mp) { // I have a paired end
@@ -243,7 +243,7 @@ static float ExpectedLinks(uint32_t sizeA, uint32_t sizeB, uint32_t gap, float i
 }
 
 
-static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genomeLength, uint32_t max_insert, bool is_mp) {
+static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genomeLength, uint32_t max_insert, uint32_t min_insert,bool is_mp) {
 	BamReader bamFile;
 	bamFile.Open(bamFileName);
 	LibraryStatistics library;
@@ -296,7 +296,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	BamAlignment al;
 	while ( bamFile.GetNextAlignmentCore(al) ) {
 		reads ++;
-		readStatus read_status = computeReadType(al, max_insert, is_mp);
+		readStatus read_status = computeReadType(al, max_insert, min_insert,is_mp);
 		if (read_status != unmapped and read_status != lowQualty) {
 			mappedReads ++;
 			mappedReadsLength += al.Length;

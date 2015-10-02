@@ -74,6 +74,7 @@ int main(int argc, char *argv[]) {
 		("cnv", "Select the cnv module to find copy number variations ")
 		("cov", "select the cov module to analyse the coverage of regions inside a bam file")
 		("extract", "select the extract module to extract regions of interest from a bam file")
+		("region", "select the region module to search for a certain variation given in a region file, read the README file for more information on the format of the region file")
 		("sv", "select the sv module to find structural variations");
 	
 	//The general menu, this menu contains options that all modules share, such as bam file and output
@@ -89,7 +90,7 @@ int main(int argc, char *argv[]) {
 	po::options_description desc("\nUsage: FindTranslocations --sv [Options] --bam inputfile --bai indexfile --output outputFile(optional) \nOptions");
 	desc.add_options()
 		("auto","find min-insert,max-insert and orientation based on the statistics of the bam input file")
-        ("ploidity",po::value<int>(), "the number of sets of chromosomes,(default = 2)")
+        ("ploidy",po::value<int>(), "the number of sets of chromosomes,(default = 2)")
 		("min-insert",   po::value<int>(),         "paired reads minimum allowed insert size. Used in order to filter outliers. Insert size goes from beginning of first read to end of second read")
 		("max-insert",   po::value<int>(),         "paired reads maximum allowed insert size. pairs aligning on the same chr at a distance higher than this are considered candidates for SV.")
 		("orientation",  po::value<string>(),      "expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default outtie")				
@@ -132,13 +133,26 @@ int main(int argc, char *argv[]) {
 	po::options_description desc4("\nUsage: FindTranslocations --cov [Mode] --bam inputfile --bai indexfile --output outputFile(optional) \nOptions:only one mode may be selected");
 	desc4.add_options()
 		("bin",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file")
+		("light",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file, only prints chromosome and coverage for each bin")
 		("intra-vcf", 	po::value<string>() ,"Select this option if the input file is the output intra-chromosomal vcf of Findtranslocations. coverage will be calculated between, before and after the event")
 		("inter-vcf", 	po::value<string>() ,"Select this option if the input file is the output inter-chromosomal vcf of Findtranslocations. The coverage before and after window A and B will be calculated")
 		("bed", 	po::value<string>() ,"Select this option if the input file is a bedfile");
+		
 	po::options_description coverageModule(" ");
 	coverageModule.add_options()
 		("help", "produce help message")
 		("cov", "select the coverage module to analyse the coverage of a bam file");
+	//used to control the input files
+
+	//analyse a certain variation within a given region
+	po::options_description desc5("\nUsage: FindTranslocations --region [options] --bam inputfile --bai indexfile --output outputFile(optional)");
+	desc5.add_options()
+		("region-file", 	po::value<string>() ,"Select this option if the input file is a bedfile")
+		("ploidy",po::value<int>(), "the number of sets of chromosomes,(default = 2)");
+	po::options_description regionModule(" ");
+	regionModule.add_options()
+		("help", "produce help message")
+		("region", "select the region module to search for a certain variation given in a region file, read the README file for more information on the format of the region file");
 	//used to control the input files
 
 
@@ -147,7 +161,7 @@ int main(int argc, char *argv[]) {
 	stringstream ss;
 	ss << package_description() << endl;
 	po::options_description menu_union(ss.str().c_str());
-	menu_union.add(modules).add(general).add(desc).add(desc2).add(desc3).add(desc4);
+	menu_union.add(modules).add(general).add(desc).add(desc2).add(desc3).add(desc4).add(desc5);
 
 
 
@@ -166,7 +180,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	//if no module is selected a help message is shown
-	if( !vm.count("extract") and !vm.count("sv") and !vm.count("cnv") and !vm.count("cov")){
+	if( !vm.count("extract") and !vm.count("sv") and !vm.count("cnv") and !vm.count("cov") and !vm.count("region") ){
 		DEFAULT_CHANNEL << modules << endl;
 		return 2;
 	}
@@ -356,22 +370,28 @@ int main(int argc, char *argv[]) {
 		 }else {
 			LibraryStatistics library;
 			size_t start = time(NULL);
-			library = computeLibraryStats(alignmentFile, genomeLength, max_insert, outtie);
+			library = computeLibraryStats(alignmentFile, genomeLength, max_insert,min_insert, outtie);
 			printf ("library stats time consumption= %lds\n", time(NULL) - start);
 			coverage   = library.C_A;
 			meanInsert = library.insertMean;
 			insertStd  = library.insertStd;
 			//update the max_insert
 			if(vm.count("auto")){
-				max_insert =meanInsert+5*insertStd;
+				max_insert =meanInsert+4*insertStd;
 			}
 
 		}
-
+		
         int ploidity = 2;
-        if(vm.count("ploidity")){
-            ploidity = vm["ploidity"].as<int>();
+        if(vm.count("ploidiy")){
+            ploidity = vm["ploidiy"].as<int>();
         }
+		size_t start = time(NULL);
+		Cov *calculateCoverage;
+		calculateCoverage = new Cov();
+		calculateCoverage -> coverageMain(alignmentFile,indexFile,"",outputFileHeader,coverage,contig2position,4,200);
+		printf ("time consumption of the coverage computation= %lds\n", time(NULL) - start);
+
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();
 		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, min_insert, max_insert, outtie, minimum_mapping_quality, minimumSupportingPairs, coverage, meanInsert, insertStd, outputFileHeader, indexFile,contigsNumber,ploidity);
@@ -419,20 +439,24 @@ int main(int argc, char *argv[]) {
 		LibraryStatistics library;
 		//calculate the coverage of the entre library
 		if(vm.count("bin") or vm.count("bed") or vm.count("intra-vcf") or vm.count("inter-vcf")){
-			library = computeLibraryStats(alignmentFile, genomeLength, max_insert, outtie);
+			library = computeLibraryStats(alignmentFile, genomeLength, max_insert,min_insert ,outtie);
 			coverage   = library.C_A;
-		}else{
+		}else if(not vm.count("light")){
 			cout << "no mode selected, shuting down" << endl;
 			return(0);
 		}
 				
 		int option=0;
 		int binSize=0;
-		if(vm.count("bin")){
-			option=1;
-			binSize =vm["bin"].as<int>();
-			string inFile= "";
-			calculateCoverage -> coverageMain(alignmentFile,indexFile,inFile,outputFileHeader,coverage,contig2position,option,binSize);
+		if(vm.count("bin") or vm.count("light") ){
+			if(vm.count("bin")){
+				option=1;
+				binSize =vm["bin"].as<int>();
+			}else{
+				option=4;
+				binSize =vm["light"].as<int>();
+			}
+			calculateCoverage -> coverageMain(alignmentFile,indexFile,"",outputFileHeader,coverage,contig2position,option,binSize);
 		}else if(vm.count("bed")){
 			option=2;
 			string inFile=vm["bed"].as<string>();
@@ -446,14 +470,46 @@ int main(int argc, char *argv[]) {
 			option=3;
 			calculateCoverage -> coverageMain(alignmentFile,indexFile,inFile,outputFileHeader,coverage,contig2position,option,binSize);
 		}
-				
+	}else if( vm.count("region") ){
+
+		po::options_description menu_union(" ");
+		po::variables_map vm;
+		menu_union.add(general).add(desc5).add(regionModule);
+
+		try {
+			po::store(po::parse_command_line(argc, argv, menu_union), vm);
+			po::notify(vm);
+		} catch (boost::program_options::error & error) {
+			ERROR_CHANNEL <<  "Only one module may be selected" << endl;
+			return 2;
+		}
+
+		if(vm.count("help") or fileQueue.back()== "error"){
+			DEFAULT_CHANNEL << desc5 << endl;
+			return 2;
+		}
+
+        int ploidy = 2;
+        if(vm.count("ploidiy")){
+            ploidy = vm["ploidiy"].as<int>();
+        }
+		string regionFile;
+		if(vm.count("region-file")){
+			regionFile= vm["region-file"].as<string>();
+		}else{
+			ERROR_CHANNEL <<  "please enter a region file" << endl;
+			return 2;
+		}
+
+		cout << "searching the regions...." << endl;
 
 
-
-
-
+		Region *AnalyseRegion;
+		AnalyseRegion = new Region();
+		AnalyseRegion -> region(alignmentFile,indexFile,regionFile,outputFileHeader,contig2position,ploidy,minimum_mapping_quality,genomeLength,contigsNumber);
 
 	}
+
 
 }
 
