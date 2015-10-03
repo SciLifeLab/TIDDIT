@@ -14,8 +14,8 @@ using boost::lexical_cast;
 //this function tries to classify intrachromosomal events
 vector<string> Window::classification(int chr, int startA,int endA,double covA,int startB,int endB,double covB,int meanInsert,int STDInsert,bool outtie,vector<double> isReverse){
 	string svType="BND";
-    string start=lexical_cast<string>(endA);
-    string end=lexical_cast<string>(startB);
+	start=lexical_cast<string>(startA);
+	end=lexical_cast<string>(endB);
     
     
 	double coverage= this -> meanCoverage;
@@ -44,8 +44,6 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 				//if the coverage of the two windows are too high aswell, the event is a tandem dulplication
     		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance ){
     				svType = "TDUP";
-					start=lexical_cast<string>(startA);
-					end=lexical_cast<string>(endB);
     			}
 			}
 
@@ -55,8 +53,6 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
         	    //if the coverage of the two windows are too high aswell, the event is a tandem dulplication
     		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance ){
     				svType = "TDUP";
-					start=lexical_cast<string>(startA);
-					end=lexical_cast<string>(endB);
     			}
 			}
 		
@@ -72,8 +68,6 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 			if(isReverse[0] < 0.5 and isReverse[1] > 0.5){
     		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance ){
     				svType = "TDUP";
-					start=lexical_cast<string>(startA);
-					end=lexical_cast<string>(endB);
     			}
 			}
 
@@ -82,8 +76,7 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
         	    //if the coverage of the two windows are too high aswell, the event is a tandem dulplication
     		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance){
     				svType = "TDUP";
-					start=lexical_cast<string>(startA);
-					end=lexical_cast<string>(endB);
+
     			}
 			}
 		}
