@@ -14,8 +14,8 @@ using boost::lexical_cast;
 //this function tries to classify intrachromosomal events
 vector<string> Window::classification(int chr, int startA,int endA,double covA,int startB,int endB,double covB,int meanInsert,int STDInsert,bool outtie,vector<double> isReverse){
 	string svType="BND";
-	start=lexical_cast<string>(startA);
-	end=lexical_cast<string>(endB);
+	string start=lexical_cast<string>(startA);
+	string end=lexical_cast<string>(endB);
     
     
 	double coverage= this -> meanCoverage;
