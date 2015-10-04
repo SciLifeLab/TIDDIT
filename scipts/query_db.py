@@ -187,23 +187,23 @@ def isSameVariation(event, variation,ratio): #event is in the DB, variation is t
 #compute the total area spanned by the two events(overlaping events), calculate the intersect of the two events, return the ratio of the length of these two regions
 def overlap_ratio(variation_start,variation_end,event_start,event_end):
     if(variation_start < event_start):
-    	region_start=variation_start;
+        region_start=variation_start;
         overlap_start=event_start;
     else:
-    	region_start=event_start;
+        region_start=event_start;
         overlap_start=variation_start;
 
     if(variation_end > event_end):
-    	region_end=variation_end
+        region_end=variation_end
         overlap_end=event_end
 
     else:
-    	region_end=event_end
+        region_end=event_end
         overlap_end=variation_end
-	try:
-		event_ratio=float(overlap_end-overlap_start+1)/float(region_end-region_start+1)
+    try:
+        event_ratio=float(overlap_end-overlap_start+1)/float(region_end-region_start+1)
     except:
-		event_ratio=0;
+        event_ratio=0;
     return(event_ratio)
 
 if __name__ == '__main__':
