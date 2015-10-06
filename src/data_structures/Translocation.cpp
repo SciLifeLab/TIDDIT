@@ -272,26 +272,23 @@ void Window::insertRead(BamAlignment alignment) {
 
 float Window::computeCoverageB(int chrB, int start, int end, int32_t secondWindowLength){
 	int bins=0;
-	float coverage=0;
+	float coverageB=0;
 	int element=0;
-	unsigned int pos =floor(start/200)*200;
+	unsigned int pos =floor(double(start)/200.0)*200;
 	bool on = false;
+
 	unsigned int nextpos =pos+200;
 	string line;
 	string coverageFile=this ->outputFileHeader+".tab";
 	ifstream inputFile( coverageFile.c_str() );
-	while(nextpos >= start and pos <= end){
+	while(nextpos >= start and pos <= end and pos/200 < binnedCoverage[chrB].size() ){
 			bins++;
 			element=pos/200;
-			coverage+=binnedCoverage[chrB][element];
+			coverageB+=double(binnedCoverage[chrB][element]-coverageB)/double(bins);
 			pos+=200;
 			nextpos=pos+200;
 	}
-	//calculates the mean coverage and returns the coverage within the window
-	if(bins > 0){
-		coverage=coverage/bins;
-	}
-	return(coverage);
+	return(coverageB);
 	
 }
 
@@ -326,16 +323,17 @@ vector<int> Window::findLinksToChr2(queue<BamAlignment> ReadQueue,long startChrA
 //Computes statstics such as coverage on the window of chromosome A
 vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int start, int end, int32_t WindowLength, string indexFile){
 	vector<double> statisticsVector;
-	int bases=0;
-	double coverage;
+	unsigned int bases=0;
+	double coverageA;
 	double AverageReadLength=0;
 	BamReader bamFile;
 	BamAlignment currentRead;
 	int linksFromWindow=0;
-	int nreads=0;
+	unsigned int nreads=0;
 
 	if(!bamFile.Open(bamFileName)){
 		statisticsVector.push_back(-1);statisticsVector.push_back(-1);
+		cout << "warning, unnable to calculate statistics on chrA" << endl;
 		return(statisticsVector);
 	}else{
 		if(bamFile.OpenIndex(indexFile) == 0){
@@ -344,7 +342,7 @@ vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int star
 		//moves to a region and itterates through every read inside that region
 		bamFile.SetRegion(chrB,start,chrB,end+1); 
 		while ( bamFile.GetNextAlignmentCore(currentRead) ) {
-			//makes sure that we are inside the ragion
+			//makes sure that we are inside the region
 			if(start <= currentRead.Position and end >= currentRead.Position){
 				readStatus alignmentStatus = computeReadType(currentRead, this->max_insert,this->min_insert, this->outtie);
 				//only mapped and high quality reads are used
@@ -366,8 +364,8 @@ vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int star
 	AverageReadLength=AverageReadLength/nreads;
 	bamFile.Close();
 		//calculates the coverage and returns the coverage within the window
-		coverage=bases/float(WindowLength+1);
-		statisticsVector.push_back(coverage);statisticsVector.push_back(linksFromWindow);statisticsVector.push_back(AverageReadLength);
+		coverageA=bases/float(WindowLength+1);
+		statisticsVector.push_back(coverageA);statisticsVector.push_back(linksFromWindow);statisticsVector.push_back(AverageReadLength);
 		return(statisticsVector);
 	}	
 	
@@ -557,8 +555,7 @@ vector<double> Window::computeOrientation(queue<BamAlignment> alignmentQueue,lon
 //function that prints the statistics to a vcf file
 void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int startchrA,int stopchrA,int pairsFormingLink,int numLinksToChr2,int estimatedDistance){
 	double coverageRealSecondWindow=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
-			    	
-	vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, eventReads[chr2].front().RefID, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
+	vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, this -> chr, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
 	double coverageRealFirstWindow	= statisticsFirstWindow[0];
 	int linksFromWindow=int(statisticsFirstWindow[1]);
 	int averageReadLength=int(statisticsFirstWindow[2]);
@@ -573,7 +570,6 @@ void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int st
 		estimatedDistance = 1;
 	}
 	float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, averageReadLength);
-
 	vector<double> orientation=computeOrientation(eventReads[chr2],startchrA ,stopchrA,startSecondWindow,stopSecondWindow);
 	string read1_orientation;
 	string read2_orientation;

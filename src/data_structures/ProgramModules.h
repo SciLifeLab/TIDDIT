@@ -63,8 +63,16 @@ class Region{
 public:
 	//constructor
 	Region();
+	string input;
+	map<string,unsigned int> contig2position;
+	map<unsigned int,string> position2contig;
+	string chrPrefix;
+	int max_insert;
 	//the main function, accepts the bam and bai file name, the region file, average coverage, aswell as the output and whether or not to output the vcf header
-	void region(string bamFile,string baiFile,string regionFile,string output,map<string,unsigned int> contig2position, int ploidy,int minimum_mapping_quality,uint64_t genomeLength,uint32_t contigsNumber);
+	void region(string bamFile,string baiFile,string regionFile,string output,map<string,unsigned int> contig2position,map<unsigned int,string> position2contig, int ploidy,int minimum_mapping_quality,uint64_t genomeLength,uint32_t contigsNumber);
+	string matchContig(string inputChr);
+	vector< queue<int> > readRegionFile(vector<string> splitline);
+	vector< queue<int> > readVCF(vector<string> splitline);
 
 };
 

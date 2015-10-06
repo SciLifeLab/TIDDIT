@@ -363,7 +363,7 @@ void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, 
 	int binStart =0;
 	int binEnd=binSize+binStart;
 	int currentChr=-1;
-	vector<int> sequencedBases;
+	vector<unsigned int> sequencedBases;
 	sequencedBases.push_back(0);
 
 	BamReader alignmentFile;
@@ -383,27 +383,30 @@ void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, 
 
 		
 	while ( alignmentFile.GetNextAlignmentCore(currentRead) ) {
-		if(currentRead.IsMapped()) {
-			//initialise the chromosome ID
-			if(currentChr == -1){
-				currentChr=currentRead.RefID;
-			}
 
+		//initialise the chromosome ID
+		if(currentChr == -1){
+			currentChr=currentRead.RefID;
+		}
+
+		
+		//check the quality of the alignment, the hardcoded data is only used to initialise the function, the numbers themselves wont affect the quality measurement.
+		readStatus alignmentStatus = computeReadType(currentRead, 100000,100, true);
+		if(alignmentStatus != unmapped and alignmentStatus != lowQualty ) {
 			//check if we have left the chromosome
-			if(currentChr == currentRead.RefID){
+			if(currentChr == currentRead.RefID and currentRead.IsMapped() ){
 				//if the entire read is inside the region, add all the bases to sequenced bases
-                   		if(currentRead.Position >= binStart and currentRead.Position+currentRead.Length-1 <= binEnd){
+				if(currentRead.Position >= binStart and currentRead.Position+currentRead.Length-1 <= binEnd){
 					sequencedBases[0]+=currentRead.Length;
 
 				}		
 				//if the read starts within the region but reaches outside it, add only those bases that fit inside the region.
-       	           		if(currentRead.Position >= binStart and currentRead.Position+currentRead.Length-1 > binEnd and currentRead.Position <= binEnd){
-
+				if(currentRead.Position >= binStart and currentRead.Position+currentRead.Length-1 > binEnd and currentRead.Position <= binEnd){
 					sequencedBases[0]+=binEnd-currentRead.Position+1;
 					//the part of the read hanging out of the bin is added to the bins following the currentbin
 					int remainingRead=currentRead.Length-(binEnd-currentRead.Position+1);
 					int binNumber=1;
-
+	
 					while (remainingRead > 0){
 						//if there are not enough bins to store the bases, add another bin
 						if(binNumber > sequencedBases.size()){
@@ -420,38 +423,40 @@ void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, 
 							remainingRead=remainingRead-binSize;
 						}
 						binNumber++;
+	
 					}
 				}
 			}
-				
-			//when there are no more reads in the current bin, calculate the coverage and start analysing the next bin
-			if(binEnd < currentRead.Position or currentChr != currentRead.RefID){
-				double coverage=(double)sequencedBases[0]/(double)binSize;
-				unsigned int position=currentRead.RefID;
-				coverageOutput << position2contig[position] << "\t"   ;
+		}		
+		//when there are no more reads in the current bin, calculate the coverage and start analysing the next bin
+		if(binEnd < currentRead.Position or currentChr != currentRead.RefID){
+			double coverage=double(sequencedBases[0])/double(binSize);
+			coverageOutput << position2contig[currentChr] << "\t"   ;
 
-				if(option == 1){
-					coverageOutput << binStart << "\t" << binEnd << "\t";
-				}
-				coverageOutput << coverage << "\t";
-				if(option == 1){
-					coverageOutput << averageCoverage << "\t" << (float)coverage/(float)averageCoverage;
+			if(option == 1){
+				coverageOutput << binStart << "\t" << binEnd << "\t";
+			}
+			coverageOutput << coverage << "\t";
+			if(option == 1){
+				coverageOutput << averageCoverage << "\t" << coverage/averageCoverage;
 				
-				}
-				coverageOutput  << endl;
+			}
+			coverageOutput  << endl;
 
-				binStart=binEnd;
-				binEnd=binStart+binSize;
-				sequencedBases.erase(sequencedBases.begin());
-				if(sequencedBases.size() == 0){
-					sequencedBases.push_back(0);
-				}
-				if(currentChr != currentRead.RefID){
-					currentChr = currentRead.RefID;
-					binStart=0;
-					binEnd=binSize;
-				}	
+			binStart=binEnd;
+			binEnd=binStart+binSize;
+			sequencedBases.erase(sequencedBases.begin());
+			if(sequencedBases.size() == 0){
+				sequencedBases.push_back(0);
+			}
+
+			if(currentChr != currentRead.RefID){
+				sequencedBases.clear();
+				sequencedBases.push_back(0);
+				currentChr = currentRead.RefID;
+				binStart=0;
+				binEnd=binSize;
 			}	
-		}
+		}		
 	}
 }

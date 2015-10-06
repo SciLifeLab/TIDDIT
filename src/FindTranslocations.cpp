@@ -148,6 +148,7 @@ int main(int argc, char *argv[]) {
 	po::options_description desc5("\nUsage: FindTranslocations --region [options] --bam inputfile --bai indexfile --output outputFile(optional)");
 	desc5.add_options()
 		("region-file", 	po::value<string>() ,"Select this option if the input file is a bedfile")
+		("vcf", 	po::value<string>() ,"Select this option if the input file is a vcf file")
 		("ploidy",po::value<int>(), "the number of sets of chromosomes,(default = 2)");
 	po::options_description regionModule(" ");
 	regionModule.add_options()
@@ -225,7 +226,7 @@ int main(int argc, char *argv[]) {
 			genomeLength += StringToNumber(sequence->Length);
 			contig2position[sequence->Name] = contigsNumber; // keep track of contig name and position in order to avoid problems when processing two libraries
 	
-			position2contig[contigsNumber] = contig2position[sequence->Name];
+			position2contig[contigsNumber] = sequence->Name;
 			contigsNumber++;
 		}	
 		bamFile.Close();
@@ -493,9 +494,20 @@ int main(int argc, char *argv[]) {
         if(vm.count("ploidiy")){
             ploidy = vm["ploidiy"].as<int>();
         }
+
+		Region *AnalyseRegion;
+		AnalyseRegion = new Region();
+
 		string regionFile;
-		if(vm.count("region-file")){
-			regionFile= vm["region-file"].as<string>();
+		//use either the bed like input or a vcf file
+		if(vm.count("region-file") or vm.count("vcf") and not ( vm.count("region-file") and vm.count("vcf") ) ){
+			if(vm.count("region-file")){
+				AnalyseRegion -> input = "bed";
+				regionFile= vm["region-file"].as<string>();
+			}else{
+				AnalyseRegion -> input = "vcf";
+				regionFile= vm["vcf"].as<string>();
+			}
 		}else{
 			ERROR_CHANNEL <<  "please enter a region file" << endl;
 			return 2;
@@ -504,9 +516,8 @@ int main(int argc, char *argv[]) {
 		cout << "searching the regions...." << endl;
 
 
-		Region *AnalyseRegion;
-		AnalyseRegion = new Region();
-		AnalyseRegion -> region(alignmentFile,indexFile,regionFile,outputFileHeader,contig2position,ploidy,minimum_mapping_quality,genomeLength,contigsNumber);
+
+		AnalyseRegion -> region(alignmentFile,indexFile,regionFile,outputFileHeader,contig2position,position2contig,ploidy,minimum_mapping_quality,genomeLength,contigsNumber);
 
 	}
 
