@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 	bool outtie 				    = true;	 // library orientation
 	uint32_t minimumSupportingPairs = 10;
 	int min_insert				    = 100;      // min insert size
-	int max_insert				    = 1000000;  // max insert size
+	int max_insert				    = 200000;  // max insert size
 	int minimum_mapping_quality     = 20;
 	float coverage;
 	float coverageStd;
@@ -356,7 +356,6 @@ int main(int argc, char *argv[]) {
 			libraryStats=autoStats->autoConfig(alignmentFile,minimum_mapping_quality);
 			
 			printf ("auto config time consumption= %lds\n", time(NULL) - start);
-			max_insert=libraryStats[0];
 			min_insert=libraryStats[1];
 			outtie=libraryStats[2] != 0;
 
