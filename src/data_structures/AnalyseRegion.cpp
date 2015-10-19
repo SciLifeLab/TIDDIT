@@ -34,7 +34,7 @@ void Region::region(string bamFile,string baiFile,string regionFile,string outpu
 	autoSettings *autoStats;
 	autoStats = new autoSettings();
 	size_t start = time(NULL);
-	libraryStats=autoStats->autoConfig(bamFile,minimum_mapping_quality);
+	libraryStats=autoStats->autoConfig(bamFile,minimum_mapping_quality,max_insert);
 			
 	printf ("auto config time consumption= %lds\n", time(NULL) - start);
 	int max_insert=libraryStats[0];

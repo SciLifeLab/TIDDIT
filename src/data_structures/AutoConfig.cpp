@@ -4,7 +4,7 @@
 autoSettings::autoSettings(){}
 
 //online calculation of the average value
-double onlineAverage(double formerAVG,double currentVal,long long n){
+double onlineAverage(double formerAVG,double currentVal,long unsigned int n){
 	double delta = currentVal-formerAVG;
 	double average= formerAVG+delta/double(n);
 	return(average);
@@ -25,14 +25,14 @@ int findOrientation(int firstPos,bool firstOrientation,int matePos,bool mateOrie
 
 
 //this function is used to estimate the orientation,max insert size and min insert size.
-vector<int> autoSettings::autoConfig(string bamFile,int Quality){
+vector<int> autoSettings::autoConfig(string bamFile,int Quality,unsigned int max_insert){
 	vector<int> configuration;
-	long orientation=0;
+	unsigned long orientation=0;
 	double meanInsert=0;
-	unsigned long long MInsert=0;
-	int readLen=0;
+	unsigned int MInsert=0;
+	double readLen=0;
 	double stdReadLen=0;
-	long long n=1;
+	unsigned long n=1;
 
 	BamReader alignmentFile;
 	//open the bam file
@@ -45,26 +45,28 @@ vector<int> autoSettings::autoConfig(string bamFile,int Quality){
 			if(currentRead.IsMapped() and currentRead.MapQuality > Quality) {
 				if(currentRead.RefID == currentRead.MateRefID){
 					if(currentRead.Position <= currentRead.MatePosition){
-						double insertSize=(currentRead.MatePosition-currentRead.Position+1)/1000.0;
-						meanInsert=	onlineAverage(meanInsert,insertSize,n);	
-						MInsert=meanInsert;
-						readLen=onlineAverage(readLen,currentRead.Length,n);				
-						orientation+= findOrientation(currentRead.Position,currentRead.IsReverseStrand(),currentRead.MatePosition,currentRead.IsMateReverseStrand());
-						n++;
+						if(currentRead.MatePosition-currentRead.Position+1 < max_insert and currentRead.Length > 30){
+							double insertSize=(currentRead.MatePosition-currentRead.Position+1)/1000.0;
+							meanInsert=	onlineAverage(meanInsert,insertSize,n);	
+							MInsert=meanInsert;
+							readLen=onlineAverage(readLen,currentRead.Length,n);				
+							orientation+= findOrientation(currentRead.Position,currentRead.IsReverseStrand(),currentRead.MatePosition,currentRead.IsMateReverseStrand());
+							n++;
+						}
 					}
 				}
 			}		
 	}
-	cout << "Auto Configuration:" << endl;
-	
 
 	int stdInsert=sqrt(MInsert)*1000;	
 	meanInsert=meanInsert*1000;
-	cout << meanInsert << endl;
+	cout << "mean insert size: " << meanInsert << endl;
 	int maxInsert=2*meanInsert;
+	cout << "Average mapped Read length: " << readLen << endl;
 	//the min insert size is set to 3*avgread len
 	int minInsert = 3*readLen;
 	//outie if orientation > 0, innie otherwise
+	cout << "orientation: ";
 	if (orientation > 0){
 		orientation=1;
 		cout << "outtie" << endl;

@@ -32,12 +32,12 @@ queue<string> checkFiles(po::variables_map vm){
 	}
 	files.push(vm["bam"].as<string>());
 	//alignmentFile = vm["bam"].as<string>();
-	if (!vm.count("bai")){
+	if (vm.count("bai")){
+		files.push(vm["bai"].as<string>());
+	}else{
 		files.push("error");
 		return(files);
 	}
-	//string indexFile=vm["bai"].as<string>();
-	files.push(vm["bai"].as<string>());
 	if (vm.count("output")) {
 		//string header = vm["output"].as<string>();
 		//outputFileHeader = header ;
@@ -75,6 +75,7 @@ int main(int argc, char *argv[]) {
 		("cov", "select the cov module to analyse the coverage of regions inside a bam file")
 		("extract", "select the extract module to extract regions of interest from a bam file")
 		("region", "select the region module to search for a certain variation given in a region file, read the README file for more information on the format of the region file")
+		("bamStatistics", "select the bamStatistics module to output statistics of the library")
 		("sv", "select the sv module to find structural variations");
 	
 	//The general menu, this menu contains options that all modules share, such as bam file and output
@@ -156,13 +157,19 @@ int main(int argc, char *argv[]) {
 		("region", "select the region module to search for a certain variation given in a region file, read the README file for more information on the format of the region file");
 	//used to control the input files
 
+	po::options_description desc6("\nUsage: FindTranslocations --bamStatistics [options] --bam inputfile");
+	po::options_description bamStatisticsModule(" ");
+		("max-insert",   po::value<int>(),         "paired reads maximum allowed insert size. pairs having greater distance are excluded from the calculations");
+	bamStatisticsModule.add_options()
+		("help", "produce help message")
+		("bamStatistics", "select the bamStatistics module to output statistics of the library");
 
 
 
 	stringstream ss;
 	ss << package_description() << endl;
 	po::options_description menu_union(ss.str().c_str());
-	menu_union.add(modules).add(general).add(desc).add(desc2).add(desc3).add(desc4).add(desc5);
+	menu_union.add(modules).add(general).add(desc).add(desc2).add(desc3).add(desc4).add(desc5).add(desc6);
 
 
 
@@ -181,7 +188,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	//if no module is selected a help message is shown
-	if( !vm.count("extract") and !vm.count("sv") and !vm.count("cnv") and !vm.count("cov") and !vm.count("region") ){
+	if( !vm.count("extract") and !vm.count("sv") and !vm.count("cnv") and !vm.count("cov") and !vm.count("region")  and !vm.count("bamStatistics")){
 		DEFAULT_CHANNEL << modules << endl;
 		return 2;
 	}
@@ -353,7 +360,7 @@ int main(int argc, char *argv[]) {
 			autoSettings *autoStats;
 			autoStats = new autoSettings();
 			size_t start = time(NULL);
-			libraryStats=autoStats->autoConfig(alignmentFile,minimum_mapping_quality);
+			libraryStats=autoStats->autoConfig(alignmentFile,minimum_mapping_quality,max_insert);
 			
 			printf ("auto config time consumption= %lds\n", time(NULL) - start);
 			min_insert=libraryStats[1];
@@ -518,10 +525,23 @@ int main(int argc, char *argv[]) {
 
 		AnalyseRegion -> region(alignmentFile,indexFile,regionFile,outputFileHeader,contig2position,position2contig,ploidy,minimum_mapping_quality,genomeLength,contigsNumber);
 
+	//Prints the insert size and orientation to the stdout
+	}else if( vm.count("bamStatistics") ){
+		if(vm.count("max-insert")){
+			max_insert=vm["max-insert"].as<int>();
+		}
+		alignmentFile = fileQueue.front();
+		vector<int> libraryStats;
+		//compute max_insert,mean insert and outtie
+		autoSettings *autoStats;
+		autoStats = new autoSettings();
+		libraryStats=autoStats->autoConfig(alignmentFile,minimum_mapping_quality,max_insert);
 	}
 
 
 }
+
+
 
 
 
