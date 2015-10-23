@@ -530,6 +530,10 @@ int main(int argc, char *argv[]) {
 		if(vm.count("max-insert")){
 			max_insert=vm["max-insert"].as<int>();
 		}
+		if(vm.count("bai")){
+			ERROR_CHANNEL <<  "illegal option --bai, shutingdown"" << endl;
+			return 2;			
+		}
 		alignmentFile = fileQueue.front();
 		vector<int> libraryStats;
 		//compute max_insert,mean insert and outtie
