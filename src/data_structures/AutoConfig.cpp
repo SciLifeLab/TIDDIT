@@ -27,7 +27,7 @@ int findOrientation(int firstPos,bool firstOrientation,int matePos,bool mateOrie
 //this function is used to estimate the orientation,max insert size and min insert size.
 vector<int> autoSettings::autoConfig(string bamFile,int Quality,unsigned int max_insert){
 	vector<int> configuration;
-	unsigned long orientation=0;
+	long orientation=0;
 	double meanInsert=0;
 	unsigned int MInsert=0;
 	double readLen=0;
