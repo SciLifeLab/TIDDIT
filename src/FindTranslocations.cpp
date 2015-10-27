@@ -531,7 +531,7 @@ int main(int argc, char *argv[]) {
 			max_insert=vm["max-insert"].as<int>();
 		}
 		if(vm.count("bai")){
-			ERROR_CHANNEL <<  "illegal option --bai, shutingdown"" << endl;
+			ERROR_CHANNEL <<  "illegal option --bai, shutingdown" << endl;
 			return 2;			
 		}
 		alignmentFile = fileQueue.front();
