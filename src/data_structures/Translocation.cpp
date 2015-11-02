@@ -228,7 +228,7 @@ void Window::insertRead(BamAlignment alignment) {
 		cout << "working on sequence " << position2contig[alignment.RefID] << "\n";
 	}
 
-	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance or alignmentStatus == pair_wrongOrientation) {
+	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
 		if(alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) {  // insert only "forward" variations
 
 			int alignmentNumber= eventReads[alignment.MateRefID].size();
