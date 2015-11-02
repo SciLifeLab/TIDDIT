@@ -168,7 +168,7 @@ static readStatus computeReadType(BamAlignment al, uint32_t max_insert, uint32_t
 	int iSize = al.InsertSize;
 	if (iSize < 0) { iSize = -1 * iSize;}
 	//Now check if reads belong to a proper pair: both reads aligned on the same contig at the expected distance and orientation
-	if (iSize > max_insert or iSize < min_insert) {
+	if (iSize > max_insert) {
 		return pair_wrongDistance;
 	}
 	if (! is_mp) { // I have a paired end
