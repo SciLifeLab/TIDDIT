@@ -51,7 +51,6 @@ def main(args):
 
     for sample_db in dataBases:
         allVariations = {}
-        currentSampleHits=0;
         with open(sample_db) as fDB:
             for line in fDB:
                 db_entry = (line.rstrip().split('\t'))
@@ -69,7 +68,7 @@ def main(args):
                     
         for query in queries:
             hit = isVariationInDB(allVariations, query,ratio)
-            if hit is not None and currentSampleHits <= args.hitlimit:
+            if hit is not None:
                 query[7] += 1 # found hit
                 currentSampleHits +=1;
 
@@ -216,7 +215,6 @@ if __name__ == '__main__':
     by number of occurences in the DB.
     """)
     parser.add_argument('--variations', type=str, required = True, help="vcf file containing variations")
-    parser.add_argument('--hitlimit', type=int, default = float("inf"), help="One sample will only be able to give rise to the selected number of hits per variant, used to prevent\n similar calls from different callers to increase the frequency of the variant")
     parser.add_argument('--files'        , type=str, nargs='*', help="the paths to the db files are given as a command line arguments")
     parser.add_argument('--db'        , type=str,                help="path to DB (a folder containing samples .db files")
     parser.add_argument('--overlap', type=float, default = 0.6,help="the overlap required to merge two events(0 means anything that touches will be merged, 1 means that two events must be identical to be merged), default = 0.6")
