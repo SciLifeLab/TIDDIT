@@ -70,7 +70,6 @@ def main(args):
             hit = isVariationInDB(allVariations, query,ratio)
             if hit is not None:
                 query[7] += 1 # found hit
-                currentSampleHits +=1;
 
     for query in sorted(queries, key=itemgetter(7)):
         vcf_entry = query[8].rstrip()
