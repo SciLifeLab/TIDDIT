@@ -46,7 +46,7 @@ void Region::region(string bamFile,string baiFile,string regionFile,string outpu
 
 	LibraryStatistics library;
 	start = time(NULL);
-	library = computeLibraryStats(bamFile, genomeLength, max_insert,min_insert, outtie);
+	library = computeLibraryStats(bamFile, genomeLength, max_insert,min_insert, outtie,minimum_mapping_quality);
 	printf ("library stats time consumption= %lds\n", time(NULL) - start);
 	double coverage   = library.C_A;
 	int meanInsert = library.insertMean;

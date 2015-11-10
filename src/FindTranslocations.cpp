@@ -354,22 +354,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
-		if(vm.count("auto")){
-			vector<int> libraryStats;
-			//compute max_insert,mean insert and outtie
-			autoSettings *autoStats;
-			autoStats = new autoSettings();
-			size_t start = time(NULL);
-			libraryStats=autoStats->autoConfig(alignmentFile,minimum_mapping_quality,max_insert);
-			
-			printf ("auto config time consumption= %lds\n", time(NULL) - start);
-			min_insert=libraryStats[1];
-			outtie=libraryStats[2] != 0;
-
-		}
-
-
-		if (vm.count("coverage") or vm.count("insert") or vm.count("insert-std") and not vm.count("auto")) {
+		if (vm.count("coverage")) {
 			coverage    = vm["coverage"].as<float>();
 			meanInsert  = vm["insert"].as<float>();
 			insertStd   = vm["insert-std"].as<float>();
@@ -377,7 +362,7 @@ int main(int argc, char *argv[]) {
 		 }else {
 			LibraryStatistics library;
 			size_t start = time(NULL);
-			library = computeLibraryStats(alignmentFile, genomeLength, max_insert,min_insert, outtie);
+			library = computeLibraryStats(alignmentFile, genomeLength, max_insert,min_insert, outtie,minimum_mapping_quality);
 			printf ("library stats time consumption= %lds\n", time(NULL) - start);
 			coverage   = library.C_A;
 			meanInsert = library.insertMean;
@@ -385,6 +370,12 @@ int main(int argc, char *argv[]) {
 			//update the max_insert
 			if(vm.count("auto")){
 				max_insert =meanInsert+4*insertStd;
+				outtie=library.mp;
+				if(outtie == true){
+					cout << "auto-config orientation: outtie" << endl;
+				}else{
+					cout << "auto-config orientation: inne" << endl;
+				}
 			}
 
 		}
@@ -396,7 +387,7 @@ int main(int argc, char *argv[]) {
 		size_t start = time(NULL);
 		Cov *calculateCoverage;
 		calculateCoverage = new Cov();
-		calculateCoverage -> coverageMain(alignmentFile,indexFile,"",outputFileHeader,coverage,contig2position,4,200);
+		calculateCoverage -> coverageMain(alignmentFile,indexFile,"",outputFileHeader,coverage,contig2position,4,500);
 		printf ("time consumption of the coverage computation= %lds\n", time(NULL) - start);
 
 		StructuralVariations *FindTranslocations;
@@ -445,10 +436,10 @@ int main(int argc, char *argv[]) {
 		calculateCoverage = new Cov();
 		LibraryStatistics library;
 		//calculate the coverage of the entre library
-		if(vm.count("bin") or vm.count("bed") or vm.count("intra-vcf") or vm.count("inter-vcf")){
-			library = computeLibraryStats(alignmentFile, genomeLength, max_insert,min_insert ,outtie);
+		if(vm.count("bed") or vm.count("intra-vcf") or vm.count("inter-vcf")){
+			library = computeLibraryStats(alignmentFile, genomeLength, max_insert,min_insert ,outtie,minimum_mapping_quality);
 			coverage   = library.C_A;
-		}else if(not vm.count("light")){
+		}else if(not vm.count("light") and not vm.count("bin")){
 			cout << "no mode selected, shuting down" << endl;
 			return(0);
 		}

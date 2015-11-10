@@ -142,6 +142,7 @@ struct LibraryStatistics{
 	float C_W;
 	float insertMean;
 	float insertStd;
+	bool mp;
 };
 
 
@@ -243,7 +244,7 @@ static float ExpectedLinks(uint32_t sizeA, uint32_t sizeB, uint32_t gap, float i
 }
 
 
-static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genomeLength, uint32_t max_insert, uint32_t min_insert,bool is_mp) {
+static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genomeLength, uint32_t max_insert, uint32_t min_insert,bool is_mp,int quality) {
 	BamReader bamFile;
 	bamFile.Open(bamFileName);
 	LibraryStatistics library;
@@ -302,20 +303,22 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 			mappedReadsLength += al.Length;
 		}
 
-		if (al.IsFirstMate() && read_status == pair_proper) {
-			iSize = abs(al.InsertSize);
-			if(counterK == 1) {
-				Mk = iSize;
-				Qk = 0;
-				counterK++;
-			} else {
-				float oldMk = Mk;
-				float oldQk = Qk;
-				Mk = oldMk + (iSize - oldMk)/counterK;
-				Qk = oldQk + (counterK-1)*(iSize - oldMk)*(iSize - oldMk)/(float)counterK;
-				counterK++;
+		if (al.IsFirstMate() && read_status) {
+			if(al.IsMapped() and al.MapQuality > quality and al.RefID == al.MateRefID and al.MatePosition-al.Position+1 < max_insert ){
+				iSize = abs(al.InsertSize);
+				if(counterK == 1) {
+					Mk = iSize;
+					Qk = 0;
+					counterK++;
+				} else {
+					float oldMk = Mk;
+					float oldQk = Qk;
+					Mk = oldMk + (iSize - oldMk)/counterK;
+					Qk = oldQk + (counterK-1)*(iSize - oldMk)*(iSize - oldMk)/(float)counterK;
+					counterK++;
+				}
+				insertsLength += iSize;
 			}
-			insertsLength += iSize;
 		}
 
 		switch (read_status) {
@@ -359,7 +362,6 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	cout << "\t proper pairs " 			<< matedReads << "\n";
 	cout << "\t wrong distance "		<< wrongDistanceReads << "\n";
 	cout << "\t zero quality reads " 	<< lowQualityReads << "\n";
-	cout << "\t wrongly oriented "		<< wronglyOrientedReads << "\n";
 	cout << "\t wrongly contig "		<< matedDifferentContig << "\n";
 	cout << "\t singletons " 			<< singletonReads << "\n";
 
@@ -374,6 +376,11 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	library.C_S = C_S = singletonReadsLength/(float)genomeLength;
 	library.C_D = C_D = matedDifferentContigLength/(float)genomeLength;
 	library.insertMean = insertMean = Mk;
+	if(reads > wronglyOrientedReads){
+		library.mp=true;
+	}else{
+		library.mp=false;
+	}
 	Qk = sqrt(Qk/counterK);
 	library.insertStd = insertStd = Qk;
 

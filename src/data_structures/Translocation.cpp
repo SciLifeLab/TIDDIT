@@ -274,19 +274,19 @@ float Window::computeCoverageB(int chrB, int start, int end, int32_t secondWindo
 	int bins=0;
 	float coverageB=0;
 	int element=0;
-	unsigned int pos =floor(double(start)/200.0)*200;
+	unsigned int pos =floor(double(start)/500.0)*500;
 	bool on = false;
 
-	unsigned int nextpos =pos+200;
+	unsigned int nextpos =pos+500;
 	string line;
 	string coverageFile=this ->outputFileHeader+".tab";
 	ifstream inputFile( coverageFile.c_str() );
-	while(nextpos >= start and pos <= end and pos/200 < binnedCoverage[chrB].size() ){
+	while(nextpos >= start and pos <= end and pos/500 < binnedCoverage[chrB].size() ){
 			bins++;
-			element=pos/200;
+			element=pos/500;
 			coverageB+=double(binnedCoverage[chrB][element]-coverageB)/double(bins);
-			pos+=200;
-			nextpos=pos+200;
+			pos+=500;
+			nextpos=pos+500;
 	}
 	return(coverageB);
 	
