@@ -30,7 +30,6 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_
 
 	window-> binnedCoverage.resize(contigsNumber);
 	window-> linksFromWin.resize(contigsNumber);
-	window-> tmpLinksFromWin.resize(contigsNumber);
 	
 	window -> numberOfEvents = 0;
 

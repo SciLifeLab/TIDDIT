@@ -222,6 +222,7 @@ void Window::insertRead(BamAlignment alignment) {
 			}
 			//empty the alignmentqueues
 			eventReads[i]=queue<BamAlignment>();
+			linksFromWin[alignment.MateRefID]=queue<int>();
 			
 
 		}
@@ -256,12 +257,17 @@ void Window::insertRead(BamAlignment alignment) {
 						computeVariations(alignment.MateRefID);
 					}
 					//Thereafter the alignments are removed
-					eventReads[alignment.MateRefID]=queue<BamAlignment>();	
+					eventReads[alignment.MateRefID]=queue<BamAlignment>();
+					linksFromWin[alignment.MateRefID]=queue<int>();
 
 					//the current alignment is inserted
 					eventReads[alignment.MateRefID].push(alignment);
 				}
 			}
+			for(int i=0;i< eventReads.size();i++){
+				linksFromWin[i].push(alignment.Position);
+			}
+
 		}
 
 	}
@@ -322,52 +328,22 @@ vector<int> Window::findLinksToChr2(queue<BamAlignment> ReadQueue,long startChrA
 
 //Computes statstics such as coverage on the window of chromosome A
 vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int start, int end, int32_t WindowLength, string indexFile){
+	queue<int> linksFromA=linksFromWin[this -> chr];
 	vector<double> statisticsVector;
-	unsigned int bases=0;
-	double coverageA;
-	double AverageReadLength=0;
-	BamReader bamFile;
-	BamAlignment currentRead;
+	int currentReadPosition=0;
 	int linksFromWindow=0;
-	unsigned int nreads=0;
-
-	if(!bamFile.Open(bamFileName)){
-		statisticsVector.push_back(-1);statisticsVector.push_back(-1);
-		cout << "warning, unnable to calculate statistics on chrA" << endl;
-		return(statisticsVector);
-	}else{
-		if(bamFile.OpenIndex(indexFile) == 0){
-			cout << "warning no index file found, extraction will proceed in slow mode" << endl;
-		}
-		//moves to a region and itterates through every read inside that region
-		bamFile.SetRegion(chrB,start,chrB,end+1); 
-		while ( bamFile.GetNextAlignmentCore(currentRead) ) {
-			//makes sure that we are inside the region
-			if(start <= currentRead.Position and end >= currentRead.Position){
-				readStatus alignmentStatus = computeReadType(currentRead, this->max_insert,this->min_insert, this->outtie);
-				//only mapped and high quality reads are used
-				if(alignmentStatus != unmapped and alignmentStatus != lowQualty ) {
-					//calculates the length of a read
-					bases+=currentRead.Length;
-					AverageReadLength+=currentRead.Length;
-					nreads++;
-				
-					//if the distance between a pair is too long, the amount of links from the window is increased
-					if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance or alignmentStatus == pair_wrongOrientation) {
-						if(currentRead.RefID < currentRead.MateRefID or (currentRead.RefID == currentRead.MateRefID and currentRead.Position < currentRead.MatePosition)) {
-							linksFromWindow+=1;
-						}
-					}
-				}
+ 
+	while ( linksFromA.size() > 0 ) {
+		currentReadPosition=linksFromA.front();
+		linksFromA.pop();
+		if(start <= currentReadPosition and end >= currentReadPosition){
+				linksFromWindow+=1;
 			}
-		}
-	AverageReadLength=AverageReadLength/nreads;
-	bamFile.Close();
-		//calculates the coverage and returns the coverage within the window
-		coverageA=bases/float(WindowLength+1);
-		statisticsVector.push_back(coverageA);statisticsVector.push_back(linksFromWindow);statisticsVector.push_back(AverageReadLength);
-		return(statisticsVector);
-	}	
+	}
+	//calculates the coverage and returns the coverage within the window
+	double coverageA=computeCoverageB(chrB,start,end,WindowLength);
+	statisticsVector.push_back(coverageA);statisticsVector.push_back(linksFromWindow);statisticsVector.push_back(100);
+	return(statisticsVector);	
 	
 }
 

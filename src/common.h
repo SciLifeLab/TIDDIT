@@ -376,7 +376,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	library.C_S = C_S = singletonReadsLength/(float)genomeLength;
 	library.C_D = C_D = matedDifferentContigLength/(float)genomeLength;
 	library.insertMean = insertMean = Mk;
-	if(reads > wronglyOrientedReads){
+	if(reads-wronglyOrientedReads > wronglyOrientedReads){
 		library.mp=true;
 	}else{
 		library.mp=false;
