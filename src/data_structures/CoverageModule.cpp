@@ -397,12 +397,33 @@ void Cov::bed(string bamFile,string baiFile,string inputFileName,string output, 
 }
 
 //this function calculates the coverage in bins of size binSize across the entire bamfile
+
+ostream& test(ofstream &coverageOutput,string output){
+	if(output != "stdout"){
+		ostream& covout=coverageOutput;
+		return(covout);
+		//cout << "analysing the coverage in bins of size " << binSize << endl;
+	}else{
+		ostream& covout=cout;
+		return(covout);
+	}
+
+
+}
+
 void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position,int binSize,int option){
+
 	ofstream coverageOutput;
-	coverageOutput.open((output+".tab").c_str());
-	cout << "analysing the coverage in bins of size " << binSize << endl;
+	if(output != "stdout"){
+		coverageOutput.open((output+".tab").c_str());
+		static ostream& covout = coverageOutput;
+		
+	}else{
+		static ostream& covout=cout;
+	}
+	ostream& covout=test(coverageOutput,output);
 	if(option == 1){
-	coverageOutput << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << endl;
+		covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << endl;
 	}
 	int binStart =0;
 	int binEnd=binSize+binStart;
@@ -442,12 +463,12 @@ void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, 
 			//check if the read will fit into the next bin, otherwise, keep adding bins
 			while(binEnd < currentRead.Position or currentChr != currentRead.RefID){
 				double coverage=double(sequencedBases[0])/double(binSize);
-				coverageOutput << position2contig[currentChr] << "\t"   ;
-	
+				covout << position2contig[currentChr] << "\t"  ;
 				if(option == 1){
-					coverageOutput << binStart << "\t" << binEnd << "\t";
+					
+					covout << binStart << "\t" << binEnd << "\t";
 				}
-				coverageOutput << coverage << endl;
+				covout << coverage << endl;
 
 				binStart=binEnd;
 				binEnd=binStart+binSize;
@@ -460,12 +481,12 @@ void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, 
 					//create bins to hold the last bases, and create empty bins to span the entire contig
 					while (binEnd < contigLength[currentChr]){
 						double coverage=double(sequencedBases[0])/double(binSize);
-						coverageOutput << position2contig[currentChr] << "\t";
+						covout << position2contig[currentChr] << "\t";
 	
 						if(option == 1){
-							coverageOutput << binStart << "\t" << binEnd << "\t";
+							covout << binStart << "\t" << binEnd << "\t";
 						}
-						coverageOutput << coverage << endl;
+						covout << coverage << endl;
 
 						binStart=binEnd;
 						binEnd=binStart+binSize;

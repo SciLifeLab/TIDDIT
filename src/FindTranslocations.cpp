@@ -133,8 +133,8 @@ int main(int argc, char *argv[]) {
 	//Analyse coverage
 	po::options_description desc4("\nUsage: FindTranslocations --cov [Mode] --bam inputfile --bai indexfile --output outputFile(optional) \nOptions:only one mode may be selected");
 	desc4.add_options()
-		("bin",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file")
-		("light",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file, only prints chromosome and coverage for each bin")
+		("bin",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file, set output to stdout to print to stdout")
+		("light",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file, only prints chromosome and coverage for each bin, set output to stdout to print to stdout")
 		("intra-vcf", 	po::value<string>() ,"Select this option if the input file is the output intra-chromosomal vcf of Findtranslocations. coverage will be calculated between, before and after the event")
 		("inter-vcf", 	po::value<string>() ,"Select this option if the input file is the output inter-chromosomal vcf of Findtranslocations. The coverage before and after window A and B will be calculated")
 		("bed", 	po::value<string>() ,"Select this option if the input file is a bedfile");
@@ -221,7 +221,6 @@ int main(int argc, char *argv[]) {
 				cout << "sort order is " << sortOrder << ": please sort the bam file by coordinate\n";
 				return 1;
 			}
-			cout << sortOrder << "\n";
 		} else {
 			cout << "BAM file has no @HD SO:<SortOrder> attribute: it is not possible to determine the sort order\n";
 			return 1;
@@ -236,10 +235,7 @@ int main(int argc, char *argv[]) {
 			position2contig[contigsNumber] = sequence->Name;
 			contigsNumber++;
 		}	
-		bamFile.Close();
-	
-		cout << "total number of contigs " 	<< contigsNumber << endl;
-		cout << "assembly length " 			<< genomeLength << "\n";
+		bamFile.Close();;
 	}
 	//if the bam extraction module is chosen;
 	if (vm.count("extract")){
