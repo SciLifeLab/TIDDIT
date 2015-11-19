@@ -57,10 +57,8 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 			}
 		
 		}
-		//if the insert size appears to be shorter than expected, the variation is a novel insertion
-	}else if(averageInsert < min_insert){
-		svType = "INS";
-	}
+
+    }
 
 	if(svType == "BND"){
 		//Find large tandemduplications
@@ -95,7 +93,13 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 				svType = "INS";
 			}//if A and B are disjunct and only one of them have coverage above average, the event is an interspersed duplication
 			else if( (covA > coverage+coverageTolerance and covB < coverage+coverageTolerance ) or (covB > coverage+coverageTolerance and covA < coverage+coverageTolerance ) ){
-				//svType = "IDUP";
+				svType = "IDUP";
+                //label the region marked as high coverage as the deletion
+                if(covA > coverage+coverageTolerance){
+                    string start=lexical_cast<string>(endA);
+                }else if(covB > coverage+coverageTolerance){
+                    string start=lexical_cast<string>(startB);
+                }
 			}
 		}
 	}
@@ -144,7 +148,6 @@ string Window::VCFHeader(){
 	headerString+="##ALT=<ID=DUP,Description=\"Duplication\">\n";
 	headerString+="##ALT=<ID=TDUP,Description=\"Tandem duplication\">\n";
 	headerString+="##ALT=<ID=IDUP,Description=\"Interspersed duplication\">\n";
-	headerString+="##ALT=<ID=INVDUP,Description=\"inverted Duplication\">\n";
 	headerString+="##ALT=<ID=INV,Description=\"Inversion\">\n";
 	headerString+="##ALT=<ID=INS,Description=\"Insertion\">\n";
 	headerString+="##ALT=<ID=BND,Description=\"Break end\">\n";
@@ -154,7 +157,7 @@ string Window::VCFHeader(){
     headerString+="##INFO=<ID=END,Number=1,Type=String,Description=\"End of an intra-chromosomal variant\">\n";
 	headerString+="##INFO=<ID=LFW,Number=1,Type=Integer,Description=\"Links from window\">\n";
 	headerString+="##INFO=<ID=LCB,Number=1,Type=Integer,Description=\"Links to chromosome B\">\n";
-	headerString+="##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\"\b>\n";
+	headerString+="##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\">\n";
 	headerString+="##INFO=<ID=COVA,Number=1,Type=Integer,Description=\"Coverage on window A\">\n";
 	headerString+="##INFO=<ID=COVB,Number=1,Type=Integer,Description=\"Coverage on window B\">\n";
 	headerString+="##INFO=<ID=OA,Number=1,Type=Integer,Description=\"Orientation of the reads in window A\">\n";
@@ -205,7 +208,7 @@ Window::Window(int max_insert,int min_insert, uint16_t minimum_mapping_quality,
 
 void Window::insertRead(BamAlignment alignment) {
 	readStatus alignmentStatus = computeReadType(alignment, this->max_insert,this->min_insert, this->outtie);
-	if(alignmentStatus == unmapped or alignmentStatus == lowQualty ) {
+	if(alignmentStatus == unmapped or alignmentStatus == lowQualty or not alignment.IsMateMapped() or alignment.MapQuality < minimum_mapping_quality) {
 		return; // in case the alignment is of no use discard it
 	}
 
