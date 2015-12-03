@@ -57,10 +57,8 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 			}
 		
 		}
-		//if the insert size appears to be shorter than expected, the variation is a novel insertion
-	}else if(averageInsert < min_insert){
-		svType = "INS";
-	}
+
+    }
 
 	if(svType == "BND"){
 		//Find large tandemduplications
@@ -95,7 +93,13 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 				svType = "INS";
 			}//if A and B are disjunct and only one of them have coverage above average, the event is an interspersed duplication
 			else if( (covA > coverage+coverageTolerance and covB < coverage+coverageTolerance ) or (covB > coverage+coverageTolerance and covA < coverage+coverageTolerance ) ){
-				//svType = "IDUP";
+				svType = "IDUP";
+                //label the region marked as high coverage as the deletion
+                if(covA > coverage+coverageTolerance){
+                    string start=lexical_cast<string>(endA);
+                }else if(covB > coverage+coverageTolerance){
+                    string start=lexical_cast<string>(startB);
+                }
 			}
 		}
 	}
@@ -144,7 +148,6 @@ string Window::VCFHeader(){
 	headerString+="##ALT=<ID=DUP,Description=\"Duplication\">\n";
 	headerString+="##ALT=<ID=TDUP,Description=\"Tandem duplication\">\n";
 	headerString+="##ALT=<ID=IDUP,Description=\"Interspersed duplication\">\n";
-	headerString+="##ALT=<ID=INVDUP,Description=\"inverted Duplication\">\n";
 	headerString+="##ALT=<ID=INV,Description=\"Inversion\">\n";
 	headerString+="##ALT=<ID=INS,Description=\"Insertion\">\n";
 	headerString+="##ALT=<ID=BND,Description=\"Break end\">\n";
@@ -154,7 +157,7 @@ string Window::VCFHeader(){
     headerString+="##INFO=<ID=END,Number=1,Type=String,Description=\"End of an intra-chromosomal variant\">\n";
 	headerString+="##INFO=<ID=LFW,Number=1,Type=Integer,Description=\"Links from window\">\n";
 	headerString+="##INFO=<ID=LCB,Number=1,Type=Integer,Description=\"Links to chromosome B\">\n";
-	headerString+="##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\"\b>\n";
+	headerString+="##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\">\n";
 	headerString+="##INFO=<ID=COVA,Number=1,Type=Integer,Description=\"Coverage on window A\">\n";
 	headerString+="##INFO=<ID=COVB,Number=1,Type=Integer,Description=\"Coverage on window B\">\n";
 	headerString+="##INFO=<ID=OA,Number=1,Type=Integer,Description=\"Orientation of the reads in window A\">\n";
@@ -205,7 +208,7 @@ Window::Window(int max_insert,int min_insert, uint16_t minimum_mapping_quality,
 
 void Window::insertRead(BamAlignment alignment) {
 	readStatus alignmentStatus = computeReadType(alignment, this->max_insert,this->min_insert, this->outtie);
-	if(alignmentStatus == unmapped or alignmentStatus == lowQualty ) {
+	if(alignmentStatus == unmapped or alignmentStatus == lowQualty or not alignment.IsMateMapped() or alignment.MapQuality < minimum_mapping_quality) {
 		return; // in case the alignment is of no use discard it
 	}
 
@@ -222,13 +225,14 @@ void Window::insertRead(BamAlignment alignment) {
 			}
 			//empty the alignmentqueues
 			eventReads[i]=queue<BamAlignment>();
+			linksFromWin[alignment.MateRefID]=queue<int>();
 			
 
 		}
 		cout << "working on sequence " << position2contig[alignment.RefID] << "\n";
 	}
 
-	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance or alignmentStatus == pair_wrongOrientation) {
+	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
 		if(alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) {  // insert only "forward" variations
 
 			int alignmentNumber= eventReads[alignment.MateRefID].size();
@@ -256,12 +260,17 @@ void Window::insertRead(BamAlignment alignment) {
 						computeVariations(alignment.MateRefID);
 					}
 					//Thereafter the alignments are removed
-					eventReads[alignment.MateRefID]=queue<BamAlignment>();	
+					eventReads[alignment.MateRefID]=queue<BamAlignment>();
+					linksFromWin[alignment.MateRefID]=queue<int>();
 
 					//the current alignment is inserted
 					eventReads[alignment.MateRefID].push(alignment);
 				}
 			}
+			for(int i=0;i< eventReads.size();i++){
+				linksFromWin[i].push(alignment.Position);
+			}
+
 		}
 
 	}
@@ -274,19 +283,19 @@ float Window::computeCoverageB(int chrB, int start, int end, int32_t secondWindo
 	int bins=0;
 	float coverageB=0;
 	int element=0;
-	unsigned int pos =floor(double(start)/200.0)*200;
+	unsigned int pos =floor(double(start)/500.0)*500;
 	bool on = false;
 
-	unsigned int nextpos =pos+200;
+	unsigned int nextpos =pos+500;
 	string line;
 	string coverageFile=this ->outputFileHeader+".tab";
 	ifstream inputFile( coverageFile.c_str() );
-	while(nextpos >= start and pos <= end and pos/200 < binnedCoverage[chrB].size() ){
+	while(nextpos >= start and pos <= end and pos/500 < binnedCoverage[chrB].size() ){
 			bins++;
-			element=pos/200;
+			element=pos/500;
 			coverageB+=double(binnedCoverage[chrB][element]-coverageB)/double(bins);
-			pos+=200;
-			nextpos=pos+200;
+			pos+=500;
+			nextpos=pos+500;
 	}
 	return(coverageB);
 	
@@ -322,52 +331,22 @@ vector<int> Window::findLinksToChr2(queue<BamAlignment> ReadQueue,long startChrA
 
 //Computes statstics such as coverage on the window of chromosome A
 vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int start, int end, int32_t WindowLength, string indexFile){
+	queue<int> linksFromA=linksFromWin[this -> chr];
 	vector<double> statisticsVector;
-	unsigned int bases=0;
-	double coverageA;
-	double AverageReadLength=0;
-	BamReader bamFile;
-	BamAlignment currentRead;
+	int currentReadPosition=0;
 	int linksFromWindow=0;
-	unsigned int nreads=0;
-
-	if(!bamFile.Open(bamFileName)){
-		statisticsVector.push_back(-1);statisticsVector.push_back(-1);
-		cout << "warning, unnable to calculate statistics on chrA" << endl;
-		return(statisticsVector);
-	}else{
-		if(bamFile.OpenIndex(indexFile) == 0){
-			cout << "warning no index file found, extraction will proceed in slow mode" << endl;
-		}
-		//moves to a region and itterates through every read inside that region
-		bamFile.SetRegion(chrB,start,chrB,end+1); 
-		while ( bamFile.GetNextAlignmentCore(currentRead) ) {
-			//makes sure that we are inside the region
-			if(start <= currentRead.Position and end >= currentRead.Position){
-				readStatus alignmentStatus = computeReadType(currentRead, this->max_insert,this->min_insert, this->outtie);
-				//only mapped and high quality reads are used
-				if(alignmentStatus != unmapped and alignmentStatus != lowQualty ) {
-					//calculates the length of a read
-					bases+=currentRead.Length;
-					AverageReadLength+=currentRead.Length;
-					nreads++;
-				
-					//if the distance between a pair is too long, the amount of links from the window is increased
-					if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance or alignmentStatus == pair_wrongOrientation) {
-						if(currentRead.RefID < currentRead.MateRefID or (currentRead.RefID == currentRead.MateRefID and currentRead.Position < currentRead.MatePosition)) {
-							linksFromWindow+=1;
-						}
-					}
-				}
+ 
+	while ( linksFromA.size() > 0 ) {
+		currentReadPosition=linksFromA.front();
+		linksFromA.pop();
+		if(start <= currentReadPosition and end >= currentReadPosition){
+				linksFromWindow+=1;
 			}
-		}
-	AverageReadLength=AverageReadLength/nreads;
-	bamFile.Close();
-		//calculates the coverage and returns the coverage within the window
-		coverageA=bases/float(WindowLength+1);
-		statisticsVector.push_back(coverageA);statisticsVector.push_back(linksFromWindow);statisticsVector.push_back(AverageReadLength);
-		return(statisticsVector);
-	}	
+	}
+	//calculates the coverage and returns the coverage within the window
+	double coverageA=computeCoverageB(chrB,start,end,WindowLength);
+	statisticsVector.push_back(coverageA);statisticsVector.push_back(linksFromWindow);statisticsVector.push_back(100);
+	return(statisticsVector);	
 	
 }
 

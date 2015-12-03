@@ -18,6 +18,50 @@
 #include "api/BamWriter.h"
 #include <queue>
 
+
+vector<unsigned int> addBases(vector<unsigned int> inputBases,BamAlignment currentRead,int binStart,int binEnd,int currentChr,int binSize){
+	vector<unsigned int> sequencedBases=inputBases;
+	//check the quality of the alignment, the hardcoded data is only used to initialise the function, the numbers themselves wont affect the quality measurement.
+	readStatus alignmentStatus = computeReadType(currentRead, 100000,100, true);
+	if(alignmentStatus != unmapped and alignmentStatus != lowQualty ) {
+		//check if we have left the chromosome
+		if(currentChr == currentRead.RefID){
+			//if the entire read is inside the region, add all the bases to sequenced bases
+			if(currentRead.Position >= binStart and currentRead.Position+currentRead.Length-1 <= binEnd){
+				sequencedBases[0]+=currentRead.Length;
+
+			}		
+			//if the read starts within the region but reaches outside it, add only those bases that fit inside the region.
+			if(currentRead.Position >= binStart and currentRead.Position+currentRead.Length-1 > binEnd and currentRead.Position <= binEnd){
+				sequencedBases[0]+=binEnd-currentRead.Position+1;
+				//the part of the read hanging out of the bin is added to the bins following the currentbin
+				int remainingRead=currentRead.Length-(binEnd-currentRead.Position+1);
+				int binNumber=1;
+
+				while (remainingRead > 0){
+					//if there are not enough bins to store the bases, add another bin
+					if(binNumber > sequencedBases.size()){
+						sequencedBases.push_back(0);
+					}
+					//check if the entire read fits in the next bin or not
+					if(binSize >= remainingRead){	
+						sequencedBases[binNumber]+=remainingRead;
+						remainingRead=0;		
+					//if the amount of bases exceeds an entire bin, take a bin of bases and add it to the next bin, 
+					//itterate once more and see how many bases that will fit into the next				
+					}else{
+						sequencedBases[binNumber]+=binSize;
+						remainingRead=remainingRead-binSize;
+					}
+					binNumber++;
+	
+				}
+			}
+		}
+	}		
+	return(sequencedBases);
+}
+
 //constructor
 Cov::Cov() { }
 //The main function
@@ -353,12 +397,33 @@ void Cov::bed(string bamFile,string baiFile,string inputFileName,string output, 
 }
 
 //this function calculates the coverage in bins of size binSize across the entire bamfile
+
+ostream& test(ofstream &coverageOutput,string output){
+	if(output != "stdout"){
+		ostream& covout=coverageOutput;
+		return(covout);
+		//cout << "analysing the coverage in bins of size " << binSize << endl;
+	}else{
+		ostream& covout=cout;
+		return(covout);
+	}
+
+
+}
+
 void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position,int binSize,int option){
+
 	ofstream coverageOutput;
-	coverageOutput.open((output+".tab").c_str());
-	cout << "analysing the coverage in bins of size " << binSize << endl;
+	if(output != "stdout"){
+		coverageOutput.open((output+".tab").c_str());
+		static ostream& covout = coverageOutput;
+		
+	}else{
+		static ostream& covout=cout;
+	}
+	ostream& covout=test(coverageOutput,output);
 	if(option == 1){
-	coverageOutput << "CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "libraryCoverage"<< "\t" << "coverage/librarycoverage" << endl;
+		covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << endl;
 	}
 	int binStart =0;
 	int binEnd=binSize+binStart;
@@ -373,10 +438,12 @@ void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, 
 
 	//get which refID belongs to which chromosome
 	map<unsigned int,string> position2contig;
+	vector<int> contigLength;
 	uint32_t contigsNumber = 0;
 	SamSequenceDictionary sequences  = alignmentFile.GetHeader().Sequences;
 	for(SamSequenceIterator sequence = sequences.Begin() ; sequence != sequences.End(); ++sequence) {
 		position2contig[contigsNumber]  = sequence->Name;
+		contigLength.push_back(StringToNumber(sequence->Length));
 		contigsNumber++;
 	}
 
@@ -390,73 +457,60 @@ void Cov::bin(string bamFile,string baiFile,string inputFileName,string output, 
 		}
 
 		
-		//check the quality of the alignment, the hardcoded data is only used to initialise the function, the numbers themselves wont affect the quality measurement.
-		readStatus alignmentStatus = computeReadType(currentRead, 100000,100, true);
-		if(alignmentStatus != unmapped and alignmentStatus != lowQualty ) {
-			//check if we have left the chromosome
-			if(currentChr == currentRead.RefID and currentRead.IsMapped() ){
-				//if the entire read is inside the region, add all the bases to sequenced bases
-				if(currentRead.Position >= binStart and currentRead.Position+currentRead.Length-1 <= binEnd){
-					sequencedBases[0]+=currentRead.Length;
-
-				}		
-				//if the read starts within the region but reaches outside it, add only those bases that fit inside the region.
-				if(currentRead.Position >= binStart and currentRead.Position+currentRead.Length-1 > binEnd and currentRead.Position <= binEnd){
-					sequencedBases[0]+=binEnd-currentRead.Position+1;
-					//the part of the read hanging out of the bin is added to the bins following the currentbin
-					int remainingRead=currentRead.Length-(binEnd-currentRead.Position+1);
-					int binNumber=1;
-	
-					while (remainingRead > 0){
-						//if there are not enough bins to store the bases, add another bin
-						if(binNumber > sequencedBases.size()){
-							sequencedBases.push_back(0);
-						}
-						//check if the entire read fits in the next bin or not
-						if(binSize >= remainingRead){	
-							sequencedBases[binNumber]+=remainingRead;
-							remainingRead=0;		
-						//if the amount of bases exceeds an entire bin, take a bin of bases and add it to the next bin, 
-						//itterate once more and see how many bases that will fit into the next				
-						}else{
-							sequencedBases[binNumber]+=binSize;
-							remainingRead=remainingRead-binSize;
-						}
-						binNumber++;
-	
-					}
-				}
-			}
-		}		
+		sequencedBases=addBases(sequencedBases,currentRead,binStart,binEnd,currentChr,binSize);
 		//when there are no more reads in the current bin, calculate the coverage and start analysing the next bin
 		if(binEnd < currentRead.Position or currentChr != currentRead.RefID){
-			double coverage=double(sequencedBases[0])/double(binSize);
-			coverageOutput << position2contig[currentChr] << "\t"   ;
+			//check if the read will fit into the next bin, otherwise, keep adding bins
+			while(binEnd < currentRead.Position or currentChr != currentRead.RefID){
+				double coverage=double(sequencedBases[0])/double(binSize);
+				covout << position2contig[currentChr] << "\t"  ;
+				if(option == 1){
+					
+					covout << binStart << "\t" << binEnd << "\t";
+				}
+				covout << coverage << endl;
 
-			if(option == 1){
-				coverageOutput << binStart << "\t" << binEnd << "\t";
-			}
-			coverageOutput << coverage << "\t";
-			if(option == 1){
-				coverageOutput << averageCoverage << "\t" << coverage/averageCoverage;
-				
-			}
-			coverageOutput  << endl;
+				binStart=binEnd;
+				binEnd=binStart+binSize;
+				sequencedBases.erase(sequencedBases.begin());
+				if(sequencedBases.size() == 0){
+					sequencedBases.push_back(0);
+				}
 
-			binStart=binEnd;
-			binEnd=binStart+binSize;
-			sequencedBases.erase(sequencedBases.begin());
-			if(sequencedBases.size() == 0){
-				sequencedBases.push_back(0);
-			}
+				if(currentChr != currentRead.RefID){
+					//create bins to hold the last bases, and create empty bins to span the entire contig
+					while (binEnd < contigLength[currentChr]){
+						double coverage=double(sequencedBases[0])/double(binSize);
+						covout << position2contig[currentChr] << "\t";
+	
+						if(option == 1){
+							covout << binStart << "\t" << binEnd << "\t";
+						}
+						covout << coverage << endl;
 
-			if(currentChr != currentRead.RefID){
-				sequencedBases.clear();
-				sequencedBases.push_back(0);
-				currentChr = currentRead.RefID;
-				binStart=0;
-				binEnd=binSize;
-			}	
-		}		
+						binStart=binEnd;
+						binEnd=binStart+binSize;
+						sequencedBases.erase(sequencedBases.begin());
+						if(sequencedBases.size() == 0){
+							sequencedBases.push_back(0);
+						}
+					}
+					//clear the base container and start analysing the next chromosome		
+					sequencedBases.clear();
+					sequencedBases.push_back(0);
+					currentChr = currentRead.RefID;
+					binStart=0;
+					binEnd=binSize;
+
+				}
+			}
+			//now we are at the right position, then add the read
+			sequencedBases=addBases(sequencedBases,currentRead,binStart,binEnd,currentChr,binSize);	
+		}
+		
+
+
 	}
 }
+
+

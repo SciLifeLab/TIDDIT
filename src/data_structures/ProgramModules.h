@@ -79,7 +79,7 @@ public:
 class autoSettings{
 public:
 	autoSettings();
-	vector<int> autoConfig(string bamFile,int Quality);
+	vector<int> autoConfig(string bamFile,int Quality, unsigned int max_insert);
 };
 
 

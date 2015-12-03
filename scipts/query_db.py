@@ -40,7 +40,7 @@ def main(args):
             else:
                 #in this case I need to store a query
                 chrA,startA,endA,chrB,startB,endB,event_type =readVCF.readVCFLine(outputSource, line);
-                current_variation = [chrA, int(startA), int(endA), chrB, int(startB), int(endB),event_type, 0, line] # plus a counter and the variatio
+                current_variation = [chrA.strip("chr").strip("Chr").strip("CHR"), int(startA), int(endA), chrB.strip("chr").strip("Chr").strip("CHR"), int(startB), int(endB),event_type, 0, line] # plus a counter and the variatio
                 queries.append(current_variation)
     # at this point queries contains an entry for each variation
     #now query each sample.db present in the given folder and store the occurences
@@ -54,6 +54,8 @@ def main(args):
         with open(sample_db) as fDB:
             for line in fDB:
                 db_entry = (line.rstrip().split('\t'))
+                db_entry[0] = db_entry[0].strip("chr").strip("Chr").strip("CHR")
+                db_entry[1] = db_entry[1].strip("chr").strip("Chr").strip("CHR")
                 if db_entry[0] in allVariations:
                         if db_entry[1] in allVariations[db_entry[0]]:
                             allVariations[db_entry[0]][db_entry[1]].append([db_entry[2], db_entry[3], db_entry[4], db_entry[5], db_entry[6],db_entry[7]])
@@ -68,7 +70,6 @@ def main(args):
             hit = isVariationInDB(allVariations, query,ratio)
             if hit is not None:
                 query[7] += 1 # found hit
-    
 
     for query in sorted(queries, key=itemgetter(7)):
         vcf_entry = query[8].rstrip()
@@ -90,10 +91,10 @@ while variation is an array of the form
 the function checks if there is an hit and returns it
     """
 
-    chrA          = variation[0]
+    chrA          = variation[0].strip("chr").strip("Chr").strip("CHR")
     chrA_start    = int(variation[1])
     chrA_end      = int(variation[2])
-    chrB          = variation[3]
+    chrB          = variation[3].strip("chr").strip("Chr").strip("CHR")
     chrB_start    = int(variation[4])
     chrB_end      = int(variation[5])
     variation_type=variation[6]

@@ -22,9 +22,7 @@ public:
 	vector<long> covOnChrA;
 	vector<long> tmpCovOnChrA;
 
-	vector<int> linksFromWin;
-	vector<int> tmpLinksFromWin;
-
+	vector< queue<int> > linksFromWin;
 
 
 	//More static parts initialized by constructor

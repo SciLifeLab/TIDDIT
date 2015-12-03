@@ -32,12 +32,12 @@ queue<string> checkFiles(po::variables_map vm){
 	}
 	files.push(vm["bam"].as<string>());
 	//alignmentFile = vm["bam"].as<string>();
-	if (!vm.count("bai")){
+	if (vm.count("bai")){
+		files.push(vm["bai"].as<string>());
+	}else{
 		files.push("error");
 		return(files);
 	}
-	//string indexFile=vm["bai"].as<string>();
-	files.push(vm["bai"].as<string>());
 	if (vm.count("output")) {
 		//string header = vm["output"].as<string>();
 		//outputFileHeader = header ;
@@ -53,9 +53,9 @@ int main(int argc, char *argv[]) {
 	//MAIN VARIABLE
 	string alignmentFile		    = "";       // alignment file name
 	bool outtie 				    = true;	 // library orientation
-	uint32_t minimumSupportingPairs = 10;
+	uint32_t minimumSupportingPairs = 6;
 	int min_insert				    = 100;      // min insert size
-	int max_insert				    = 1000000;  // max insert size
+	int max_insert				    = 200000;  // max insert size
 	int minimum_mapping_quality     = 20;
 	float coverage;
 	float coverageStd;
@@ -75,6 +75,7 @@ int main(int argc, char *argv[]) {
 		("cov", "select the cov module to analyse the coverage of regions inside a bam file")
 		("extract", "select the extract module to extract regions of interest from a bam file")
 		("region", "select the region module to search for a certain variation given in a region file, read the README file for more information on the format of the region file")
+		("bamStatistics", "select the bamStatistics module to output statistics of the library")
 		("sv", "select the sv module to find structural variations");
 	
 	//The general menu, this menu contains options that all modules share, such as bam file and output
@@ -94,7 +95,7 @@ int main(int argc, char *argv[]) {
 		("min-insert",   po::value<int>(),         "paired reads minimum allowed insert size. Used in order to filter outliers. Insert size goes from beginning of first read to end of second read")
 		("max-insert",   po::value<int>(),         "paired reads maximum allowed insert size. pairs aligning on the same chr at a distance higher than this are considered candidates for SV.")
 		("orientation",  po::value<string>(),      "expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default outtie")				
-		("minimum-supporting-pairs",  po::value<unsigned int>(), "Minimum number of supporting pairs in order to call a variation event (default 10)")
+		("minimum-supporting-pairs",  po::value<unsigned int>(), "Minimum number of supporting pairs in order to call a variation event (default 6)")
 		("minimum-mapping-quality",  po::value<int>(), "Minimum mapping quality to consider an alignment (default 20)")
 		("coverage",     po::value<float>(), "do not compute coverage from bam file, use the one specified here (must be used in combination with --insert --insert-std)")
 		("insert",       po::value<float>(), "do not compute insert size from bam file, use the one specified here (must be used in combination with --coverage --insert-std)")
@@ -132,8 +133,8 @@ int main(int argc, char *argv[]) {
 	//Analyse coverage
 	po::options_description desc4("\nUsage: FindTranslocations --cov [Mode] --bam inputfile --bai indexfile --output outputFile(optional) \nOptions:only one mode may be selected");
 	desc4.add_options()
-		("bin",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file")
-		("light",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file, only prints chromosome and coverage for each bin")
+		("bin",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file, set output to stdout to print to stdout")
+		("light",		po::value<int>(), "use bins of specified size to measure the coverage of the entire bam file, only prints chromosome and coverage for each bin, set output to stdout to print to stdout")
 		("intra-vcf", 	po::value<string>() ,"Select this option if the input file is the output intra-chromosomal vcf of Findtranslocations. coverage will be calculated between, before and after the event")
 		("inter-vcf", 	po::value<string>() ,"Select this option if the input file is the output inter-chromosomal vcf of Findtranslocations. The coverage before and after window A and B will be calculated")
 		("bed", 	po::value<string>() ,"Select this option if the input file is a bedfile");
@@ -156,13 +157,19 @@ int main(int argc, char *argv[]) {
 		("region", "select the region module to search for a certain variation given in a region file, read the README file for more information on the format of the region file");
 	//used to control the input files
 
+	po::options_description desc6("\nUsage: FindTranslocations --bamStatistics [options] --bam inputfile");
+	po::options_description bamStatisticsModule(" ");
+		("max-insert",   po::value<int>(),         "paired reads maximum allowed insert size. pairs having greater distance are excluded from the calculations");
+	bamStatisticsModule.add_options()
+		("help", "produce help message")
+		("bamStatistics", "select the bamStatistics module to output statistics of the library");
 
 
 
 	stringstream ss;
 	ss << package_description() << endl;
 	po::options_description menu_union(ss.str().c_str());
-	menu_union.add(modules).add(general).add(desc).add(desc2).add(desc3).add(desc4).add(desc5);
+	menu_union.add(modules).add(general).add(desc).add(desc2).add(desc3).add(desc4).add(desc5).add(desc6);
 
 
 
@@ -181,7 +188,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	//if no module is selected a help message is shown
-	if( !vm.count("extract") and !vm.count("sv") and !vm.count("cnv") and !vm.count("cov") and !vm.count("region") ){
+	if( !vm.count("extract") and !vm.count("sv") and !vm.count("cnv") and !vm.count("cov") and !vm.count("region")  and !vm.count("bamStatistics")){
 		DEFAULT_CHANNEL << modules << endl;
 		return 2;
 	}
@@ -214,7 +221,6 @@ int main(int argc, char *argv[]) {
 				cout << "sort order is " << sortOrder << ": please sort the bam file by coordinate\n";
 				return 1;
 			}
-			cout << sortOrder << "\n";
 		} else {
 			cout << "BAM file has no @HD SO:<SortOrder> attribute: it is not possible to determine the sort order\n";
 			return 1;
@@ -229,10 +235,7 @@ int main(int argc, char *argv[]) {
 			position2contig[contigsNumber] = sequence->Name;
 			contigsNumber++;
 		}	
-		bamFile.Close();
-	
-		cout << "total number of contigs " 	<< contigsNumber << endl;
-		cout << "assembly length " 			<< genomeLength << "\n";
+		bamFile.Close();;
 	}
 	//if the bam extraction module is chosen;
 	if (vm.count("extract")){
@@ -347,23 +350,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
-		if(vm.count("auto")){
-			vector<int> libraryStats;
-			//compute max_insert,mean insert and outtie
-			autoSettings *autoStats;
-			autoStats = new autoSettings();
-			size_t start = time(NULL);
-			libraryStats=autoStats->autoConfig(alignmentFile,minimum_mapping_quality);
-			
-			printf ("auto config time consumption= %lds\n", time(NULL) - start);
-			max_insert=libraryStats[0];
-			min_insert=libraryStats[1];
-			outtie=libraryStats[2] != 0;
-
-		}
-
-
-		if (vm.count("coverage") or vm.count("insert") or vm.count("insert-std") and not vm.count("auto")) {
+		if (vm.count("coverage")) {
 			coverage    = vm["coverage"].as<float>();
 			meanInsert  = vm["insert"].as<float>();
 			insertStd   = vm["insert-std"].as<float>();
@@ -371,7 +358,7 @@ int main(int argc, char *argv[]) {
 		 }else {
 			LibraryStatistics library;
 			size_t start = time(NULL);
-			library = computeLibraryStats(alignmentFile, genomeLength, max_insert,min_insert, outtie);
+			library = computeLibraryStats(alignmentFile, genomeLength, max_insert,min_insert, outtie,minimum_mapping_quality);
 			printf ("library stats time consumption= %lds\n", time(NULL) - start);
 			coverage   = library.C_A;
 			meanInsert = library.insertMean;
@@ -379,6 +366,12 @@ int main(int argc, char *argv[]) {
 			//update the max_insert
 			if(vm.count("auto")){
 				max_insert =meanInsert+4*insertStd;
+				outtie=library.mp;
+				if(outtie == true){
+					cout << "auto-config orientation: outtie" << endl;
+				}else{
+					cout << "auto-config orientation: inne" << endl;
+				}
 			}
 
 		}
@@ -390,7 +383,7 @@ int main(int argc, char *argv[]) {
 		size_t start = time(NULL);
 		Cov *calculateCoverage;
 		calculateCoverage = new Cov();
-		calculateCoverage -> coverageMain(alignmentFile,indexFile,"",outputFileHeader,coverage,contig2position,4,200);
+		calculateCoverage -> coverageMain(alignmentFile,indexFile,"",outputFileHeader,coverage,contig2position,4,500);
 		printf ("time consumption of the coverage computation= %lds\n", time(NULL) - start);
 
 		StructuralVariations *FindTranslocations;
@@ -439,10 +432,10 @@ int main(int argc, char *argv[]) {
 		calculateCoverage = new Cov();
 		LibraryStatistics library;
 		//calculate the coverage of the entre library
-		if(vm.count("bin") or vm.count("bed") or vm.count("intra-vcf") or vm.count("inter-vcf")){
-			library = computeLibraryStats(alignmentFile, genomeLength, max_insert,min_insert ,outtie);
+		if(vm.count("bed") or vm.count("intra-vcf") or vm.count("inter-vcf")){
+			library = computeLibraryStats(alignmentFile, genomeLength, max_insert,min_insert ,outtie,minimum_mapping_quality);
 			coverage   = library.C_A;
-		}else if(not vm.count("light")){
+		}else if(not vm.count("light") and not vm.count("bin")){
 			cout << "no mode selected, shuting down" << endl;
 			return(0);
 		}
@@ -519,10 +512,27 @@ int main(int argc, char *argv[]) {
 
 		AnalyseRegion -> region(alignmentFile,indexFile,regionFile,outputFileHeader,contig2position,position2contig,ploidy,minimum_mapping_quality,genomeLength,contigsNumber);
 
+	//Prints the insert size and orientation to the stdout
+	}else if( vm.count("bamStatistics") ){
+		if(vm.count("max-insert")){
+			max_insert=vm["max-insert"].as<int>();
+		}
+		if(vm.count("bai")){
+			ERROR_CHANNEL <<  "illegal option --bai, shutingdown" << endl;
+			return 2;			
+		}
+		alignmentFile = fileQueue.front();
+		vector<int> libraryStats;
+		//compute max_insert,mean insert and outtie
+		autoSettings *autoStats;
+		autoStats = new autoSettings();
+		libraryStats=autoStats->autoConfig(alignmentFile,minimum_mapping_quality,max_insert);
 	}
 
 
 }
+
+
 
 
 
