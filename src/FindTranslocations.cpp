@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 	//MAIN VARIABLE
 	string alignmentFile		    = "";       // alignment file name
 	bool outtie 				    = true;	 // library orientation
-	uint32_t minimumSupportingPairs = 10;
+	uint32_t minimumSupportingPairs = 6;
 	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 200000;  // max insert size
 	int minimum_mapping_quality     = 20;
