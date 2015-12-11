@@ -14,6 +14,7 @@ def main(args):
     with open(variations) as fin:
         noOCCTag=1;
         infoFound=0;
+        outputSource="Not_specified"
         for line in fin:
             #process and output the metadata
             if line.startswith("#") or line.startswith("="):
