@@ -75,7 +75,7 @@ def main(args):
 
     for query in sorted(queries, key=itemgetter(7)):
         vcf_entry = query[8].rstrip()
-        sys.stdout.write("{};OCC={};FRQ={}\n".format(vcf_entry, query[7],(query[7]/len(dataBases)) ) )
+        sys.stdout.write("{};OCC={};FRQ={}\n".format(vcf_entry, query[7],(query[7]/float(len(dataBases))) ) )
 
 
 
