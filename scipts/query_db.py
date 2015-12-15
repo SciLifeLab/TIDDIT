@@ -28,6 +28,7 @@ def main(args):
                 #the last infotag will be the Feature tag
                 if(lookForFilter[0] != "INFO" and noOCCTag and infoFound==1):
                     sys.stdout.write("##INFO=<ID=OCC,Number=1,Type=Integer,Description=\"The number of occurances of the event in the database\">\n");
+                    sys.stdout.write("##INFO=<ID=FRQ,Number=1,Type=Integer,Description=\"The frequency of the event in the database\">\n");
                     sys.stdout.write(line);
                     infoFound=0;noFeatureTag=0;
                 elif(lookForFilter[0] == "INFO"):
@@ -41,7 +42,7 @@ def main(args):
             else:
                 #in this case I need to store a query
                 chrA,startA,endA,chrB,startB,endB,event_type =readVCF.readVCFLine(outputSource, line);
-                current_variation = [chrA.strip("chr").strip("Chr").strip("CHR"), int(startA), int(endA), chrB.strip("chr").strip("Chr").strip("CHR"), int(startB), int(endB),event_type, 0, line] # plus a counter and the variatio
+                current_variation = [chrA.replace("chr",""), int(startA), int(endA), chrB.replace("chr",""), int(startB), int(endB),event_type, 0, line] # plus a counter and the variation
                 queries.append(current_variation)
     # at this point queries contains an entry for each variation
     #now query each sample.db present in the given folder and store the occurences
@@ -55,8 +56,8 @@ def main(args):
         with open(sample_db) as fDB:
             for line in fDB:
                 db_entry = (line.rstrip().split('\t'))
-                db_entry[0] = db_entry[0].strip("chr").strip("Chr").strip("CHR")
-                db_entry[1] = db_entry[1].strip("chr").strip("Chr").strip("CHR")
+                db_entry[0] = db_entry[0].replace("chr","")
+                db_entry[1] = db_entry[1].replace("chr","")
                 if db_entry[0] in allVariations:
                         if db_entry[1] in allVariations[db_entry[0]]:
                             allVariations[db_entry[0]][db_entry[1]].append([db_entry[2], db_entry[3], db_entry[4], db_entry[5], db_entry[6],db_entry[7]])
@@ -69,12 +70,12 @@ def main(args):
                     
         for query in queries:
             hit = isVariationInDB(allVariations, query,ratio)
-            if hit is not None:
+            if hit:
                 query[7] += 1 # found hit
 
     for query in sorted(queries, key=itemgetter(7)):
         vcf_entry = query[8].rstrip()
-        sys.stdout.write("{};OCC={}\n".format(vcf_entry, query[7]))
+        sys.stdout.write("{};OCC={};FRQ={}\n".format(vcf_entry, query[7],(query[7]/len(dataBases)) ) )
 
 
 
@@ -92,53 +93,46 @@ while variation is an array of the form
 the function checks if there is an hit and returns it
     """
 
-    chrA          = variation[0].strip("chr").strip("Chr").strip("CHR")
+    chrA          = variation[0]
     chrA_start    = int(variation[1])
     chrA_end      = int(variation[2])
-    chrB          = variation[3].strip("chr").strip("Chr").strip("CHR")
+    chrB          = variation[3]
     chrB_start    = int(variation[4])
     chrB_end      = int(variation[5])
     variation_type=variation[6]
-    hit=None
-    
-    hit = None;
+
     if chrA in allVariations:
         # now look if chrB is here
         if chrB in allVariations[chrA]:
             # check if this variation is already present
-            variationsBetweenChrAChrB = allVariations[chrA][chrB]
-            hit = None
-            for event in variationsBetweenChrAChrB:
-                hit_tmp = isSameVariation(event, [chrA_start, chrA_end, chrB_start, chrB_end,variation_type],ratio)
-                if hit_tmp != None:
-                    #if hit != None:
-                    #    print "attention multiple hits possible case not conisedere so fa...."
-                    hit = hit_tmp
-    return hit
+            for event in allVariations[chrA][chrB]:
+                #check if the variant type of the events is the same
+                if(event[4] == variation_type):
+                    #check so that the events are not disjunct on chromosome A
+                    event[0]=int(event[0])
+                    event[1]=int(event[1])
+                    event[2]=int(event[2])
+                    event[3]=int(event[3])
+                    if(event[0] <= chrA_end and event[1] >= chrA_start):
+                        hit_tmp = isSameVariation(event, [chrA_start, chrA_end, chrB_start, chrB_end],ratio)
+                        if hit_tmp != None:
+                            return(hit_tmp)
+    return None
 
 
 
     
 def isSameVariation(event, variation,ratio): #event is in the DB, variation is the new variation I want to insert
-    event_chrA_start    = int(event[0])
-    event_chrA_end      = int(event[1])
-    event_chrB_start    = int(event[2])
-    event_chrB_end      = int(event[3])
-    event_type = event[4];
+    event_chrA_start    = event[0]
+    event_chrA_end      = event[1]
+    event_chrB_start    = event[2]
+    event_chrB_end      = event[3]
+    variation_chrA_start      = variation[0]
+    variation_chrA_end        = variation[1]
+    variation_chrB_start      = variation[2]
+    variation_chrB_end        = variation[3]
 
-    variation_chrA_start      = int(variation[0])
-    variation_chrA_end        = int(variation[1])
-    variation_chrB_start      = int(variation[2])
-    variation_chrB_end        = int(variation[3])
-    variation_type=variation[4];
-    #only merge events if they are the same type, ie, dont merge a translocation with a duplication
-    if not (variation_type == event_type):
-        return None
-
-    
-    new_event = []
-    found     = 0
-    
+    found = 0
     for j in range(2):
         if j == 0:
             variation_start    = variation_chrA_start
@@ -150,39 +144,16 @@ def isSameVariation(event, variation,ratio): #event is in the DB, variation is t
             variation_end      = variation_chrB_end
             event_start  = event_chrB_start
             event_end    = event_chrB_end
-
-        overlapRatio = -float("inf")
-    
-        #event              --------
-        #variaton        --------------
-        if variation_start <= event_start and variation_end >= event_end:
-            overlapRatio=overlap_ratio(variation_start,variation_end,event_start,event_end)
-            new_event.append(variation_start)
-            new_event.append(variation_end)
-        #event         ---------------------
-        #variaton        ---------------      take into account special cases
-        elif variation_start >= event_start and variation_end <= event_end:
-            overlapRatio=overlap_ratio(variation_start,variation_end,event_start,event_end)
-            new_event.append(event_start)
-            new_event.append(event_end)
-        #event           ---------------------
-        #variaton     ------------------
-        elif variation_start < event_start and variation_end < event_end and variation_end >= event_start: #variation_end > event_start
-            overlapRatio=overlap_ratio(variation_start,variation_end,event_start,event_end)
-            new_event.append(variation_start)
-            new_event.append(event_end)
-        #event         ---------------------
-        #variaton           ----------------------
-        elif variation_start >= event_start and variation_end > event_end and variation_start <= event_end:
-            overlapRatio=overlap_ratio(variation_start,variation_end,event_start,event_end)
-            new_event.append(event_start)
-            new_event.append(variation_end)
+      
+        overlapRatio=overlap_ratio(variation_start,variation_end,event_start,event_end)
 
         if overlapRatio  >= ratio:
             found += 1
+        if not found:
+            break 
 
     if found == 2:
-        return new_event
+        return True
     else:
         return None
 
