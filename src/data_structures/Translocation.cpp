@@ -36,11 +36,11 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	}else if(isReverse[0] < 0.5 and isReverse[1] < 0.5){
 			svType= "INV";
 	}
-	//if the outie/innie pattern is reversed and the insert size is normal, the variant is an inversion.
+	//if the outie/innie pattern is reversed and the insert size is normal, the variant is an insertion.
 	if(averageInsert < meanInsert+4*STDInsert){
 		if(outtie == true){
 			if(isReverse[0] < 0.5 and isReverse[1] > 0.5){
-				svType= "INV";
+				svType= "INS";
 				//if the coverage of the two windows are too high aswell, the event is a tandem dulplication
     		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance ){
     				svType = "TDUP";
@@ -49,7 +49,7 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 
 		}else{
 			if(isReverse[0] > 0.5 and isReverse[1] < 0.5){
-				svType= "INV";
+				svType= "INS";
         	    //if the coverage of the two windows are too high aswell, the event is a tandem dulplication
     		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance ){
     				svType = "TDUP";

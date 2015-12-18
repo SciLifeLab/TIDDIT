@@ -238,7 +238,7 @@ if __name__ == '__main__':
         vcf_folder = glob.glob(os.path.join(args.folder,"*.vcf"));
         for vcf in vcf_folder:
             #scriptception, a script withing a script calling a script
-            command=["python","build_db.py","--variations",vcf]
+            command=["python",sys.argv[0],"--variations",vcf]
             if args.fixed:
                 command += ["--fixed"]
             if args.tollerance:

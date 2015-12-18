@@ -69,7 +69,7 @@ def main(args):
 
                     
         for query in queries:
-            hit = isVariationInDB(allVariations, query,ratio)
+            hit = isVariationInDB(allVariations, query,ratio,args)
             if hit:
                 query[7] += 1 # found hit
 
@@ -80,7 +80,7 @@ def main(args):
 
 
 
-def isVariationInDB(allVariations, variation,ratio):
+def isVariationInDB(allVariations, variation,ratio,args):
     """
 isVariationInDB requires a dictionaty like this
 chrA
@@ -107,21 +107,31 @@ the function checks if there is an hit and returns it
             # check if this variation is already present
             for event in allVariations[chrA][chrB]:
                 #check if the variant type of the events is the same
-                if(event[4] == variation_type):
+                if(event[4] == variation_type or args.no_var):
                     #check so that the events are not disjunct on chromosome A
                     event[0]=int(event[0])
                     event[1]=int(event[1])
                     event[2]=int(event[2])
                     event[3]=int(event[3])
-                    if(event[0] <= chrA_end and event[1] >= chrA_start):
+                    if not (chrA == chrB):
+                        hit_tmp=precise_overlap(event, [chrA_start, chrA_end, chrB_start, chrB_end],args.bnd_distance)
+                        if hit_tmp != None:
+                            return(hit_tmp)
+                    elif(event[0] <= chrA_end and event[1] >= chrA_start):
                         hit_tmp = isSameVariation(event, [chrA_start, chrA_end, chrB_start, chrB_end],ratio)
                         if hit_tmp != None:
                             return(hit_tmp)
     return None
 
 
+#check the "overlap" of translocations
+def precise_overlap(db_var,query_var,distance):    
+    Adist=abs(db_var[0]-query_var[0]);
+    Bdist=abs(db_var[2]-query_var[2]);
+    if(Adist <= distance and Bdist <= distance ):
+        return(True)
 
-    
+
 def isSameVariation(event, variation,ratio): #event is in the DB, variation is the new variation I want to insert
     event_chrA_start    = event[0]
     event_chrA_end      = event[1]
@@ -132,30 +142,17 @@ def isSameVariation(event, variation,ratio): #event is in the DB, variation is t
     variation_chrB_start      = variation[2]
     variation_chrB_end        = variation[3]
 
-    found = 0
-    for j in range(2):
-        if j == 0:
-            variation_start    = variation_chrA_start
-            variation_end      = variation_chrA_end
-            event_start  = event_chrA_start
-            event_end    = event_chrA_end
-        else:
-            variation_start    = variation_chrB_start
-            variation_end      = variation_chrB_end
-            event_start  = event_chrB_start
-            event_end    = event_chrB_end
+    variation_start    = variation_chrA_start
+    variation_end      = variation_chrA_end
+    event_start  = event_chrA_start
+    event_end    = event_chrA_end
+
       
-        overlapRatio=overlap_ratio(variation_start,variation_end,event_start,event_end)
+    overlapRatio=overlap_ratio(variation_start,variation_end,event_start,event_end)
 
-        if overlapRatio  >= ratio:
-            found += 1
-        if not found:
-            break 
-
-    if found == 2:
-        return True
-    else:
-        return None
+    if overlapRatio  >= ratio:
+        return(True);
+    return None
 
 #compute the total area spanned by the two events(overlaping events), calculate the intersect of the two events, return the ratio of the length of these two regions
 def overlap_ratio(variation_start,variation_end,event_start,event_end):
@@ -188,7 +185,9 @@ if __name__ == '__main__':
     parser.add_argument('--variations', type=str, required = True, help="vcf file containing variations")
     parser.add_argument('--files'        , type=str, nargs='*', help="the paths to the db files are given as a command line arguments")
     parser.add_argument('--db'        , type=str,                help="path to DB (a folder containing samples .db files")
+    parser.add_argument('--bnd_distance'        , type=int,default= 10000,help="the maximum distance between two similar precise breakpoints")
     parser.add_argument('--overlap', type=float, default = 0.6,help="the overlap required to merge two events(0 means anything that touches will be merged, 1 means that two events must be identical to be merged), default = 0.6")
+    parser.add_argument('--no_var',help="count overlaping variants of different type as hits in the db", required=False, action="store_true")
     args = parser.parse_args()
     if not (args.files or args.db):
         print("a DB input method must be selected(file or db arguments)")

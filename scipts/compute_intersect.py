@@ -8,7 +8,7 @@ import subprocess
 parser = argparse.ArgumentParser("""this script accepts the name of some callers, aswell as database files, returns output that may be used to construct a Venn-diagram
 """)
 parser.add_argument('--files'        ,required = True, type=str, nargs='*', help="the callers vcf output, if a caller returns multiple files, separate them with :")
-parser.add_argument('--db'        ,required = True, type=str, nargs='*', help="the database files generated from the vcf:")
+parser.add_argument('--db'        ,required = True, type=str, nargs='*', help="the database files generated from the vcf, separate them with:")
 parser.add_argument('--callers', required= True , type = str, nargs = '*',help='the name of the callers')
 args = parser.parse_args()
 
