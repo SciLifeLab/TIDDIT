@@ -17,7 +17,6 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	string start=lexical_cast<string>(startA);
 	string end=lexical_cast<string>(endB);
     
-    
 	double coverage= this -> meanCoverage;
 	float coverageTolerance=this -> meanCoverage/double(this -> ploidity)*0.6;
 	float covAB;
@@ -29,7 +28,7 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	double averageInsert=isReverse[2];
 	
 
-	//if the orientation of one of the reads is normal, but the other read is inverted, the variant is a large inversion
+	//if the orientation of one of the reads is normal, but the other read is inverted, the variant is an inversion
 	//both reads are pointing to the left
 	if(isReverse[0] > 0.5 and isReverse[1] > 0.5){
 			svType= "INV";
@@ -37,7 +36,7 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 			svType= "INV";
 	}
 	//if the outie/innie pattern is reversed and the insert size is normal, the variant is an insertion.
-	if(averageInsert < meanInsert+4*STDInsert){
+	if(averageInsert < this->max_insert){
 		if(outtie == true){
 			if(isReverse[0] < 0.5 and isReverse[1] > 0.5){
 				svType= "INS";
@@ -82,7 +81,7 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 
 	//if the insert size is longer than expected 
 	if(svType == "BND"){
-		if(averageInsert > meanInsert+4*STDInsert){
+		if(averageInsert > this->max_insert){
 			if(covAB < coverage-coverageTolerance){
 				svType= "DEL";
 			}
@@ -94,7 +93,7 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 			}//if A and B are disjunct and only one of them have coverage above average, the event is an interspersed duplication
 			else if( (covA > coverage+coverageTolerance and covB < coverage+coverageTolerance ) or (covB > coverage+coverageTolerance and covA < coverage+coverageTolerance ) ){
 				svType = "IDUP";
-                //label the region marked as high coverage as the deletion
+                //label the region marked as high coverage as the duplications
                 if(covA > coverage+coverageTolerance){
                     string start=lexical_cast<string>(endA);
                 }else if(covB > coverage+coverageTolerance){
@@ -331,11 +330,10 @@ vector<int> Window::findLinksToChr2(queue<BamAlignment> ReadQueue,long startChrA
 
 //Computes statstics such as coverage on the window of chromosome A
 vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int start, int end, int32_t WindowLength, string indexFile){
-	queue<int> linksFromA=linksFromWin[this -> chr];
+	queue<int> linksFromA=linksFromWin[chrB];
 	vector<double> statisticsVector;
 	int currentReadPosition=0;
 	int linksFromWindow=0;
- 
 	while ( linksFromA.size() > 0 ) {
 		currentReadPosition=linksFromA.front();
 		linksFromA.pop();
@@ -344,7 +342,8 @@ vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int star
 			}
 	}
 	//calculates the coverage and returns the coverage within the window
-	double coverageA=computeCoverageB(chrB,start,end,WindowLength);
+	double coverageA=computeCoverageB(this -> chr,start,end,WindowLength);
+	//todo change the 100 to the read length
 	statisticsVector.push_back(coverageA);statisticsVector.push_back(linksFromWindow);statisticsVector.push_back(100);
 	return(statisticsVector);	
 	
@@ -534,7 +533,7 @@ vector<double> Window::computeOrientation(queue<BamAlignment> alignmentQueue,lon
 //function that prints the statistics to a vcf file
 void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int startchrA,int stopchrA,int pairsFormingLink,int numLinksToChr2,int estimatedDistance){
 	double coverageRealSecondWindow=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
-	vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, this -> chr, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
+	vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, chr2, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
 	double coverageRealFirstWindow	= statisticsFirstWindow[0];
 	int linksFromWindow=int(statisticsFirstWindow[1]);
 	int averageReadLength=int(statisticsFirstWindow[2]);
@@ -552,8 +551,6 @@ void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int st
 	vector<double> orientation=computeOrientation(eventReads[chr2],startchrA ,stopchrA,startSecondWindow,stopSecondWindow);
 	string read1_orientation;
 	string read2_orientation;
-	
-
 	string readOrientation="";
 	ostringstream convertRead;
 	//calculate the orientation of the reads
@@ -576,10 +573,8 @@ void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int st
 		convertMate << 100-round(orientation[1]*100);
 		read2_orientation="+(" + convertMate.str() + "%)";
 	}
-
 	string filter;
 	filter=filterFunction(pairsFormingLink/expectedLinksInWindow,numLinksToChr2,linksFromWindow,mean_insert, 									std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);	
-
 	if(this->chr == chr2) {
 
 		vector<string> svVector=classification(chr2,startchrA, stopchrA,coverageRealFirstWindow,startSecondWindow, stopSecondWindow,coverageRealSecondWindow,this -> mean_insert,this -> std_insert,this -> outtie,orientation);
