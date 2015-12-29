@@ -55,4 +55,4 @@ def readVCFLine(source,line):
 
         event_type="BND"
                 
-    return( chrA.strip("chr").strip("Chr").strip("CHR"), startA,endA , chrB.strip("chr").strip("Chr").strip("CHR"), startB, endB, event_type);
+    return( chrA.replace("chr","").strip("CHR",""), startA,endA , chrB.replace("chr","").strip("CHR",""), startB, endB, event_type);
