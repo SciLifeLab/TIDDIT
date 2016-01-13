@@ -13,8 +13,17 @@ def readVCFLine(source,line):
         tag=tag.split("=")
         if(len(tag) > 1):
             description[tag[0]]=tag[1];
+    #Delly translocations
+    if("TRA" in variation[4]):
+        endA=startA
 
-    if(not  "]" in variation[4] and not "[" in variation[4]):
+        event_type="BND"
+        chrB=description["CHR2"]
+        startB=int(description["END"]);
+        endB=int(description["END"]);       
+
+    #intrachromosomal variant
+    elif(not  "]" in variation[4] and not "[" in variation[4]):
         chrB=chrA;
                 
         startB=startA;
@@ -31,15 +40,10 @@ def readVCFLine(source,line):
             startA=tmp;
 
         event_type=variation[4].strip("<").rstrip(">");
-
+    #if the variant is given as a breakpoint, it is stored as a precise variant in the db
     else:
         B=variation[4];
-        #Create a small interval around the break points
-        endA=startA+1000;
-        if(startA-1000 > 0):
-            startA=startA-1000;
-        else:
-            startA=1;
+        endA=startA;
 
         B=re.split("[],[]",B);
         for string in B:
@@ -47,12 +51,11 @@ def readVCFLine(source,line):
                 lst=string.split(":");
                 chrB=lst[0]
                 startB=int(lst[1]);
-                endB=startB+1000;
-            if(startB -1000 > 0):
-                startB=startB-1000;
-            else:
-                startB=1
+                endB=startB
 
         event_type="BND"
+        if(chrA == chrB):
+            endA=endB
+            startB=startA;
                 
     return( chrA.replace("chr","").replace("CHR",""), startA,endA , chrB.replace("chr","").replace("CHR",""), startB, endB, event_type);
