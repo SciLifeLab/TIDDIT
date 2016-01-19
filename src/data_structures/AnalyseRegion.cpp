@@ -29,36 +29,22 @@ void Region::region(string bamFile,string baiFile,string regionFile,string outpu
 		return;
 	}
 
-	vector<int> libraryStats;
-	//compute max_insert,mean insert and outtie
-	autoSettings *autoStats;
-	autoStats = new autoSettings();
-	size_t start = time(NULL);
-	libraryStats=autoStats->autoConfig(bamFile,minimum_mapping_quality,max_insert);
-			
-	printf ("auto config time consumption= %lds\n", time(NULL) - start);
-	int max_insert=libraryStats[0];
-	int min_insert=libraryStats[1];
-	bool outtie=libraryStats[2] != 0;
-
-
-
-
+	bool outtie = true;
+	int min_insert = 100;
+	int max_insert = 200000;
+	
 	LibraryStatistics library;
-	start = time(NULL);
 	library = computeLibraryStats(bamFile, genomeLength, max_insert,min_insert, outtie,minimum_mapping_quality);
-	printf ("library stats time consumption= %lds\n", time(NULL) - start);
 	double coverage   = library.C_A;
 	int meanInsert = library.insertMean;
 	int insertStd  = library.insertStd;
-	max_insert =meanInsert+4*insertStd;
+	max_insert =meanInsert+2*insertStd;
 	this -> max_insert = max_insert;
+	outtie=library.mp;
 
-	start = time(NULL);
 	Cov *calculateCoverage;
 	calculateCoverage = new Cov();
-	calculateCoverage -> coverageMain(bamFile,baiFile,"",output,coverage,contig2position,4,200);
-	printf ("time consumption of the coverage computation= %lds\n", time(NULL) - start);
+	calculateCoverage -> coverageMain(bamFile,baiFile,"",output,coverage,contig2position,4,500);
 
 	//open the bam file
 	BamReader alignmentFile;
@@ -74,7 +60,7 @@ void Region::region(string bamFile,string baiFile,string regionFile,string outpu
 	//expands a vector so that it is large enough to hold reads from each contig in separate elements
 	window->eventReads.resize(contigsNumber);
 	window-> binnedCoverage.resize(contigsNumber);
-
+	window-> linksFromWin.resize(contigsNumber);
 
 	window -> numberOfEvents=1;
 
@@ -87,15 +73,12 @@ void Region::region(string bamFile,string baiFile,string regionFile,string outpu
 		window -> binnedCoverage[window -> contig2position[splitline[0]]].push_back(atof(splitline[1].c_str()));
 	}
 	coverageInputFile.close();
-
 	//read the region file
 	if (inputFile){
 		while (getline( inputFile, line )){
 			int pairsFormingLink=0;
 			vector<std::string> splitline;
 			boost::split(splitline, line, boost::is_any_of("\t"));
-
-
 			queue<int> chr;queue<int> startPos;queue<int> endPos;
 			vector< queue<int> > regionVector;
 			if(this -> input == "bed"){
@@ -106,7 +89,6 @@ void Region::region(string bamFile,string baiFile,string regionFile,string outpu
 					continue;
 				else{
 					regionVector=readVCF(splitline);
-					
 				}
 			}
 			chr=regionVector[0];
@@ -128,7 +110,6 @@ void Region::region(string bamFile,string baiFile,string regionFile,string outpu
 			chr.pop();startPos.pop();endPos.pop();
 			int chrB=chr.front();int startB=startPos.front(); int endB=endPos.front();
 
-
 			//sort the events
 			if(chrB < chrA){
 				int tmpChr;int tmpStart;int tmpEnd;
@@ -147,50 +128,48 @@ void Region::region(string bamFile,string baiFile,string regionFile,string outpu
 			bool first=true;
 			int newChrBstart=endB;
 			int newChrBend=startB;
-
-			alignmentFile.SetRegion(chr.front(),startPos.front(),chr.front(),endPos.front()+1);
+			int newChrAEnd=endA;
+			alignmentFile.SetRegion(chrA,startA,chrA,endA+1); 
 			while ( alignmentFile.GetNextAlignmentCore(currentRead) ) {
 				//makes sure that we are inside the region
 				if(startA <= currentRead.Position and endA >= currentRead.Position){
 					readStatus alignmentStatus = computeReadType(currentRead, max_insert,min_insert, outtie);
 					if(alignmentStatus != unmapped and alignmentStatus != lowQualty ) {
-						if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance or alignmentStatus == pair_wrongOrientation) {
+						if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
 							//store the read if its mate is reaching region B
 							//store the read in the discordant read queue if it is discordant, but do not reach region B
-							if(currentRead.RefID < currentRead.MateRefID or (currentRead.RefID == currentRead.MateRefID and currentRead.Position < currentRead.MatePosition)) {
-								if(currentRead.MatePosition >= startB and currentRead.MatePosition <= endB and currentRead.MateRefID == chrB) {
-									pairsFormingLink++;
-									//set the first position of A to the first read in the A window
-									if (first == true){
-										first = false;
-										startA=currentRead.Position;
-									}
-									//the end position is continously updated, the last read will become the end
-									endA=currentRead.Position;
-									if(currentRead.MatePosition < newChrBstart){
-										newChrBstart=currentRead.MatePosition;
-									}
-	
-									if(currentRead.MatePosition >newChrBend){
-										newChrBend=currentRead.MatePosition;
-									}
-	
+							if(currentRead.MatePosition >= startB and currentRead.MatePosition <= endB and currentRead.MateRefID == chrB) {
+								pairsFormingLink++;
+								//set the first position of A to the first read in the A window
+								if (first == true){
+									first = false;
+									startA=currentRead.Position;
 								}
-								//only add reads to the vector if we are inside the event window
-								if(first == false){
-									window->eventReads[currentRead.MateRefID].push(currentRead);	
+								//the end position is continously updated, the last read will become the end
+								newChrAEnd=currentRead.Position;
+								if(currentRead.MatePosition < newChrBstart){
+									newChrBstart=currentRead.MatePosition;
 								}
+	
+								if(currentRead.MatePosition >newChrBend){
+									newChrBend=currentRead.MatePosition;
+								}
+	
+							}
+							//only add reads to the vector if we are inside the event window
+							if(first == false){
+								window->eventReads[currentRead.MateRefID].push(currentRead);
+								window -> linksFromWin[chrB].push(currentRead.Position);	
 							}
 		         		}
 					}
 				}
 			}
-
 			if(newChrBend >= newChrBstart){
 				endB=newChrBend;
 				startB=newChrBstart;
 			}
-			//calculate statistics and print the vcf file
+			endA=newChrAEnd;
 			vector<int> statsOnB=window->findLinksToChr2(window->eventReads[chrB],startA, endA,startB,endB,pairsFormingLink);
 			int numLinksToChr2=statsOnB[0];
 			int estimatedDistance=statsOnB[1];
@@ -198,7 +177,6 @@ void Region::region(string bamFile,string baiFile,string regionFile,string outpu
 				estimatedDistance=1;
 			}
 			window->VCFLine(chrB,startB,endB,startA,endA,pairsFormingLink,numLinksToChr2,estimatedDistance);
-
 		}
 		window->interChrVariationsVCF.close();
 		window->intraChrVariationsVCF.close();
