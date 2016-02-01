@@ -39,14 +39,14 @@ for i in range(0,n):
                 caller_db=[]
                 for callers in combination:
                         caller_db += (databases[callers][1])
+                counter =0
                 for vcf in databases[combination[0]][0]:
                         command=["python", "query_db.py","--variations",vcf,"--overlap","0.9","--files"]
                         command +=caller_db
                         results=subprocess.check_output(command)
-                        counter=0;
                         results=results.split("\n");
                         for line in results:
                                 if(";OCC="+str(len(combination)) in line):
                                         counter +=1
-                        print(" ".join(combination)+" "+str(counter))
+                print(" ".join(combination)+" "+str(counter))
 
