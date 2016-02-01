@@ -20,7 +20,14 @@ def readVCFLine(source,line):
         event_type="BND"
         chrB=description["CHR2"]
         startB=int(description["END"]);
-        endB=int(description["END"]);       
+        endB=int(description["END"]);
+        if chrA > chrB:
+            chrA = chrB
+            endA=endB
+            startB=startA
+            
+            startA=endA
+            endB=startB
 
     #intrachromosomal variant
     elif(not  "]" in variation[4] and not "[" in variation[4]):
@@ -52,6 +59,13 @@ def readVCFLine(source,line):
                 chrB=lst[0]
                 startB=int(lst[1]);
                 endB=startB
+                if chrA > chrB:
+                    chrA = chrB
+                    endA=endB
+                    startB=startA
+            
+                    startA=endA
+                    endB=startB
 
         event_type="BND"
         if(chrA == chrB):
