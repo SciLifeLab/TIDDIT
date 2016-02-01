@@ -57,5 +57,11 @@ def readVCFLine(source,line):
         if(chrA == chrB):
             endA=endB
             startB=startA;
+            if startB > endB:
+                endB=startB
+                startB=endA
+                
+                endA=endB
+                startA=startB
                 
     return( chrA.replace("chr","").replace("CHR",""), startA,endA , chrB.replace("chr","").replace("CHR",""), startB, endB, event_type);
