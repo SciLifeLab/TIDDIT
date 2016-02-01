@@ -22,7 +22,9 @@ def readVCFLine(source,line):
         startB=int(description["END"]);
         endB=int(description["END"]);
         if chrA > chrB:
+            chrT= chrA
             chrA = chrB
+            chrB= chrT
             endA=endB
             startB=startA
             
@@ -60,7 +62,9 @@ def readVCFLine(source,line):
                 startB=int(lst[1]);
                 endB=startB
                 if chrA > chrB:
+                    chrT = chrA
                     chrA = chrB
+                    chrB = chrT
                     endA=endB
                     startB=startA
             
