@@ -365,7 +365,7 @@ int main(int argc, char *argv[]) {
 			insertStd  = library.insertStd;
 			//update the max_insert
 			if(vm.count("auto")){
-				max_insert =meanInsert+4*insertStd;
+				max_insert =meanInsert+3*insertStd;
 				outtie=library.mp;
 				if(outtie == true){
 					cout << "auto-config orientation: outtie" << endl;
