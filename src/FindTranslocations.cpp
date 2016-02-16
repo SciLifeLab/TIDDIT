@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 	//MAIN VARIABLE
 	string alignmentFile		    = "";       // alignment file name
 	bool outtie 				    = true;	 // library orientation
-	uint32_t minimumSupportingPairs = 6;
+	uint32_t minimumSupportingPairs = 3;
 	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 200000;  // max insert size
 	int minimum_mapping_quality     = 20;
@@ -365,7 +365,7 @@ int main(int argc, char *argv[]) {
 			insertStd  = library.insertStd;
 			//update the max_insert
 			if(vm.count("auto")){
-				max_insert =meanInsert+3*insertStd;
+				max_insert =meanInsert+1.5*insertStd;
 				outtie=library.mp;
 				if(outtie == true){
 					cout << "auto-config orientation: outtie" << endl;
