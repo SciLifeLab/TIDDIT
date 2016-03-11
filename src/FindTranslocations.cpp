@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 	uint32_t minimumSupportingPairs = 3;
 	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 200000;  // max insert size
-	int minimum_mapping_quality     = 20;
+	int minimum_mapping_quality     = 0;
 	float coverage;
 	float coverageStd;
 	float meanInsert;
@@ -71,7 +71,6 @@ int main(int argc, char *argv[]) {
 	po::options_description modules(ssModule.str().c_str());
 	modules.add_options()
 		("help", "produce help message")
-		("cnv", "Select the cnv module to find copy number variations ")
 		("cov", "select the cov module to analyse the coverage of regions inside a bam file")
 		("extract", "select the extract module to extract regions of interest from a bam file")
 		("region", "select the region module to search for a certain variation given in a region file, read the README file for more information on the format of the region file")

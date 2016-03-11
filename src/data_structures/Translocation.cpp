@@ -207,7 +207,7 @@ Window::Window(int max_insert,int min_insert, uint16_t minimum_mapping_quality,
 
 void Window::insertRead(BamAlignment alignment) {
 	readStatus alignmentStatus = computeReadType(alignment, this->max_insert,this->min_insert, this->outtie);
-	if(alignmentStatus == unmapped or alignmentStatus == lowQualty or not alignment.IsMateMapped() or alignment.MapQuality < minimum_mapping_quality) {
+	if(alignment.MapQuality < minimum_mapping_quality) {
 		return; // in case the alignment is of no use discard it
 	}
 
@@ -228,7 +228,7 @@ void Window::insertRead(BamAlignment alignment) {
 			
 
 		}
-		cout << "working on sequence " << position2contig[alignment.RefID] << "\n";
+		cout << "working on seqence " << position2contig[alignment.RefID] << "\n";
 	}
 
 	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
