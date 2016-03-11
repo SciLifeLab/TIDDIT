@@ -16,9 +16,12 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	string svType="BND";
 	string start=lexical_cast<string>(startA);
 	string end=lexical_cast<string>(endB);
-    
+	
+	string GT="./1";
+	int CN=1;
+
 	double coverage= this -> meanCoverage;
-	float coverageTolerance=this -> meanCoverage/double(this -> ploidity)*0.6;
+	float coverageTolerance=this -> meanCoverage/double(this -> ploidity)*0.6; // lower the tolerance multiplier slightly - at least for hom del? .4-.5?
 	float covAB;
 	if(endA <= startB){
 		covAB=computeCoverageB(chr,endA,startB, startB-endA);
@@ -27,6 +30,10 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	}
 	double averageInsert=isReverse[2];
 	
+
+	// for heterozygous events
+	CN = round(covAB / (coverage/double(this->ploidity)) ) - 1; // CN sounds like ratio to coverage per chr, minus 1? at least for het vars with the other allele at count 1.
+	if (CN < 0) { CN = 0; }
 
 	//if the orientation of one of the reads is normal, but the other read is inverted, the variant is an inversion
 	//both reads are pointing to the left
@@ -42,7 +49,7 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 				svType= "INS";
 				//if the coverage of the two windows are too high aswell, the event is a tandem dulplication
     		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance ){
-    				svType = "TDUP";
+    				svType = "TDUP";			       
     			}
 			}
 
@@ -84,6 +91,13 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 		if(averageInsert > this->max_insert){
 			if(covAB < coverage-coverageTolerance){
 				svType= "DEL";
+				if (covAB < coverageTolerance) {
+				  GT = "1/1";
+				  //				  CN = 0; 
+				} else {
+				  GT = "0/1";
+				  // CN = 1;
+				}
 			}
 			//if the coverage of all regions is normal and region A and B are disjunct, the event is an insertion(mobile element)
 			else if( ( covAB < coverage+coverageTolerance and covAB > coverage-coverageTolerance ) and 
@@ -93,12 +107,12 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 			}//if A and B are disjunct and only one of them have coverage above average, the event is an interspersed duplication
 			else if( (covA > coverage+coverageTolerance and covB < coverage+coverageTolerance ) or (covB > coverage+coverageTolerance and covA < coverage+coverageTolerance ) ){
 				svType = "IDUP";
-                //label the region marked as high coverage as the duplications
-                if(covA > coverage+coverageTolerance){
-                    string start=lexical_cast<string>(endA);
-                }else if(covB > coverage+coverageTolerance){
-                    string start=lexical_cast<string>(startB);
-                }
+				//label the region marked as high coverage as the duplications
+				if(covA > coverage+coverageTolerance){
+				  string start=lexical_cast<string>(endA);
+				}else if(covB > coverage+coverageTolerance){
+				  string start=lexical_cast<string>(startB);
+				}
 			}
 		}
 	}
@@ -111,10 +125,14 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 		//if a deletion is small enough, the coverage will be low on the sides of the variation
 		if(covA < coverage-coverageTolerance and covB < coverage-coverageTolerance){
 			svType = "DEL";
+			if (covA < coverageTolerance or covB < coverageTolerance) {
+			  GT = "1/1";
+			  CN = 0;
+			}
 		}
 	}
-    vector<string> svVector;
-    svVector.push_back(svType);svVector.push_back(start);svVector.push_back(end);
+	vector<string> svVector;
+	svVector.push_back(svType);svVector.push_back(start);svVector.push_back(end);svVector.push_back(GT);svVector.push_back(lexical_cast<string>(CN));
 	return(svVector);
 }
 
@@ -123,9 +141,9 @@ string filterFunction(double RATIO, int linksToB, int LinksFromWindow,float mean
 	double linkratio= (double)linksToB/(double)LinksFromWindow;
 	if(RATIO < 0.4){
 		filter="BelowExpectedLinks";
-	}else if(linkratio < 0.4){
+	} else if(linkratio < 0.4){
 		filter="FewLinks";
-	}else if(coverageA > 10*coverageAVG or coverageB > coverageAVG*10){
+	} else if(coverageA > 10*coverageAVG or coverageB > coverageAVG*10){
 		filter="UnexpectedCoverage";
 	}
 
@@ -153,7 +171,7 @@ string Window::VCFHeader(){
 	
 	//Define the info fields
 	headerString+="##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n";
-    headerString+="##INFO=<ID=END,Number=1,Type=String,Description=\"End of an intra-chromosomal variant\">\n";
+	headerString+="##INFO=<ID=END,Number=1,Type=String,Description=\"End of an intra-chromosomal variant\">\n";
 	headerString+="##INFO=<ID=LFW,Number=1,Type=Integer,Description=\"Links from window\">\n";
 	headerString+="##INFO=<ID=LCB,Number=1,Type=Integer,Description=\"Links to chromosome B\">\n";
 	headerString+="##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\">\n";
@@ -171,10 +189,13 @@ string Window::VCFHeader(){
 	headerString+="##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links between A and B is less than 40\% of the expected value\">\n";
 	headerString+="##FILTER=<ID=FewLinks,Description=\"Fewer than 40% of the links in window A link to chromosome B\">\n";
 	headerString+="##FILTER=<ID=UnexpectedCoverage,Description=\"The coverage of the window on chromosome B or A is higher than 10*average coverage\">\n";
+	//set format 
+	headerString+="##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n";
+	headerString+="##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy number genotype for imprecise events\">\n";
+	headerString+="##FORMAT=<ID=PE,Number=1,Type=Integer,Description=\"Number of paired-ends that support the event\">\n";
 	//Header
-	headerString+="#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n";		
-
-	return(headerString);		
+	headerString+="#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t"; // now just add the individuals!
+	return(headerString);
 }
 
 
@@ -197,11 +218,11 @@ Window::Window(int max_insert,int min_insert, uint16_t minimum_mapping_quality,
 	this->outputFileHeader   = outputFileHeader;
 	string inter_chr_eventsVCF = outputFileHeader + "_inter_chr_events.vcf";
 	this->interChrVariationsVCF.open(inter_chr_eventsVCF.c_str());
-	this->interChrVariationsVCF << VCFHeader();
+	this->interChrVariationsVCF << VCFHeader() << outputFileHeader << "\n";
 
 	string intra_chr_eventsVCF = outputFileHeader + "_intra_chr_events.vcf";
 	this->intraChrVariationsVCF.open(intra_chr_eventsVCF.c_str());
-	this->intraChrVariationsVCF << VCFHeader();
+	this->intraChrVariationsVCF << VCFHeader() << outputFileHeader << "\n";
 
 }
 
@@ -581,6 +602,8 @@ void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int st
 		string svType=svVector[0];
 		string start=svVector[1];
 		string end = svVector[2];
+		string GT = svVector[3];
+		string CN = svVector[4];
 		this -> numberOfEvents++;
 		intraChrVariationsVCF << this -> position2contig[this -> chr]  << "\t" <<     start   << "\tSV_" << this -> numberOfEvents << "\t"  ;
 		intraChrVariationsVCF << "N"       << "\t"	<< "<" << svType << ">";
@@ -588,7 +611,8 @@ void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int st
 		intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";END="<< end <<";LFW=" << linksFromWindow;
 		intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
 		intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-		intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow <<  "\n";    
+		intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow ;
+		intraChrVariationsVCF << "\tGT:CN:PE\t" << GT << ":" << CN << ":" <<pairsFormingLink << "\n";
 	} else {
 		string svType="BND";
 		this -> numberOfEvents++;
@@ -598,10 +622,9 @@ void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int st
 		interChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
 		interChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
 		interChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-		interChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow << "\n";
+		interChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
+		interChrVariationsVCF << "\tGT:PE\t" << "./1" << ":" << pairsFormingLink << "\n";
 	}
 	return;
 
 }
-
-
