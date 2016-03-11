@@ -235,13 +235,13 @@ void Cov::interChromosomalVCF(string bamFile,string baiFile,string inputFileName
 				if(splitline[0] == "#CHROM"){
 					VCFheader =1;
 					coverageOutputVcf << line << endl;
-				}else if(splitline[0] == "##INFO=<ID=COVB,Number=1,Type=Integer,Description=\"Coverage on window B\">"){
+				}else if(splitline[0] == "##INFO=<ID=COVB,Number=1,Type=Float,Description=\"Coverage on window B\">"){
 					coverageOutputVcf << line << endl;
-					coverageOutputVcf << "##INFO=<ID=COVFRONTA,Number=2,Type=Integer,Description=\"The coverage 1Kb in front of windowA,COVFRONTA/LIBCOV\">\n";
-					coverageOutputVcf << "##INFO=<ID=COVBEHINDA,Number=2,Type=Integer,Description=\"The coverage 1Kb behind windowA,COVBEHINDA/LIBCOV\">\n";
-					coverageOutputVcf << "##INFO=<ID=COVFRONTB,Number=2,Type=Integer,Description=\"The coverage 1Kb in front of windowB,COVFRONTB/LIBCOV\">\n";
-					coverageOutputVcf << "##INFO=<ID=COVBEHINDB,Number=2,Type=Integer,Description=\"The coverage 1Kb behind windowB,COVBEHINDB/LIBCOV\">\n";		
-					coverageOutputVcf << "##INFO=<ID=LIBCOV,Number=1,Type=Integer,Description=\"The average library coverage\">\n";
+					coverageOutputVcf << "##INFO=<ID=COVFRONTA,Number=2,Type=Float,Description=\"The coverage 1Kb in front of windowA,COVFRONTA/LIBCOV\">\n";
+					coverageOutputVcf << "##INFO=<ID=COVBEHINDA,Number=2,Type=Float,Description=\"The coverage 1Kb behind windowA,COVBEHINDA/LIBCOV\">\n";
+					coverageOutputVcf << "##INFO=<ID=COVFRONTB,Number=2,Type=Float,Description=\"The coverage 1Kb in front of windowB,COVFRONTB/LIBCOV\">\n";
+					coverageOutputVcf << "##INFO=<ID=COVBEHINDB,Number=2,Type=Float,Description=\"The coverage 1Kb behind windowB,COVBEHINDB/LIBCOV\">\n";		
+					coverageOutputVcf << "##INFO=<ID=LIBCOV,Number=1,Type=Float,Description=\"The average library coverage\">\n";
 
 
 				}else{
@@ -345,13 +345,13 @@ void Cov::intraChromosomalVCF(string bamFile,string baiFile,string inputFileName
 					VCFheader =1;
 					coverageOutputVcf << line << endl;
 				
-				}else if(splitline[0] == "##INFO=<ID=COVB,Number=1,Type=Integer,Description=\"Coverage on window B\">"){
+				}else if(splitline[0] == "##INFO=<ID=COVB,Number=1,Type=Float,Description=\"Coverage on window B\">"){
 					coverageOutputVcf << line << endl;
-					coverageOutputVcf << "##INFO=<ID=COVFRONTA,Number=2,Type=Integer,Description=\"The coverage 1Kb in front of windowA,COVFRONTA/LIBCOV\">\n";
-					coverageOutputVcf << "##INFO=<ID=COVBEHINDB,Number=2,Type=Integer,Description=\"The coverage 1Kb behind windowB,COVBEHINDB/LIBCOV\">\n";		
-					coverageOutputVcf << "##INFO=<ID=COVAB,Number=1,Type=Integer,Description=\"The coverage between window A and B\">\n";
-					coverageOutputVcf << "##INFO=<ID=LIBCOV,Number=1,Type=Integer,Description=\"The average library coverage\">\n";
-					coverageOutputVcf << "##INFO=<ID=COVRATIO,Number=1,Type=Integer,Description=\"COVAB/LIBCOV\">\n";
+					coverageOutputVcf << "##INFO=<ID=COVFRONTA,Number=2,Type=Float,Description=\"The coverage 1Kb in front of windowA,COVFRONTA/LIBCOV\">\n";
+					coverageOutputVcf << "##INFO=<ID=COVBEHINDB,Number=2,Type=Float,Description=\"The coverage 1Kb behind windowB,COVBEHINDB/LIBCOV\">\n";		
+					coverageOutputVcf << "##INFO=<ID=COVAB,Number=1,Type=Float,Description=\"The coverage between window A and B\">\n";
+					coverageOutputVcf << "##INFO=<ID=LIBCOV,Number=1,Type=Float,Description=\"The average library coverage\">\n";
+					coverageOutputVcf << "##INFO=<ID=COVRATIO,Number=1,Type=Float,Description=\"COVAB/LIBCOV\">\n";
 
 				}else{
 					coverageOutputVcf << line << endl;
