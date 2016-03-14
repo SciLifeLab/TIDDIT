@@ -303,21 +303,24 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 			mappedReadsLength += al.Length;
 		}
 
-		if (al.IsFirstMate() && read_status) {
-			if(al.IsMapped() and al.MapQuality > quality and al.RefID == al.MateRefID and al.MatePosition-al.Position+1 < max_insert ){
-				iSize = abs(al.InsertSize);
-				if(counterK == 1) {
-					Mk = iSize;
-					Qk = 0;
-					counterK++;
-				} else {
-					float oldMk = Mk;
-					float oldQk = Qk;
-					Mk = oldMk + (iSize - oldMk)/counterK;
-					Qk = oldQk + (counterK-1)*(iSize - oldMk)*(iSize - oldMk)/(float)counterK;
-					counterK++;
+
+		if (al.IsFirstMate() && al.IsMateMapped()) {
+			if( al.IsReverseStrand() != al.IsMateReverseStrand()  && read_status != lowQualty){
+				if(al.IsMapped() and al.MapQuality > 20 and al.RefID == al.MateRefID and al.MatePosition-al.Position+1 < max_insert ){
+					iSize = abs(al.InsertSize);
+					if(counterK == 1) {
+						Mk = iSize;
+						Qk = 0;
+						counterK++;
+					} else {
+						float oldMk = Mk;
+						float oldQk = Qk;
+						Mk = oldMk + (iSize - oldMk)/counterK;
+						Qk = oldQk + (counterK-1)*(iSize - oldMk)*(iSize - oldMk)/(float)counterK;
+						counterK++;
+					}
+					insertsLength += iSize;
 				}
-				insertsLength += iSize;
 			}
 		}
 
