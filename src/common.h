@@ -22,14 +22,15 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 
+#ifndef M_PI
 #define M_PI 3.141592654
+#endif
 
 #ifdef INLINE_DISABLED
 #define INLINE
 #else
 #define INLINE inline
 #endif
-
 
 using namespace BamTools;
 using namespace std;
@@ -277,6 +278,8 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	// mates on different contigs
 	uint32_t matedDifferentContig 		= 0; // number of contig placed in a different contig
 	uint64_t matedDifferentContigLength = 0; // total number of reads placed in different contigs
+	// split reads
+	uint32_t splitReads = 0;
 
 	float C_A = 0; // total read coverage
 	float S_A = 0; // total span coverage
@@ -301,6 +304,12 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 		if (read_status != unmapped and read_status != lowQualty) {
 			mappedReads ++;
 			mappedReadsLength += al.Length;
+			
+			al.BuildCharData();
+			
+			if (al.HasTag("SA")) {
+			  splitReads ++;
+			}
 		}
 
 		if (al.IsFirstMate() && read_status) {
@@ -347,7 +356,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 		  case pair_wrongOrientation:
 			  wronglyOrientedReads ++;
 			  wronglyOrientedReadsLength += al.Length ;
-			  break;
+			  break;			  
 		  default:
 		     cout << "This should never be printed\n";
 		     break;
@@ -359,11 +368,12 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	cout << "\t total reads number "	<< reads << "\n";
 	cout << "\t total mapped reads " 	<< mappedReads << "\n";
 	cout << "\t total unmapped reads " 	<< unmappedReads << "\n";
-	cout << "\t proper pairs " 			<< matedReads << "\n";
+	cout << "\t proper pairs " 	       	<< matedReads << "\n";
+	cout << "\t split reads "               << splitReads << "\n";
 	cout << "\t wrong distance "		<< wrongDistanceReads << "\n";
 	cout << "\t zero quality reads " 	<< lowQualityReads << "\n";
 	cout << "\t wrongly contig "		<< matedDifferentContig << "\n";
-	cout << "\t singletons " 			<< singletonReads << "\n";
+	cout << "\t singletons " 		<< singletonReads << "\n";
 
 	uint32_t total = matedReads + wrongDistanceReads +  wronglyOrientedReads +  matedDifferentContig + singletonReads  ;
 	cout << "\ttotal " << total << "\n";

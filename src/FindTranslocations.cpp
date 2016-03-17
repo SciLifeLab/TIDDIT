@@ -208,7 +208,6 @@ int main(int argc, char *argv[]) {
 		fileQueue.pop();
 		outputFileHeader = fileQueue.front();
 
-	
 		// Now parse BAM header and extract information about genome lenght
 		
 		BamReader bamFile;
@@ -376,9 +375,9 @@ int main(int argc, char *argv[]) {
 
 		}
 		
-        int ploidity = 2;
-        if(vm.count("ploidiy")){
-            ploidity = vm["ploidiy"].as<int>();
+        int ploidy = 2;
+        if(vm.count("ploidy")){
+            ploidy = vm["ploidy"].as<int>();
         }
 		size_t start = time(NULL);
 		Cov *calculateCoverage;
@@ -388,7 +387,7 @@ int main(int argc, char *argv[]) {
 
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();
-		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, min_insert, max_insert, outtie, minimum_mapping_quality, minimumSupportingPairs, coverage, meanInsert, insertStd, outputFileHeader, indexFile,contigsNumber,ploidity);
+		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, min_insert, max_insert, outtie, minimum_mapping_quality, minimumSupportingPairs, coverage, meanInsert, insertStd, outputFileHeader, indexFile,contigsNumber,ploidy);
 
 
 	//if the find copy number variation module is chosen
@@ -484,8 +483,8 @@ int main(int argc, char *argv[]) {
 		}
 
         int ploidy = 2;
-        if(vm.count("ploidiy")){
-            ploidy = vm["ploidiy"].as<int>();
+        if(vm.count("ploidy")){
+            ploidy = vm["ploidy"].as<int>();
         }
 
 		Region *AnalyseRegion;

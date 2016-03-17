@@ -176,7 +176,8 @@ void Region::region(string bamFile,string baiFile,string regionFile,string outpu
 			if(estimatedDistance < 0){
 				estimatedDistance=1;
 			}
-			window->VCFLine(chrB,startB,endB,startA,endA,pairsFormingLink,numLinksToChr2,estimatedDistance);
+			int splitsFormingLink = 0; // no split read support here yet..
+			window->VCFLine(chrB,startB,endB,startA,endA,pairsFormingLink,splitsFormingLink,numLinksToChr2,estimatedDistance);
 		}
 		window->interChrVariationsVCF.close();
 		window->intraChrVariationsVCF.close();
