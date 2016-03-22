@@ -21,7 +21,8 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	int CN=1;
 
 	double coverage= this -> meanCoverage;
-	float coverageTolerance=this -> meanCoverage/double(this -> ploidy)*0.6; // lower the tolerance multiplier slightly - at least for hom del? .4-.5?
+	float coverageToleranceFraction = 0.6;
+	float coverageTolerance=this -> meanCoverage/double(this -> ploidy)*coverageToleranceFraction; // lower the tolerance multiplier slightly - at least for hom del? .4-.5?
 	float covAB;
 	if(endA <= startB){
 		covAB=computeCoverageB(chr,endA,startB, startB-endA);
@@ -34,6 +35,10 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	// for heterozygous events
 	CN = round(covAB / (coverage/double(this->ploidy)) ) - 1; // CN sounds like ratio to coverage per chr, minus 1? at least for het vars with the other allele at count 1.
 	if (CN < 0) { CN = 0; }
+        else if ( (CN+1 < 1.5 + 0.5*coverageToleranceFraction) && (CN+1 > 1 + 0.5*coverageToleranceFraction)) { 
+	  // dup genotype is 0/1
+          GT="0/1";
+	}
 
 	//if the orientation of one of the reads is normal, but the other read is inverted, the variant is an inversion
 	//both reads are pointing to the left
@@ -103,10 +108,12 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 			else if( ( covAB < coverage+coverageTolerance and covAB > coverage-coverageTolerance ) and 
 				( covB < coverage+coverageTolerance and covB > coverage-coverageTolerance )	and
 				( covA < coverage+coverageTolerance and covA > coverage-coverageTolerance )){
-				svType = "INS";
+			  // svType = "INS"; 
+			  // Set BND ALT fields to reflect orientation...
 			}//if A and B are disjunct and only one of them have coverage above average, the event is an interspersed duplication
 			else if( (covA > coverage+coverageTolerance and covB < coverage+coverageTolerance ) or (covB > coverage+coverageTolerance and covA < coverage+coverageTolerance ) ){
 				svType = "IDUP";
+				// it would be a good idea to split this into one DUP and one BND, indicating the insertion point
 				//label the region marked as high coverage as the duplications
 				if(covA > coverage+coverageTolerance){
 				  string start=lexical_cast<string>(endA);
