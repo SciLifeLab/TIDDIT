@@ -237,7 +237,7 @@ Window::Window(int max_insert,int min_insert, uint16_t minimum_mapping_quality,
 void Window::insertRead(BamAlignment alignment) {
 	readStatus alignmentStatus = computeReadType(alignment, this->max_insert,this->min_insert, this->outtie);
 
-	if(alignment.MapQuality < minimum_mapping_quality) {
+	if( not alignment.IsMateMapped()  or alignment.MapQuality < minimum_mapping_quality ) {
 		return; // in case the alignment is of no use discard it
 	}
 
