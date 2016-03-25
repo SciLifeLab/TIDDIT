@@ -18,6 +18,8 @@ public:
 	int chr;
 
 	vector< queue<BamAlignment> >	eventReads;
+	
+	vector< vector<BamAlignment> > eventSplitReads;
 
 	vector<long> covOnChrA;
 	vector<long> tmpCovOnChrA;
@@ -34,7 +36,7 @@ public:
 	float std_insert;
 	int minimumPairs;
 	float meanCoverage;
-    int ploidity;
+	int ploidy;
 
 	//the file name of the bamfile
 	string bamFileName;
@@ -66,7 +68,7 @@ public:
 	vector<double> computeOrientation(queue<BamAlignment> alignmentQueue,long Astart,long Aend,long Bstart,long Bend);//compute the orientation of the read and the mate
 	vector<string> classification(int chr, int startA,int endA,double covA,int startB,int endB,double covB,int meanInsert,int STDInsert,bool outtie,vector<double> isReverse);
 	string VCFHeader();
-	void VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int startchrA,int stopchrA,int pairsFormingLink,int numLinksToChr2,int estimatedDistance);
+	void VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int startchrA,int stopchrA,int pairsFormingLink,int splitsFormingLink,int numLinksToChr2,int estimatedDistance);
 	vector<int> findLinksToChr2(queue<BamAlignment> ReadQueue,long startChrA,long stopChrA,long startChrB,long endChrB, int pairsFormingLink);
 	float computeCoverageB(int chrB, int start, int end, int32_t secondWindowLength); //computes the coverage of the window of chromosome B
 	bool computeVariations(int chr2);
