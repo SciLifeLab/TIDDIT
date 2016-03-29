@@ -37,7 +37,7 @@ public:
 	int minimumPairs;
 	float meanCoverage;
 	int ploidy;
-
+	int readLength;
 	//the file name of the bamfile
 	string bamFileName;
 	string indexFile;
@@ -58,7 +58,7 @@ public:
 
 	Window(int max_insert, int min_insert, uint16_t minimum_mapping_quality,
 			bool outtie, float mean_insert, float std_insert, int minimumPairs,
-			float meanCoverage, string outputFileHeader, string bamFileName, string indexFile,int ploidity); // constructor
+			float meanCoverage, string outputFileHeader, string bamFileName, string indexFile,int ploidity, int readLength); // constructor
 	void initTrans(SamHeader head);				   // initialise the contig to position array
 	void insertRead(BamAlignment alignment);	   // inserts a new read
 	queue<BamAlignment> queueAppend(queue<BamAlignment> queueOne,queue<BamAlignment> queueTwo); //append queues;

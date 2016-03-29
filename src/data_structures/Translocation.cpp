@@ -21,8 +21,9 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	int CN=1;
 
 	double coverage= this -> meanCoverage;
-	float coverageToleranceFraction = 0.6;
-	float coverageTolerance=this -> meanCoverage/double(this -> ploidy)*coverageToleranceFraction; // lower the tolerance multiplier slightly - at least for hom del? .4-.5?
+	//the tolerance is dependent on read depth
+	float coverageToleranceFraction = 0.6*pow((coverage+1)/coverage,2);
+	float coverageTolerance=this -> meanCoverage*coverageToleranceFraction*double(this -> ploidy);
 	float covAB;
 	if(endA <= startB){
 		covAB=computeCoverageB(chr,endA,startB, startB-endA);
@@ -47,29 +48,6 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	}else if(isReverse[0] < 0.5 and isReverse[1] < 0.5){
 			svType= "INV";
 	}
-	//if the outie/innie pattern is reversed and the insert size is normal, the variant is an insertion.
-	if(averageInsert < this->max_insert){
-		if(outtie == true){
-			if(isReverse[0] < 0.5 and isReverse[1] > 0.5){
-				svType= "INS";
-				//if the coverage of the two windows are too high aswell, the event is a tandem dulplication
-    		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance ){
-    				svType = "TDUP";			       
-    			}
-			}
-
-		}else{
-			if(isReverse[0] > 0.5 and isReverse[1] < 0.5){
-				svType= "INS";
-        	    //if the coverage of the two windows are too high aswell, the event is a tandem dulplication
-    		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance ){
-    				svType = "TDUP";
-    			}
-			}
-		
-		}
-
-    }
 
 	if(svType == "BND"){
 		//Find large tandemduplications
@@ -103,22 +81,23 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 				  GT = "0/1";
 				  // CN = 1;
 				}
-			}
-			//if the coverage of all regions is normal and region A and B are disjunct, the event is an insertion(mobile element)
+			}//if the coverage of all regions is normal and region A and B are disjunct, the event is an insertion(mobile element)
 			else if( ( covAB < coverage+coverageTolerance and covAB > coverage-coverageTolerance ) and 
 				( covB < coverage+coverageTolerance and covB > coverage-coverageTolerance )	and
 				( covA < coverage+coverageTolerance and covA > coverage-coverageTolerance )){
-			  // svType = "INS"; 
-			  // Set BND ALT fields to reflect orientation...
-			}//if A and B are disjunct and only one of them have coverage above average, the event is an interspersed duplication
+				svType = "INS";
+			}
+			//if A and B are disjunct and only one of them have coverage above average, the event is an interspersed duplication
 			else if( (covA > coverage+coverageTolerance and covB < coverage+coverageTolerance ) or (covB > coverage+coverageTolerance and covA < coverage+coverageTolerance ) ){
 				svType = "IDUP";
 				// it would be a good idea to split this into one DUP and one BND, indicating the insertion point
 				//label the region marked as high coverage as the duplications
 				if(covA > coverage+coverageTolerance){
-				  string start=lexical_cast<string>(endA);
+					start=lexical_cast<string>(startA);
+					end = lexical_cast<string>(endA);
 				}else if(covB > coverage+coverageTolerance){
-				  string start=lexical_cast<string>(startB);
+					start=lexical_cast<string>(startB);
+					end=lexical_cast<string>(endB);			
 				}
 			}
 		}
@@ -210,7 +189,7 @@ string Window::VCFHeader(){
 
 Window::Window(int max_insert,int min_insert, uint16_t minimum_mapping_quality,
 		bool outtie, float mean_insert, float std_insert, int minimumPairs,
-		float meanCoverage, string outputFileHeader,string bamFileName, string indexFile,int ploidy) {
+		float meanCoverage, string outputFileHeader,string bamFileName, string indexFile,int ploidy, int readLength) {
 	this->max_insert		 = max_insert;
 	this->min_insert		= min_insert;
 	this->minimum_mapping_quality = minimum_mapping_quality;
@@ -222,6 +201,7 @@ Window::Window(int max_insert,int min_insert, uint16_t minimum_mapping_quality,
 	this->bamFileName		=bamFileName;
 	this -> indexFile		=indexFile;
 	this -> ploidy        =ploidy;
+	this -> readLength = readLength;
 
 	this->outputFileHeader   = outputFileHeader;
 	string inter_chr_eventsVCF = outputFileHeader + "_inter_chr_events.vcf";
@@ -241,8 +221,15 @@ void Window::insertRead(BamAlignment alignment) {
 		return; // in case the alignment is of no use discard it
 	}
 
-	alignment.BuildCharData(); // Somewhat costly, but needed to check for any SA tag.			
-	bool alignment_split = alignment.HasTag("SA");
+	vector <int > clipSizes;
+	vector< int > readPositions;
+	vector<int> genomePos;
+	bool test=alignment.GetSoftClips(clipSizes,readPositions,genomePos);
+	bool alignment_split = false;
+	if (test){
+		alignment.BuildCharData(); // Somewhat costly, but needed to check for any SA tag.			
+		alignment_split = alignment.HasTag("SA");
+	}
 
 	if( not alignment_split and (not alignment.IsMateMapped()) or alignment.MapQuality < minimum_mapping_quality) { 
 	  return; // discard alignment - no use for the following. But keep splits for now.
@@ -665,7 +652,7 @@ void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int st
 	}else{
 		estimatedDistance = 1;
 	}
-	float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, averageReadLength);
+	float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);
 	vector<double> orientation=computeOrientation(eventReads[chr2],startchrA ,stopchrA,startSecondWindow,stopSecondWindow);
 	string read1_orientation;
 	string read2_orientation;
@@ -702,19 +689,76 @@ void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int st
 		string GT = svVector[3];
 		string CN = svVector[4];
 		this -> numberOfEvents++;
-		intraChrVariationsVCF << this -> position2contig[this -> chr]  << "\t" <<     start   << "\tSV_" << this -> numberOfEvents << "\t"  ;
-		intraChrVariationsVCF << "N"       << "\t"	<< "<" << svType << ">";
-		intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-		intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";END="<< end <<";LFW=" << linksFromWindow;
-		intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-		intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-		intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow ;
-		intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" <<pairsFormingLink << ":" << splitsFormingLink << "\n";
+
+		//TODO generate the info field as a string, instead of printing the separate variable directly to the file
+		if(svType != "INS" and svType !="BND"){
+			intraChrVariationsVCF << this -> position2contig[this -> chr]  << "\t" <<     start   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
+			intraChrVariationsVCF << "N"       << "\t"	<< "<" << svType << ">";
+			intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
+			intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";END="<< end <<";LFW=" << linksFromWindow;
+			intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
+			intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+			intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow ;
+			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" <<pairsFormingLink << ":" << splitsFormingLink << "\n";
+		}else{
+				intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
+				intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
+				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
+				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
+				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
+				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
+				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+
+				//print the second breakend
+				intraChrVariationsVCF <<   position2contig[chr2]<< "\t" <<    startSecondWindow    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
+				intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[this -> chr]  << ":" << stopchrA << "]";
+				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
+				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
+				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
+				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
+				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+
+		}
+		if(svType == "IDUP"){
+				intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "_2" << "\t";
+				intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
+				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
+				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
+				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
+				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
+				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+
+				//print the second breakend
+				intraChrVariationsVCF <<   position2contig[chr2]<< "\t" <<    startSecondWindow    << "\tSV_" << this -> numberOfEvents <<  "_3" << "\t";
+				intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[this -> chr]  << ":" << stopchrA << "]";
+				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
+				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
+				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
+				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
+				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+		}
+
+
 	} else {
 		string svType="BND";
 		this -> numberOfEvents++;
-		interChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "\t";
+		//print the first breakend
+		interChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
 		interChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
+		interChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
+		interChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
+		interChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
+		interChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+		interChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
+		interChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+
+		//print the second breakend
+		interChrVariationsVCF <<   position2contig[chr2]<< "\t" <<    startSecondWindow    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
+		interChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[this -> chr]  << ":" << stopchrA << "]";
 		interChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
 		interChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
 		interChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;

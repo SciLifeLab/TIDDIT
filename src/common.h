@@ -19,6 +19,8 @@
 #include "api/BamReader.h"
 #include "api/BamAlignment.h"
 
+
+
 #define _USE_MATH_DEFINES
 #include <cmath>
 
@@ -127,6 +129,29 @@ static string returnFeatureName(FeatureTypes type) {
 
 }
 
+
+class Cov{
+public:
+    //the vraiables used in the coverage calculation function
+    ofstream coverageOutput;
+    int binStart;
+	int binEnd;
+	int currentChr;
+	vector<unsigned int> sequencedBases;
+	map<unsigned int,string> position2contig;
+	vector<int> contigLength;
+	uint32_t contigsNumber;
+	
+	
+	//constructor
+	Cov();
+	//main function accepts the bam file name, the bin size, an input file and index file. Using the input file or bin size, the coverage is calculated and returned as an output file
+	void coverageMain(string bamFile,string output, map<string,unsigned int> contig2position,int selection,int binSize);
+	//module used to find the coverage within specified regions
+	void bin(BamAlignment currentRead,string output,int binSize,int option);
+};
+
+
 static int StringToNumber ( string Text ) {
 	stringstream ss(Text);
 	int result;
@@ -143,6 +168,7 @@ struct LibraryStatistics{
 	float C_W;
 	float insertMean;
 	float insertStd;
+	int readLength;
 	bool mp;
 };
 
@@ -244,8 +270,7 @@ static float ExpectedLinks(uint32_t sizeA, uint32_t sizeB, uint32_t gap, float i
 	return E_links;
 }
 
-
-static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genomeLength, uint32_t max_insert, uint32_t min_insert,bool is_mp,int quality) {
+static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genomeLength, uint32_t max_insert, uint32_t min_insert,bool is_mp,int quality,string outputFileHeader) {
 	BamReader bamFile;
 	bamFile.Open(bamFileName);
 	LibraryStatistics library;
@@ -280,6 +305,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	uint64_t matedDifferentContigLength = 0; // total number of reads placed in different contigs
 	// split reads
 	uint32_t splitReads = 0;
+	uint32_t readLength=0;
 
 	float C_A = 0; // total read coverage
 	float S_A = 0; // total span coverage
@@ -289,6 +315,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	float C_D = 0; // coverage induced by reads with mate on a different contigs
 
 
+
 	// compute mean and std on the fly
 	float Mk = 0;
 	float Qk = 0;
@@ -296,25 +323,52 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	//Keep header for further reference
 	int32_t currentTid = -1;
 	int32_t iSize;
+	
+    //initiate the coverage computation class
+    Cov *calculateCoverage;
+	calculateCoverage = new Cov();
+	
+	
+	calculateCoverage -> coverageOutput.open((outputFileHeader+".tab").c_str());
+	static ostream& covout = calculateCoverage -> coverageOutput;
+		
+	calculateCoverage -> binStart =0;
+	calculateCoverage -> binEnd=500;
+	calculateCoverage -> currentChr=-1;
+	calculateCoverage -> sequencedBases.push_back(0);
+    calculateCoverage -> contigsNumber = 0;
+	
+
+	SamSequenceDictionary sequences  = bamFile.GetHeader().Sequences;
+	for(SamSequenceIterator sequence = sequences.Begin() ; sequence != sequences.End(); ++sequence) {
+		calculateCoverage -> position2contig[calculateCoverage -> contigsNumber]  = sequence->Name;
+		calculateCoverage -> contigLength.push_back(StringToNumber(sequence->Length));
+		calculateCoverage -> contigsNumber++;
+	}
 
 	BamAlignment al;
+	
+
+	
+	
 	while ( bamFile.GetNextAlignmentCore(al) ) {
 		reads ++;
 		readStatus read_status = computeReadType(al, max_insert, min_insert,is_mp);
 		if (read_status != unmapped and read_status != lowQualty) {
 			mappedReads ++;
 			mappedReadsLength += al.Length;
-			
-			al.BuildCharData();
-			
-			if (al.HasTag("SA")) {
-			  splitReads ++;
-			}
+			//al.BuildCharData();
+			//
+			//if (al.HasTag("SA")) {
+			 // splitReads ++;
+			//}
 		}
 
-
+        //calculate the coverage in bins of size 500 bases
+        calculateCoverage -> bin(al,outputFileHeader,500,4);
+        
 		if (al.IsFirstMate() && al.IsMateMapped()) {
-			if( al.IsReverseStrand() != al.IsMateReverseStrand()  && read_status != lowQualty){
+			if( al.IsReverseStrand() != al.IsMateReverseStrand() ){
 				if(al.IsMapped() and al.MapQuality > 20 and al.RefID == al.MateRefID and al.MatePosition-al.Position+1 < max_insert ){
 					iSize = abs(al.InsertSize);
 					if(counterK == 1) {
@@ -388,6 +442,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	library.C_W = C_W = wronglyOrientedReadsLength/(float)genomeLength;
 	library.C_S = C_S = singletonReadsLength/(float)genomeLength;
 	library.C_D = C_D = matedDifferentContigLength/(float)genomeLength;
+	library.readLength= mappedReadsLength/float(mappedReads);
 	library.insertMean = insertMean = Mk;
 	if(reads-wronglyOrientedReads > wronglyOrientedReads){
 		library.mp=true;
@@ -403,6 +458,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	cout << "\tC_W = " << C_W << endl;
 	cout << "\tC_S = " << C_S << endl;
 	cout << "\tC_D = " << C_D << endl;
+	cout << "\tRead length = " << library.readLength << endl;
 	cout << "\tMean Insert length = " << Mk << endl;
 	cout << "\tStd Insert length = " << Qk << endl;
 	cout << "----------\n";

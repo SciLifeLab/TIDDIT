@@ -11,7 +11,7 @@
 StructuralVariations::StructuralVariations() { }
 
 void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t max_insert, bool outtie, uint16_t minimum_mapping_quality, uint32_t minimumSupportingPairs
-, float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string indexFile,int contigsNumber,int ploidy) {
+, float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string indexFile,int contigsNumber,int ploidy, int readLength) {
 	size_t start = time(NULL);
 	//open the bam file
 	BamReader bamFile;
@@ -23,7 +23,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_
 
 	window = new Window(max_insert, min_insert,minimum_mapping_quality,
 		outtie,  meanInsertSize,  StdInsertSize,  minimumSupportingPairs,
-		 meanCoverage,  outputFileHeader,bamFileName,indexFile,ploidy);
+		 meanCoverage,  outputFileHeader,bamFileName,indexFile,ploidy,readLength);
 	window->initTrans(head);
 	//expands a vector so that it is large enough to hold reads from each contig in separate elements
 	window->eventReads.resize(contigsNumber);
