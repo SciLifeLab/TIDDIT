@@ -50,7 +50,7 @@ Computes the coverge of different regions of the bam file
     
     options:
     bin - compute the coverage within bins of a specified size across the entire genome
-            , outputs a tab file of the formatchromosome    start  stop coverage
+            , outputs a tab file of the format chromosome    start  stop coverage
             
             
             light - compute the coverage within bins of a specified size across the 
