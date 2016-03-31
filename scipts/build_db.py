@@ -244,7 +244,7 @@ if __name__ == '__main__':
             if args.tollerance:
                 command += ["--tollerance",args.tollerance]
             db=subprocess.check_output(command);
-            file_name=vcf.replace("vcf","")+"db"
+            file_name=vcf.replace(".vcf",".db")
             f=open(file_name,"w")
             f.write(db)
             f.close();

@@ -329,7 +329,7 @@ int main(int argc, char *argv[]) {
 
 		
 		Cov *calculateCoverage;
-		calculateCoverage = new Cov();
+		
 		//calculate the coverage of the entre library
 		if(not vm.count("light") and not vm.count("bin")){
 			cout << "no mode selected, shuting down" << endl;
@@ -345,7 +345,7 @@ int main(int argc, char *argv[]) {
 				option=4;
 				binSize =vm["light"].as<int>();
 			}
-
+			calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader);
 			calculateCoverage -> coverageMain(alignmentFile,outputFileHeader,contig2position,option,binSize);
 		}
 

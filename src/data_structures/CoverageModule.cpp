@@ -72,10 +72,7 @@ ostream& test(ofstream &coverageOutput,string output){
 
 }
 //constructor
-Cov::Cov() { }
-//The main function
-void Cov::coverageMain(string bamFile,string output,map<string,unsigned int> contig2position,int selection,int binSize){
-	//the vcf mode outputs two files, one tab/bed file like the two other modes, and one vcf file, similar to the inout vcf but with added coverage data.
+Cov::Cov(int binSize,string bamFile,string output){
 	ostream& covout=test(coverageOutput,output);
 	if(output != "stdout"){
 		coverageOutput.open((output+".tab").c_str());
@@ -103,11 +100,21 @@ void Cov::coverageMain(string bamFile,string output,map<string,unsigned int> con
 		contigLength.push_back(StringToNumber(sequence->Length));
 		contigsNumber++;
 	}
+	
+    alignmentFile.Close();
+}
 
+//The main function
+void Cov::coverageMain(string bamFile,string output,map<string,unsigned int> contig2position,int selection,int binSize){
+	//the vcf mode outputs two files, one tab/bed file like the two other modes, and one vcf file, similar to the inout vcf but with added coverage data.
+
+	ostream& covout = test(coverageOutput,output);
 	if(selection == 1){
 		covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << endl;
 	}
 	
+	BamReader alignmentFile;
+	alignmentFile.Open(bamFile);
 	BamAlignment currentRead;
     while ( alignmentFile.GetNextAlignmentCore(currentRead) ) {
 	    bin(currentRead,output,binSize,selection);

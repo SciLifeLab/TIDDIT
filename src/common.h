@@ -144,7 +144,7 @@ public:
 	
 	
 	//constructor
-	Cov();
+	Cov(int binSize,string bamFile,string output);
 	//main function accepts the bam file name, the bin size, an input file and index file. Using the input file or bin size, the coverage is calculated and returned as an output file
 	void coverageMain(string bamFile,string output, map<string,unsigned int> contig2position,int selection,int binSize);
 	//module used to find the coverage within specified regions
@@ -326,31 +326,10 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	
     //initiate the coverage computation class
     Cov *calculateCoverage;
-	calculateCoverage = new Cov();
-	
-	
-	calculateCoverage -> coverageOutput.open((outputFileHeader+".tab").c_str());
-	static ostream& covout = calculateCoverage -> coverageOutput;
-		
-	calculateCoverage -> binStart =0;
-	calculateCoverage -> binEnd=500;
-	calculateCoverage -> currentChr=-1;
-	calculateCoverage -> sequencedBases.push_back(0);
-    calculateCoverage -> contigsNumber = 0;
-	
-
-	SamSequenceDictionary sequences  = bamFile.GetHeader().Sequences;
-	for(SamSequenceIterator sequence = sequences.Begin() ; sequence != sequences.End(); ++sequence) {
-		calculateCoverage -> position2contig[calculateCoverage -> contigsNumber]  = sequence->Name;
-		calculateCoverage -> contigLength.push_back(StringToNumber(sequence->Length));
-		calculateCoverage -> contigsNumber++;
-	}
-
+	calculateCoverage = new Cov(500,bamFileName,outputFileHeader);
 	BamAlignment al;
 	
 
-	
-	
 	while ( bamFile.GetNextAlignmentCore(al) ) {
 		reads ++;
 		readStatus read_status = computeReadType(al, max_insert, min_insert,is_mp);
@@ -442,7 +421,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	library.C_W = C_W = wronglyOrientedReadsLength/(float)genomeLength;
 	library.C_S = C_S = singletonReadsLength/(float)genomeLength;
 	library.C_D = C_D = matedDifferentContigLength/(float)genomeLength;
-	library.readLength= mappedReadsLength/float(mappedReads);
+	library.readLength= mappedReadsLength/mappedReads;
 	library.insertMean = insertMean = Mk;
 	if(reads-wronglyOrientedReads > wronglyOrientedReads){
 		library.mp=true;
