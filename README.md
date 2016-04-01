@@ -7,14 +7,6 @@ From the FindTranslocation directory run:
 - cmake ..
 - make
 
-
-for Uppmax change step three into 
-- cmake .. -DBoost_NO_BOOST_CMAKE=ON
-
-You will find the binaries in the main directory under bin. In case of problems the majority of the times there is a problem
-with the local installation of boost.
-
-
 DESCRIPTION
 ==============
 FindTranslocations: tool to identify  chromosomal rearrangements using Mate Pair or Pair End data. The idea is to identify areas having clusters of discordant pairs or abnormal coverage.
@@ -29,15 +21,15 @@ The main FT modules, detects structural variant using discordant pairs, split re
             
             output - the prefix of the output files
             
-            max insert - the maximum allowed insert size of a normal pair. Pairs having larger insert 
+            max-insert - the maximum allowed insert size of a normal pair. Pairs having larger insert 
                         than this is treated as discordant pairs. Default is 1.5*std+mean insert size for PE 
                         data or 4std+ mean on mp data
                         
             orientation - the pair orientation, use this setting to override the automatic orientation selection
             
-            minimum-supporting-pairs - the minimum number of discordant pairs used to all a variant. Default is 3
+            -pairs - the minimum number of discordant pairs used to all a variant. Default is 3
             
-            minimum-mapping-quality - the minimum mapping quality of the discordant pairs 
+            -q - the minimum mapping quality of the discordant pairs 
                                         forming a variant. Default value is 0.
                                         
             coverage - the library coverage. Default is calculated from average genomic coverage.
@@ -56,11 +48,6 @@ Computes the coverge of different regions of the bam file
             light - compute the coverage within bins of a specified size across the 
                     entire genome, outputs a tab file of the format chromosome  coverage
             
-
-The extract module
-==================
-Extract alignments from the bam file, generates new bam file of the alignmnets form selected regions.
-
 
 LICENCE
 ==============
