@@ -19,7 +19,6 @@ The main FT modules, detects structural variant using discordant pairs, split re
     FindTransloctions --sv [Options] --bam inputfile 
 
     options:
-    ```
     ploidy - the ploidy of the organism, 2 is default
     output - the prefix of the output files
         
@@ -35,8 +34,7 @@ The main FT modules, detects structural variant using discordant pairs, split re
             forming a variant. Default value is 0.
                                         
         coverage - the library coverage. Default is calculated from average genomic coverage.
-            
-    ```
+
 The cov module
 ==============
 Computes the coverge of different regions of the bam file
