@@ -27,8 +27,7 @@ public:
 	//constructor
 	StructuralVariations();
 	//main function
-	void findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t max_insert, bool outtie, uint16_t minimum_mapping_quality,
-		uint32_t minimumSupportingPairs, float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string indexFile, int contigsNumber,int ploidy, int readLength);
+	void findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage,string outputFileHeader, map<string,int> SV_options);
 };
 
 //This class contains functions used to recognize and read vcf and bed files
@@ -44,25 +43,5 @@ public:
 	queue<string> readBed(string inputFileName);
 
 };
-//this class contains functions used to calculate the coverage of the bam file
-//class Cov{
-//public:
-//    //the vraiables used in the coverage calculation function
-//    ofstream coverageOutput;
-//    int binStart;
-//	int binEnd;
-//	int currentChr;
-//	vector<unsigned int> sequencedBases;
-//	map<unsigned int,string> position2contig;
-//	vector<int> contigLength;
-//	uint32_t contigsNumber;
-//	
-//	
-//	//constructor
-//	Cov();
-//	//main function accepts the bam file name, the bin size, an input file and index file. Using the input file or bin size, the coverage is calculated and returned as an output file
-//	void coverageMain(string bamFile,string output, map<string,unsigned int> contig2position,int selection,int binSize);
-//	//module used to find the coverage within specified regions
-//	void bin(BamAlignment currentRead,string output,int binSize,int option);
-//};
+
 #endif /* PROGRAMMODULES_H_ */

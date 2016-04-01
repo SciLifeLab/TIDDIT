@@ -6,16 +6,26 @@
  */
 
 #include "Translocation.h"
-#include <boost/lexical_cast.hpp>
-#include <boost/algorithm/string.hpp>
+#include <string>
 
-using boost::lexical_cast;
+string int2str(int to_be_converted){
+	string converted= static_cast<ostringstream*>( &(ostringstream() << to_be_converted) )->str();
+	return(converted);
+}
+
+//converts a string to int
+int str2int(string to_be_converted){
+	int converted;
+	istringstream convert(to_be_converted);
+	return(converted);
+}
+
 
 //this function tries to classify intrachromosomal events
 vector<string> Window::classification(int chr, int startA,int endA,double covA,int startB,int endB,double covB,int meanInsert,int STDInsert,bool outtie,vector<double> isReverse){
 	string svType="BND";
-	string start=lexical_cast<string>(startA);
-	string end=lexical_cast<string>(endB);
+	string start=int2str(startA);
+	string end= int2str(endB);
 	
 	string GT="./1";
 	int CN=1;
@@ -93,11 +103,11 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 				// it would be a good idea to split this into one DUP and one BND, indicating the insertion point
 				//label the region marked as high coverage as the duplications
 				if(covA > coverage+coverageTolerance){
-					start=lexical_cast<string>(startA);
-					end = lexical_cast<string>(endA);
+					start=int2str(startA);
+					end = int2str(endA);
 				}else if(covB > coverage+coverageTolerance){
-					start=lexical_cast<string>(startB);
-					end=lexical_cast<string>(endB);			
+					start=int2str(startB);
+					end=int2str(endB);			
 				}
 			}
 		}
@@ -118,7 +128,7 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 		}
 	}
 	vector<string> svVector;
-	svVector.push_back(svType);svVector.push_back(start);svVector.push_back(end);svVector.push_back(GT);svVector.push_back(lexical_cast<string>(CN));
+	svVector.push_back(svType);svVector.push_back(start);svVector.push_back(end);svVector.push_back(GT);svVector.push_back(int2str(CN));
 	return(svVector);
 }
 
@@ -187,21 +197,17 @@ string Window::VCFHeader(){
 
 
 
-Window::Window(int max_insert,int min_insert, uint16_t minimum_mapping_quality,
-		bool outtie, float mean_insert, float std_insert, int minimumPairs,
-		float meanCoverage, string outputFileHeader,string bamFileName, string indexFile,int ploidy, int readLength) {
-	this->max_insert		 = max_insert;
-	this->min_insert		= min_insert;
-	this->minimum_mapping_quality = minimum_mapping_quality;
+Window::Window(string bamFileName, bool outtie, float meanCoverage,string outputFileHeader, map<string,int> SV_options) {
+	this->max_insert		 = SV_options["max_insert"];
+	this->minimum_mapping_quality = SV_options["mapping_quality"];
 	this->outtie			 = outtie;
-	this->mean_insert		 = mean_insert;
-	this ->std_insert		 = std_insert;
-	this->minimumPairs		 = minimumPairs;
+	this->mean_insert		 = SV_options["meanInsert"];
+	this ->std_insert		 = SV_options["STDInsert"];
+	this->minimumPairs		 = SV_options["pairs"];
 	this->meanCoverage		 = meanCoverage;
 	this->bamFileName		=bamFileName;
-	this -> indexFile		=indexFile;
-	this -> ploidy        =ploidy;
-	this -> readLength = readLength;
+	this -> ploidy        =SV_options["ploidy"];
+	this -> readLength = SV_options["readLength"];
 
 	this->outputFileHeader   = outputFileHeader;
 	string inter_chr_eventsVCF = outputFileHeader + "_inter_chr_events.vcf";
@@ -266,8 +272,21 @@ void Window::insertRead(BamAlignment alignment) {
 	  // Each element in the list represents a part of the chimeric alignment. 
 	  // Conventionally, at a supplementary line, the first element points to the primary line.
 	  */
+
+	  vector<string> SA_line;
+      stringstream ss(SA);
+	  std::string item;
+      while (std::getline(ss, item, ';')) {
+      	SA_line.push_back(item);
+      }
+
 	  vector <string> SA_elements;
-	  boost::split(SA_elements,SA,boost::is_any_of(",;"));
+	  //Now split on ,
+	  string SA_data=SA_line[0];
+ 	  stringstream SS(SA_data);
+      while (std::getline(SS, item, ',')) {
+      	SA_elements.push_back(item);
+      }
 	  // there will be an "extra" empty string element at the end of the list, corresponding to the split of the final ;
 	  
 	  int contigNr = -1;
@@ -464,16 +483,36 @@ bool Window::computeVariations(int chr2) {
 		  // line.
 		  */
 
-		  vector <string> SA_elements;
-		  boost::split(SA_elements,SA,boost::is_any_of(",;"));
+		  //Old boost code
+		  //vector <string> SA_elements;
+		  //boost::split(SA_elements,SA,boost::is_any_of(",;"));
 		  // 6 elements per SA entry, but there will be an
 		  // "extra" empty string element at the end of the
 		  // list, corresponding to the split of the final ;
 		  
+
+		  
+		  //First split at ;, keep only the 0th elemnt
+		  vector<string> SA_line;
+    	  stringstream ss(SA);
+    	  std::string item;
+    	  while (std::getline(ss, item, ';')) {
+        	 SA_line.push_back(item);
+    	  }
+
+		  vector <string> SA_elements;
+		  //Now split on ,
+	      string SA_data=SA_line[0];
+		  stringstream SS(SA_data);
+    	  while (std::getline(SS, item, ',')) {
+        	 SA_elements.push_back(item);
+    	  }
+
+
 		  for(vector<string>::iterator it = SA_elements.begin(), it_end = --SA_elements.end(); it != it_end; it+=5) {
 		    string contig = *it;
 		    string chr2name = this -> position2contig[chr2];
-		    int pos = lexical_cast<int>(*++it);
+		    int pos = str2int(*++it);
 		    
 		    if (contig == chr2name && pos > startSecondWindow && pos < stopSecondWindow) {
 		      // Split read in window.

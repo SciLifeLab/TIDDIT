@@ -11,7 +11,3 @@ include_directories( bamtools/src )
 # list subdirectories to build in
 add_subdirectory( bamtools/src/api )
 
-project( program_options)
-include_directories(program_options)
-add_subdirectory(program_options/src)
-

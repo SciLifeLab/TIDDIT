@@ -11,11 +11,6 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
-
-#include  <boost/program_options.hpp>
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-#include "api/BamWriter.h"
 #include <queue>
 
 
