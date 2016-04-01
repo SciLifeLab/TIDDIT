@@ -249,7 +249,6 @@ int main(int argc, char **argv) {
         
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();		
-		cout << "FT" << endl;
 		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, outtie, coverage,outputFileHeader,SV_options);
 
 
