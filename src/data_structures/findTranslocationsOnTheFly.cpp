@@ -5,7 +5,6 @@
 
 #include "ProgramModules.h"
 #include "data_structures/Translocation.h"
-#include <boost/algorithm/string.hpp>
 
 //function used to find translocations
 StructuralVariations::StructuralVariations() { }
