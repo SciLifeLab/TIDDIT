@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
 	float insertStd;
 	string roi;
 	string indexFile="";
-	string outputFileHeader ="";
+	string outputFileHeader ="output";
 	
 	
 	//collect all options as a vector
@@ -178,6 +178,11 @@ int main(int argc, char **argv) {
 
 	//if the find structural variations module is chosen
 	if(vm["--sv"] == "found"){
+		if(vm["-o"] != ""){
+		    outputFileHeader=vm["-o"];
+		}
+	
+	
 		if(vm["-q"] != ""){
 			minimum_mapping_quality=convert_str( vm["-q"] ,"-q");
 		}
@@ -241,7 +246,7 @@ int main(int argc, char **argv) {
 		SV_options["max_insert"]=max_insert;
 		SV_options["pairs"]=minimumSupportingPairs;
 		SV_options["mapping_quality"]=minimum_mapping_quality;
-		SV_options["read_length"]=library.readLength;
+		SV_options["readLength"]=library.readLength;
 		SV_options["ploidy"]=ploidy;
 		SV_options["contigsNumber"]=contigsNumber;
         SV_options["meanInsert"]=meanInsert;
@@ -272,6 +277,11 @@ int main(int argc, char **argv) {
 			option=4;
 			binSize =convert_str( vm["-light"],"-light" );
 		}
+		if(vm["-o"] != ""){
+		    outputFileHeader=vm["-o"];
+		}
+		cout << outputFileHeader << endl;
+		cout <<  vm["-o"] << endl;
 		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader);
 		calculateCoverage -> coverageMain(alignmentFile,outputFileHeader,contig2position,option,binSize);
 

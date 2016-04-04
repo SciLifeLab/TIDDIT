@@ -77,6 +77,7 @@ Cov::Cov(int binSize,string bamFile,string output){
 		static ostream& covout=cout;
 	}
 
+
 	//initialize the function
 	binStart =0;
 	binEnd=binSize+binStart;
@@ -103,7 +104,7 @@ Cov::Cov(int binSize,string bamFile,string output){
 void Cov::coverageMain(string bamFile,string output,map<string,unsigned int> contig2position,int selection,int binSize){
 	//the vcf mode outputs two files, one tab/bed file like the two other modes, and one vcf file, similar to the inout vcf but with added coverage data.
 
-	ostream& covout = test(coverageOutput,output);
+	ostream& covout=test(coverageOutput,output);
 	if(selection == 1){
 		covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << endl;
 	}
@@ -121,8 +122,7 @@ void Cov::coverageMain(string bamFile,string output,map<string,unsigned int> con
 
 
 void Cov::bin(BamAlignment currentRead,string output,int binSize,int option){
-	ostream& covout = test(coverageOutput,output);		
-	
+    ostream& covout = test(coverageOutput,output);
 	//initialise the chromosome ID
 	if(currentChr == -1){
 		currentChr=currentRead.RefID;
