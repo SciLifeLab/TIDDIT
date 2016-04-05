@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
 		meanInsert = library.insertMean;
 		insertStd  = library.insertStd;
 		if(outtie == false){
-			max_insert =meanInsert+1.5*insertStd;
+			max_insert =meanInsert+3*insertStd;
 		}else{
 			max_insert =meanInsert+4*insertStd;
 		}

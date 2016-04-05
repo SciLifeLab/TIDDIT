@@ -231,7 +231,7 @@ void Window::insertRead(BamAlignment alignment) {
 	vector< int > readPositions;
 	vector<int> genomePos;
 	bool test=alignment.GetSoftClips(clipSizes,readPositions,genomePos);
-	bool alignment_split = false;
+	bool alignment_split = false;	
 	if (test){
 		alignment.BuildCharData(); // Somewhat costly, but needed to check for any SA tag.			
 		alignment_split = alignment.HasTag("SA");
@@ -273,27 +273,32 @@ void Window::insertRead(BamAlignment alignment) {
 	  // Conventionally, at a supplementary line, the first element points to the primary line.
 	  */
 
-	  vector<string> SA_line;
+	  vector <string> SA_elements;
       stringstream ss(SA);
 	  std::string item;
       while (std::getline(ss, item, ';')) {
-      	SA_line.push_back(item);
+        stringstream SS(item);
+        string SA_data;
+        while (std::getline(SS, SA_data, ',')) {
+      	    SA_elements.push_back(SA_data);
+      	}
       }
 
-	  vector <string> SA_elements;
+	  //vector <string> SA_elements;
 	  //Now split on ,
-	  string SA_data=SA_line[0];
- 	  stringstream SS(SA_data);
-      while (std::getline(SS, item, ',')) {
-      	SA_elements.push_back(item);
-      }
+	  //
+ 	  //
+      //
+      //	SA_elements.push_back(item);
+      //}
 	  // there will be an "extra" empty string element at the end of the list, corresponding to the split of the final ;
 	  
-	  int contigNr = -1;
-	  for(vector<string>::iterator it = SA_elements.begin(), it_end = --SA_elements.end(); it != it_end; it += 6) {
-	    string contig = *it;
-	    contigNr = this -> contig2position[contig];
-	  }
+	  int contigNr = contig2position[SA_elements[0]];
+	  //for(vector<string>::iterator it = SA_elements.begin(), it_end = --SA_elements.end(); it != it_end; it += 6) {
+	    //string contig = *it;
+	   // cout << contig << endl;
+	   // contigNr = this -> ;
+	  //}
 	  
 	  //Check if the distance between the split read and the previous alignment is larger than max distance
 
@@ -304,21 +309,19 @@ void Window::insertRead(BamAlignment alignment) {
 	    int currrentAlignmentPos=alignment.Position;
 	    int pastAlignmentPos= eventReads[contigNr].back().Position;
 	    int distance= currrentAlignmentPos - pastAlignmentPos;
-	    
 	    // If the distance between the two reads is less than the maximum allowed distace, add it to the other reads of the event
 	    if(distance <= 1000){
 	      // parse tag and add it to the destination chr
 	      add = true;
 	    }
 	  }
-	  if (add) {
-	    eventSplitReads[contigNr].push_back(alignment);	      
+	  if (add) {;
+	    eventSplitReads[contigNr].push_back(alignment);    
 	  } else {
 	    // for now, we don't allow split reads to start a new window.
 	    //	    cout << "Warning: split read outside current window found. Ignored.\n";
 	  }
 	}
- 
 	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
 		if(alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) {  // insert only "forward" variations
 
@@ -469,58 +472,51 @@ bool Window::computeVariations(int chr2) {
 	      // event accepted on discordant pairs. any split reads?
 	      int splitsFormingLink = 0;
 	      if (this->eventSplitReads[chr2].size() > 0) {
-		for (vector<BamAlignment>::iterator alnit = eventSplitReads[chr2].begin(); alnit != eventSplitReads[chr2].end(); ++alnit) {
-		  // parse split read to get the other segment position, akin to a mate.
-		  string SA;
-		  (alnit)->GetTag("SA",SA);
-		  /* From the VCF documentation: Other canonical
-		  // alignments in a chimeric alignment, formatted as
-		  // a semicolon-delimited list:
-		  // (rname,pos,strand,CIGAR,mapQ,NM;)+.  Each element
-		  // in the list represents a part of the chimeric
-		  // alignment.  Conventionally, at a supplementary
-		  // line, the first element points to the primary
-		  // line.
-		  */
+		  	for (vector<BamAlignment>::iterator alnit = eventSplitReads[chr2].begin(); alnit != eventSplitReads[chr2].end(); ++alnit) {
+		  	// parse split read to get the other segment position, akin to a mate.
+		  	string SA;
+		  	(alnit)->GetTag("SA",SA);
+		  	/* From the VCF documentation: Other canonical
+		  	// alignments in a chimeric alignment, formatted as
+		  	// a semicolon-delimited list:
+		  	// (rname,pos,strand,CIGAR,mapQ,NM;)+.  Each element
+		  	// in the list represents a part of the chimeric
+		  	// alignment.  Conventionally, at a supplementary
+		  	// line, the first element points to the primary
+		  	// line.
+		  	*/
 
-		  //Old boost code
-		  //vector <string> SA_elements;
-		  //boost::split(SA_elements,SA,boost::is_any_of(",;"));
-		  // 6 elements per SA entry, but there will be an
-		  // "extra" empty string element at the end of the
-		  // list, corresponding to the split of the final ;
+		  	//Old boost code
+		  	//vector <string> SA_elements;
+		  	//boost::split(SA_elements,SA,boost::is_any_of(",;"));
+		  	// 6 elements per SA entry, but there will be an
+		  	// "extra" empty string element at the end of the
+		  	// list, corresponding to the split of the final ;
+		  	
+
 		  
-
-		  
-		  //First split at ;, keep only the 0th elemnt
-		  vector<string> SA_line;
-    	  stringstream ss(SA);
-    	  std::string item;
-    	  while (std::getline(ss, item, ';')) {
-        	 SA_line.push_back(item);
-    	  }
-
-		  vector <string> SA_elements;
-		  //Now split on ,
-	      string SA_data=SA_line[0];
-		  stringstream SS(SA_data);
-    	  while (std::getline(SS, item, ',')) {
-        	 SA_elements.push_back(item);
-    	  }
-
-
-		  for(vector<string>::iterator it = SA_elements.begin(), it_end = --SA_elements.end(); it != it_end; it+=5) {
-		    string contig = *it;
-		    string chr2name = this -> position2contig[chr2];
-		    int pos = str2int(*++it);
-		    
-		    if (contig == chr2name && pos > startSecondWindow && pos < stopSecondWindow) {
-		      // Split read in window.
-		      ++splitsFormingLink;
-		    }
-		  }
-		}		
-	      }
+			//First split at ;, keep only the 0th elemnt
+			vector <string> SA_elements;
+			stringstream ss(SA);
+	    	std::string item;
+			while (std::getline(ss, item, ';')) {
+				stringstream SS(item);
+				string SA_data;
+				while (std::getline(SS, SA_data, ',')) {
+					SA_elements.push_back(SA_data);
+				}
+			}	
+		
+			for(int j=0; j< SA_elements.size(); j+=6) {
+				string contig = SA_elements[j];
+				string chr2name = this -> position2contig[chr2];
+			    long pos = atol(SA_elements[j+1].c_str());
+				if (contig == chr2name && pos >= startSecondWindow && pos <= stopSecondWindow) {
+				      ++splitsFormingLink;
+			    }
+			  }
+			}		
+		}
 
 	      
 	      VCFLine(chr2,startSecondWindow,stopSecondWindow,startchrA,stopchrA,pairsFormingLink,splitsFormingLink,numLinksToChr2,estimatedDistance);
