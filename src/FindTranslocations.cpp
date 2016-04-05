@@ -190,8 +190,9 @@ int main(int argc, char **argv) {
 			minimumSupportingPairs=convert_str( vm["-pairs"] , "-pairs");
 		}
 		if(vm["-insert"] != ""){
-			max_insert  = convert_str( vm["-insert"], "-insert");
+			int insert_test  = convert_str( vm["-insert"], "-insert");
 		}
+		
 		if(vm["-orientation"] != ""){
 			if (vm["-orientation"] == "outtie"){
 				outtie=true;
@@ -201,10 +202,10 @@ int main(int argc, char **argv) {
 				cout << "ERROR: invalid orientation " << vm["-orientation"] << endl;
 				return(0);
 			}
-	    }
-	    if(vm["-ploidy"] != ""){
-            int ploidy = convert_str( vm["-ploidy"],"-ploidy" );
-        }
+		}
+		if(vm["-ploidy"] != ""){
+            		int ploidy = convert_str( vm["-ploidy"],"-ploidy" );
+        	}
 		
 		LibraryStatistics library;
 		size_t start = time(NULL);
@@ -216,7 +217,7 @@ int main(int argc, char **argv) {
 		}
 		
 		if(vm["-orientation"] == ""){
-		    outtie=library.mp;
+	    		outtie=library.mp;
 			if(outtie == true){
 				cout << "auto-config orientation: outtie" << endl;
 			}else{
@@ -232,25 +233,25 @@ int main(int argc, char **argv) {
 			max_insert =meanInsert+4*insertStd;
 		}
 
-        min_insert = meanInsert/2; 
+        	min_insert = meanInsert/2; 
 		if(vm["-insert"] != ""){
 			max_insert  = convert_str( vm["-insert"], "-insert");
 		}
 
-        int ploidy = 2;
-        if(vm["-ploidy"] != ""){
-            ploidy = convert_str( vm["-ploidy"],"-ploidy" );
-        }
+        	int ploidy = 2;
+        	if(vm["-ploidy"] != ""){
+            		ploidy = convert_str( vm["-ploidy"],"-ploidy" );
+        	}
         
-        map<string,int> SV_options;
+        	map<string,int> SV_options;
 		SV_options["max_insert"]=max_insert;
 		SV_options["pairs"]=minimumSupportingPairs;
 		SV_options["mapping_quality"]=minimum_mapping_quality;
 		SV_options["readLength"]=library.readLength;
 		SV_options["ploidy"]=ploidy;
 		SV_options["contigsNumber"]=contigsNumber;
-        SV_options["meanInsert"]=meanInsert;
-        SV_options["STDInsert"]=insertStd;
+        	SV_options["meanInsert"]=meanInsert;
+        	SV_options["STDInsert"]=insertStd;
         
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();		
