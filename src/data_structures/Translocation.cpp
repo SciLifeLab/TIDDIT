@@ -32,8 +32,8 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 
 	double coverage= this -> meanCoverage;
 	//the tolerance is dependent on read depth
-	float coverageToleranceFraction = 0.6*pow((coverage+1)/coverage,2);
-	float coverageTolerance=this -> meanCoverage*coverageToleranceFraction*double(this -> ploidy);
+	float coverageToleranceFraction = 0.6*pow((coverage+1)/coverage,2)/double(this -> ploidy);
+	float coverageTolerance=this -> meanCoverage*coverageToleranceFraction;
 	float covAB;
 	if(endA <= startB){
 		covAB=computeCoverageB(chr,endA,startB, startB-endA);
