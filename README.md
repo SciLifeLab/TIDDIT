@@ -1,33 +1,53 @@
 INSTALLATION
 ==============
 
-From the FindTranslocation directory run:
-- mkdir build
-- cd build
-- cmake ..
-- make
-
-
-for Uppmax change step three into 
-- cmake .. -DBoost_NO_BOOST_CMAKE=ON
-
-You will find the binaries in the main directory under bin. In case of problems the majority of the times there is a problem
-with the local installation of boost.
-
+From the FindTranslocation directory run
+```
+mkdir build
+cd build
+cmake ..
+make
+```
 
 DESCRIPTION
 ==============
-FindTranslocations: tool to identify  chromosomal rearrangements using Mate Pair or Pair End data. The idea is to identify areas 
+FindTranslocations: tool to identify  chromosomal rearrangements using Mate Pair or Pair End data. The idea is to identify areas having clusters of discordant pairs or abnormal coverage.
 
-Options:
-* ``--bam`` alignment file in bam format, sorted by coordinate. If bwa mem is used option -M MUST be specified in order to map as secondary the splitted reads
-* ``--min-insert`` paired reads minimum allowed insert size. Used in order to filter outliers. Insert size goes from beginning of first read to end of second read
-* ``--max-insert`` paired reads maximum allowed insert size. pairs aligning on the same chr at a distance higher than this are considered candidates for SV.
-* ``--orientation`` expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default outtie
-* ``--output`` Header of the output file names
-* ``--minimum-supporting-pairs`` Minimum number of supporting pairs in order to call a variation event (default 10) 
-* ``--minimum-mapping-quality`` Minimum mapping quality to consider an alignment (default 20)
+The SV module
+=============
+The main FT modules, detects structural variant using discordant pairs, split reads and coverage information
+    FindTransloctions --sv [Options] --bam inputfile 
 
+    options:
+    ploidy - the ploidy of the organism, 2 is default
+    output - the prefix of the output files
+        
+    max-insert - the maximum allowed insert size of a normal pair. Pairs having larger insert 
+                    than this is treated as discordant pairs. Default is 1.5*std+mean insert size for PE 
+                    data or 4std+ mean on mp data
+                        
+    orientation - the pair orientation, use this setting to override the automatic orientation selection
+            
+    pairs - the minimum number of discordant pairs used to all a variant. Default is 3
+            
+        q - the minimum mapping quality of the discordant pairs 
+            forming a variant. Default value is 0.
+                                        
+        coverage - the library coverage. Default is calculated from average genomic coverage.
+
+The cov module
+==============
+Computes the coverge of different regions of the bam file
+    FindTranslocations --cov [Mode] --bam inputfile
+    
+    options:
+    bin - compute the coverage within bins of a specified size across the entire genome
+            , outputs a tab file of the format chromosome    start  stop coverage
+            
+            
+            light - compute the coverage within bins of a specified size across the 
+                    entire genome, outputs a tab file of the format chromosome  coverage
+            
 
 LICENCE
 ==============

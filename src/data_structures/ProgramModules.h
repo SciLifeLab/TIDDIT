@@ -27,8 +27,7 @@ public:
 	//constructor
 	StructuralVariations();
 	//main function
-	void findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t max_insert, bool outtie, uint16_t minimum_mapping_quality,
-		uint32_t minimumSupportingPairs, float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string indexFile, int contigsNumber,int ploidy);
+	void findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage,string outputFileHeader, map<string,int> SV_options);
 };
 
 //This class contains functions used to recognize and read vcf and bed files
@@ -44,43 +43,5 @@ public:
 	queue<string> readBed(string inputFileName);
 
 };
-//this class contains functions used to calculate the coverage of the bam file
-class Cov{
-public:
-	//constructor
-	Cov();
-	//main function accepts the bam file name, the bin size, an input file and index file. Using the input file or bin size, the coverage is calculated and returned as an output file
-	void coverageMain(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage, map<string,unsigned int> contig2position,int selection,int binSize);
-	//module used to find the coverage within specified regions
-	double findCoverage(string bamFile, string baiFile,int chr, int start, int end);
-	void interChromosomalVCF(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position);
-	void bin(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position,int binSize,int option);
-	void bed(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position);
-	void intraChromosomalVCF(string bamFile,string baiFile,string inputFileName,string output, double averageCoverage,map<string,unsigned int> contig2position);
-};
-
-class Region{
-public:
-	//constructor
-	Region();
-	string input;
-	map<string,unsigned int> contig2position;
-	map<unsigned int,string> position2contig;
-	string chrPrefix;
-	int max_insert;
-	//the main function, accepts the bam and bai file name, the region file, average coverage, aswell as the output and whether or not to output the vcf header
-	void region(string bamFile,string baiFile,string regionFile,string output,map<string,unsigned int> contig2position,map<unsigned int,string> position2contig, int ploidy,int minimum_mapping_quality,uint64_t genomeLength,uint32_t contigsNumber);
-	string matchContig(string inputChr);
-	vector< queue<int> > readRegionFile(vector<string> splitline);
-	vector< queue<int> > readVCF(vector<string> splitline);
-
-};
-
-class autoSettings{
-public:
-	autoSettings();
-	vector<int> autoConfig(string bamFile,int Quality, unsigned int max_insert);
-};
-
 
 #endif /* PROGRAMMODULES_H_ */

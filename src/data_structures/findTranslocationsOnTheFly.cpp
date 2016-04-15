@@ -2,16 +2,14 @@
    Francesco Vezzi
    Jesper Eisfeldt
  */
+
 #include "ProgramModules.h"
 #include "data_structures/Translocation.h"
-#include <boost/thread.hpp>
-#include <boost/algorithm/string.hpp>
 
 //function used to find translocations
 StructuralVariations::StructuralVariations() { }
 
-void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_t min_insert,  int32_t max_insert, bool outtie, uint16_t minimum_mapping_quality, uint32_t minimumSupportingPairs
-, float meanCoverage, float meanInsertSize, float StdInsertSize, string outputFileHeader, string indexFile,int contigsNumber,int ploidy) {
+void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage, string outputFileHeader, map<string,int> SV_options) {
 	size_t start = time(NULL);
 	//open the bam file
 	BamReader bamFile;
@@ -21,26 +19,32 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, int32_
 	// now create Translocation on the fly
 	Window *window;
 
-	window = new Window(max_insert, min_insert,minimum_mapping_quality,
-		outtie,  meanInsertSize,  StdInsertSize,  minimumSupportingPairs,
-		 meanCoverage,  outputFileHeader,bamFileName,indexFile,ploidy);
+	window = new Window(bamFileName,outtie,meanCoverage,outputFileHeader,SV_options);
 	window->initTrans(head);
 	//expands a vector so that it is large enough to hold reads from each contig in separate elements
-	window->eventReads.resize(contigsNumber);
-	window->eventSplitReads.resize(contigsNumber);
+	window->eventReads.resize(SV_options["contigsNumber"]);
+	window->eventSplitReads.resize(SV_options["contigsNumber"]);
 
-	window-> binnedCoverage.resize(contigsNumber);
-	window-> linksFromWin.resize(contigsNumber);
+	window-> binnedCoverage.resize(SV_options["contigsNumber"]);
+	window-> linksFromWin.resize(SV_options["contigsNumber"]);
 	
 	window -> numberOfEvents = 0;
 
 	string line;
 	string coverageFile=outputFileHeader+".tab";
 	ifstream inputFile( coverageFile.c_str() );
-	while (getline( inputFile, line )){
-		vector<std::string> splitline;
-		boost::split(splitline, line, boost::is_any_of("\t"));
-		window -> binnedCoverage[window -> contig2position[splitline[0]]].push_back(atof(splitline[1].c_str()));
+	int line_number=0;
+	while (std::getline( inputFile, line )){
+		if(line_number > 0){
+			vector<string> splitline;
+    		std::stringstream ss(line);
+    		std::string item;
+    		while (std::getline(ss, item, '\t')) {
+        		splitline.push_back(item);
+    		}
+			window -> binnedCoverage[window -> contig2position[splitline[0]]].push_back(atof(splitline[3].c_str()));
+		}
+		line_number += 1;
 	}
 	inputFile.close();
 
