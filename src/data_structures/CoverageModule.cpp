@@ -59,7 +59,6 @@ ostream& test(ofstream &coverageOutput,string output){
 	if(output != "stdout"){
 		ostream& covout=coverageOutput;
 		return(covout);
-		//cout << "analysing the coverage in bins of size " << binSize << endl;
 	}else{
 		ostream& covout=cout;
 		return(covout);
@@ -77,14 +76,17 @@ Cov::Cov(int binSize,string bamFile,string output){
 		static ostream& covout=cout;
 	}
 
+	covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << endl;
 
 	//initialize the function
-	binStart =0;
-	binEnd=binSize+binStart;
-	currentChr=-1;
-	sequencedBases.push_back(0);
-    contigsNumber = 0;
-    
+	this -> binStart =0;
+	this -> binEnd=binSize+binStart;
+	this -> binSize = binSize;
+	this -> currentChr=-1;
+	this -> sequencedBases.push_back(0);
+    this -> contigsNumber = 0;
+    this -> bamFile = bamFile;
+
     BamReader alignmentFile;
 	//open the bam file
 	alignmentFile.Open(bamFile);
@@ -93,6 +95,7 @@ Cov::Cov(int binSize,string bamFile,string output){
 	SamSequenceDictionary sequences  = alignmentFile.GetHeader().Sequences;
 	for(SamSequenceIterator sequence = sequences.Begin() ; sequence != sequences.End(); ++sequence) {
 		position2contig[contigsNumber]  = sequence->Name;
+		contig2position[sequence->Name] = contigsNumber;
 		contigLength.push_back(StringToNumber(sequence->Length));
 		contigsNumber++;
 	}
@@ -100,28 +103,10 @@ Cov::Cov(int binSize,string bamFile,string output){
     alignmentFile.Close();
 }
 
-//The main function
-void Cov::coverageMain(string bamFile,string output,map<string,unsigned int> contig2position,int selection,int binSize){
-	//the vcf mode outputs two files, one tab/bed file like the two other modes, and one vcf file, similar to the inout vcf but with added coverage data.
 
-	ostream& covout=test(coverageOutput,output);
-	if(selection == 1){
-		covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << endl;
-	}
-	
-	BamReader alignmentFile;
-	alignmentFile.Open(bamFile);
-	BamAlignment currentRead;
-    while ( alignmentFile.GetNextAlignmentCore(currentRead) ) {
-	    bin(currentRead,output,binSize,selection);
-	}
-}
 
 //this function calculates the coverage in bins of size binSize across the entire bamfile
-
-
-
-void Cov::bin(BamAlignment currentRead,string output,int binSize,int option){
+void Cov::bin(BamAlignment currentRead){
     ostream& covout = test(coverageOutput,output);
 	//initialise the chromosome ID
 	if(currentChr == -1){
@@ -133,11 +118,12 @@ void Cov::bin(BamAlignment currentRead,string output,int binSize,int option){
 	if(binEnd < currentRead.Position or currentChr != currentRead.RefID){
 		//check if the read will fit into the next bin, otherwise, keep adding bins
 		while(binEnd < currentRead.Position or currentChr != currentRead.RefID){
-			double coverage=double(sequencedBases[0])/double(binSize);
 			
-			covout << position2contig[currentChr] << "\t";
-			if(option == 1){covout << binStart << "\t" << binEnd << "\t";}
-			covout << coverage << endl;
+			if(binEnd > contigLength[currentChr]){
+				binEnd=contigLength[currentChr];
+			}
+			double coverage=double(sequencedBases[0])/double(binEnd-binStart);
+			covout << position2contig[currentChr] << "\t"<< binStart << "\t" << binEnd << "\t"<< coverage << endl;
 			
 			binStart=binEnd;
 			binEnd=binStart+binSize;
@@ -149,15 +135,11 @@ void Cov::bin(BamAlignment currentRead,string output,int binSize,int option){
 				//create bins to hold the last bases, and create empty bins to span the entire contig
 				while (binEnd < contigLength[currentChr]){
 					double coverage=double(sequencedBases[0])/double(binSize);
-					covout << position2contig[currentChr] << "\t";
-	
-					if(option == 1){
-						covout << binStart << "\t" << binEnd << "\t";
-					}
-					covout << coverage << endl;
+					covout << position2contig[currentChr] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << endl;
 
 					binStart=binEnd;
 					binEnd=binStart+binSize;
+
 					sequencedBases.erase(sequencedBases.begin());
 					if(sequencedBases.size() == 0){
 						sequencedBases.push_back(0);

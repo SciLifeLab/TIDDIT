@@ -134,21 +134,22 @@ class Cov{
 public:
     //the vraiables used in the coverage calculation function
     ofstream coverageOutput;
+	int binSize;
     int binStart;
 	int binEnd;
 	int currentChr;
 	vector<unsigned int> sequencedBases;
 	map<unsigned int,string> position2contig;
+	map<string,unsigned int> contig2position;
 	vector<int> contigLength;
 	uint32_t contigsNumber;
-	
-	
+	string bamFile;
+	string output;
+
 	//constructor
 	Cov(int binSize,string bamFile,string output);
-	//main function accepts the bam file name, the bin size, an input file and index file. Using the input file or bin size, the coverage is calculated and returned as an output file
-	void coverageMain(string bamFile,string output, map<string,unsigned int> contig2position,int selection,int binSize);
-	//module used to find the coverage within specified regions
-	void bin(BamAlignment currentRead,string output,int binSize,int option);
+	//module used to calculate the coverage of the genome
+	void bin(BamAlignment currentRead);
 };
 
 
@@ -336,15 +337,10 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 		if (read_status != unmapped and read_status != lowQualty) {
 			mappedReads ++;
 			mappedReadsLength += al.Length;
-			//al.BuildCharData();
-			//
-			//if (al.HasTag("SA")) {
-			 // splitReads ++;
-			//}
 		}
 
         //calculate the coverage in bins of size 500 bases
-        calculateCoverage -> bin(al,outputFileHeader,500,4);
+        calculateCoverage -> bin(al);
         
 		if (al.IsFirstMate() && al.IsMateMapped()) {
 			if( al.IsReverseStrand() != al.IsMateReverseStrand() ){
@@ -445,11 +441,5 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	bamFile.Close();
 	return library;
 }
-
-
-
-
-
-
 
 #endif /*TYPES_H_*/

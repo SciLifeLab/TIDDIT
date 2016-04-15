@@ -33,14 +33,18 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	string line;
 	string coverageFile=outputFileHeader+".tab";
 	ifstream inputFile( coverageFile.c_str() );
+	int line_number=0;
 	while (std::getline( inputFile, line )){
-		vector<string> splitline;
-    	std::stringstream ss(line);
-    	std::string item;
-    	while (std::getline(ss, item, '\t')) {
-        	splitline.push_back(item);
-    	}
-		window -> binnedCoverage[window -> contig2position[splitline[0]]].push_back(atof(splitline[1].c_str()));
+		if(line_number > 0){
+			vector<string> splitline;
+    		std::stringstream ss(line);
+    		std::string item;
+    		while (std::getline(ss, item, '\t')) {
+        		splitline.push_back(item);
+    		}
+			window -> binnedCoverage[window -> contig2position[splitline[0]]].push_back(atof(splitline[3].c_str()));
+		}
+		line_number += 1;
 	}
 	inputFile.close();
 

@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
 
 	map<string,string> vm;
 	//general options
-	vm["-bam"]="";
+	vm["-b"]="";
 	vm["-bai"]="";
 	vm["-o"]="";
 	vm["--help"] ="store";
@@ -65,29 +65,27 @@ int main(int argc, char **argv) {
 	
 	//the sv module
 	vm["--sv"]="store";
-	vm["-insert"]="";
-	vm["-orientation"]="";
-	vm["-pairs"]="";
+	vm["--insert"]="";
+	vm["--orientation"]="";
+	vm["-p"]="";
 	vm["-q"]="";
-	vm["-coverage"]="";
-	vm["-ploidy"]="";
+	vm["--coverage"]="";
+	vm["--plody"]="";
 	
-	string sv_help ="\nUsage: tiddit --sv [Options] -bam inputfile -o prefix(optional) \nOptions\n";
-	sv_help +="\t-max-insert\tpaired reads maximum allowed insert size. pairs aligning on the same chr at a distance higher than this are considered candidates for SV(default=1.5std+mean insert size)\n";
-	sv_help +="\t-orientation\texpected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset\n";
-	sv_help +="\t-pairs\tMinimum number of supporting pairs in order to call a variation event (default 3)\n";
+	string sv_help ="\nUsage: tiddit --sv [Options] -b inputfile -o prefix(optional) \nOptions\n";
+	sv_help +="\t-max--insert\tpaired reads maximum allowed insert size. pairs aligning on the same chr at a distance higher than this are considered candidates for SV(default=1.5std+mean insert size)\n";
+	sv_help +="\t--orientation\texpected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset\n";
+	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 3)\n";
 	sv_help +="\t-q\tMinimum mapping quality to consider an alignment (default 0)\n";
-	sv_help +="\t-coverage\tdo not compute coverage from bam file, use the one specified here\n";
-	sv_help +="\t-ploidy\tthe number of sets of chromosomes,(default = 2)\n";
+	sv_help +="\t--coverage\tdo not compute coverage from bam file, use the one specified here\n";
+	sv_help +="\t--plody\tthe number of sets of chromosomes,(default = 2)\n";
 			
 	//the coverage module
 	vm["--cov"]="store";
-	vm["-bin"]="";
-	vm["-light"]="";
+	vm["--bin_size"]="";
 	
-	string coverage_help="\nUsage: tiddit --cov [Mode] --bam inputfile --output outputFile(optional) \nOptions:only one mode may be selected\n";
-	coverage_help +="\n\t-bin\tuse bins of specified size to measure the coverage of the entire bam file, set output to stdout to print to stdout";
-	coverage_help +="\n\t-light\tuse bins of specified size to measure the coverage of the entire bam file, only prints chromosome and coverage for each bin, set output to stdout to print to stdout\n";
+	string coverage_help="\nUsage: tiddit --cov [Mode] --b inputfile --output outputFile(optional) \nOptions:only one mode may be selected\n";
+	coverage_help +="\n\t-bin_size\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
 	
 	
 	//store the options in a map
@@ -136,13 +134,13 @@ int main(int argc, char **argv) {
 	}
 	
 	//the bam file is required by all modules
-	if(vm["-bam"] == ""){
+	if(vm["-b"] == ""){
 		cout << general_help;
-		cout << "ERROR: select a bam file using the -bam option" << endl;
+		cout << "ERROR: select a bam file using the -b option" << endl;
 		return(1);
 	}
 
-	string alignmentFile	= vm["-bam"];
+	string alignmentFile	= vm["-b"];
 	map<string,unsigned int> contig2position;
 	map<unsigned int,string> position2contig;
 	uint64_t genomeLength = 0;
@@ -186,25 +184,25 @@ int main(int argc, char **argv) {
 		if(vm["-q"] != ""){
 			minimum_mapping_quality=convert_str( vm["-q"] ,"-q");
 		}
-		if(vm["-pairs"] != ""){
-			minimumSupportingPairs=convert_str( vm["-pairs"] , "-pairs");
+		if(vm["-p"] != ""){
+			minimumSupportingPairs=convert_str( vm["-p"] , "-p");
 		}
-		if(vm["-insert"] != ""){
-			int insert_test  = convert_str( vm["-insert"], "-insert");
+		if(vm["--insert"] != ""){
+			int insert_test  = convert_str( vm["--insert"], "--insert");
 		}
 		
-		if(vm["-orientation"] != ""){
-			if (vm["-orientation"] == "outtie"){
+		if(vm["--orientation"] != ""){
+			if (vm["--orientation"] == "outtie"){
 				outtie=true;
-			}else if (vm["-orientation"] == "innie"){
+			}else if (vm["--orientation"] == "innie"){
 				outtie=false;
 			}else{
-				cout << "ERROR: invalid orientation " << vm["-orientation"] << endl;
+				cout << "ERROR: invalid orientation " << vm["--orientation"] << endl;
 				return(0);
 			}
 		}
-		if(vm["-ploidy"] != ""){
-            		int ploidy = convert_str( vm["-ploidy"],"-ploidy" );
+		if(vm["--plody"] != ""){
+            		int ploidy = convert_str( vm["--plody"],"--plody" );
         	}
 		
 		LibraryStatistics library;
@@ -212,11 +210,11 @@ int main(int argc, char **argv) {
 		library = computeLibraryStats(alignmentFile, genomeLength, max_insert,40, outtie,minimum_mapping_quality,outputFileHeader);
 		printf ("library stats time consumption= %lds\n", time(NULL) - start);
 		coverage   = library.C_A;
-		if(vm["-coverage"] != ""){
-			coverage    = convert_str( vm["-coverage"],"-coverage" );
+		if(vm["--coverage"] != ""){
+			coverage    = convert_str( vm["--coverage"],"--coverage" );
 		}
 		
-		if(vm["-orientation"] == ""){
+		if(vm["--orientation"] == ""){
 	    		outtie=library.mp;
 			if(outtie == true){
 				cout << "auto-config orientation: outtie" << endl;
@@ -234,13 +232,13 @@ int main(int argc, char **argv) {
 		}
 
         	min_insert = meanInsert/2; 
-		if(vm["-insert"] != ""){
-			max_insert  = convert_str( vm["-insert"], "-insert");
+		if(vm["--insert"] != ""){
+			max_insert  = convert_str( vm["--insert"], "--insert");
 		}
 
         	int ploidy = 2;
-        	if(vm["-ploidy"] != ""){
-            		ploidy = convert_str( vm["-ploidy"],"-ploidy" );
+        	if(vm["--plody"] != ""){
+            		ploidy = convert_str( vm["--plody"],"--plody" );
         	}
         
         	map<string,int> SV_options;
@@ -260,31 +258,23 @@ int main(int argc, char **argv) {
 
 	//the coverage module
 	}else if(vm["--cov"] == "found"){
-		
 		Cov *calculateCoverage;
-		
-		//calculate the coverage of the entre library
-		if(vm["-light"] == "" and vm["-bin"] == ""){
-			cout << "no mode selected, shuting down" << endl;
-			return(0);
-		}
-
-		int option;
-		int binSize;
-		if(vm["-bin"] != ""){
-			option=1;
-			binSize =convert_str( vm["-bin"], "-bin");
-		}else{
-			option=4;
-			binSize =convert_str( vm["-light"],"-light" );
+		int binSize=500;
+		if(vm["--bin_size"] != ""){
+			binSize =convert_str( vm["--bin_size"], "--bin_size");
 		}
 		if(vm["-o"] != ""){
 		    outputFileHeader=vm["-o"];
 		}
-		cout << outputFileHeader << endl;
-		cout <<  vm["-o"] << endl;
-		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader);
-		calculateCoverage -> coverageMain(alignmentFile,outputFileHeader,contig2position,option,binSize);
 
+		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader);
+		BamReader bam;
+		bam.Open(alignmentFile);
+		BamAlignment currentRead;
+    	while ( bam.GetNextAlignmentCore(currentRead) ) {
+	    	calculateCoverage -> bin(currentRead);
+		}
+		bam.Close();
 	}
+
 }

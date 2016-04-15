@@ -284,21 +284,10 @@ void Window::insertRead(BamAlignment alignment) {
       	}
       }
 
-	  //vector <string> SA_elements;
-	  //Now split on ,
-	  //
- 	  //
-      //
-      //	SA_elements.push_back(item);
-      //}
-	  // there will be an "extra" empty string element at the end of the list, corresponding to the split of the final ;
+
 	  
 	  int contigNr = contig2position[SA_elements[0]];
-	  //for(vector<string>::iterator it = SA_elements.begin(), it_end = --SA_elements.end(); it != it_end; it += 6) {
-	    //string contig = *it;
-	   // cout << contig << endl;
-	   // contigNr = this -> ;
-	  //}
+
 	  
 	  //Check if the distance between the split read and the previous alignment is larger than max distance
 
@@ -484,17 +473,7 @@ bool Window::computeVariations(int chr2) {
 		  	// alignment.  Conventionally, at a supplementary
 		  	// line, the first element points to the primary
 		  	// line.
-		  	*/
-
-		  	//Old boost code
-		  	//vector <string> SA_elements;
-		  	//boost::split(SA_elements,SA,boost::is_any_of(",;"));
-		  	// 6 elements per SA entry, but there will be an
-		  	// "extra" empty string element at the end of the
-		  	// list, corresponding to the split of the final ;
-		  	
-
-		  
+		  	*/	  
 			//First split at ;, keep only the 0th elemnt
 			vector <string> SA_elements;
 			stringstream ss(SA);
