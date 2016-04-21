@@ -226,7 +226,7 @@ int main(int argc, char **argv) {
 		meanInsert = library.insertMean;
 		insertStd  = library.insertStd;
 		if(outtie == false){
-			max_insert =meanInsert+3*insertStd;
+			max_insert =meanInsert+2*insertStd;
 		}else{
 			max_insert =meanInsert+4*insertStd;
 		}
@@ -234,6 +234,8 @@ int main(int argc, char **argv) {
         	min_insert = meanInsert/2; 
 		if(vm["--insert"] != ""){
 			max_insert  = convert_str( vm["--insert"], "--insert");
+		}else{
+			cout << "insert size threshold:" << max_insert << endl;
 		}
 
         	int ploidy = 2;
