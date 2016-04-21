@@ -34,10 +34,10 @@ int main(int argc, char **argv) {
 	//MAIN VARIABLE
 
 	bool outtie 				    = true;	 // library orientation
-	uint32_t minimumSupportingPairs = 3;
+	uint32_t minimumSupportingPairs = 4;
 	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 100000;  // max insert size
-	int minimum_mapping_quality		=20;
+	int minimum_mapping_quality		=10;
 	float coverage;
 	float coverageStd;
 	float meanInsert;
