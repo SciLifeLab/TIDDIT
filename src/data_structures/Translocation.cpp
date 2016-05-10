@@ -155,7 +155,7 @@ string Window::VCFHeader(){
 	string headerString ="";
 	//Define fileformat and source
 	headerString+="##fileformat=VCFv4.1\n";
-	headerString+="##source=FindTranslocations\n";
+	headerString+="##source=TIDDIT\n";
 	//define the alowed events
 	headerString+="##ALT=<ID=DEL,Description=\"Deletion\">\n";
 	headerString+="##ALT=<ID=DUP,Description=\"Duplication\">\n";
@@ -205,11 +205,11 @@ Window::Window(string bamFileName, bool outtie, float meanCoverage,string output
 	this ->std_insert		 = SV_options["STDInsert"];
 	this->minimumPairs		 = SV_options["pairs"];
 	this->meanCoverage		 = meanCoverage;
-	this->bamFileName		=bamFileName;
-	this -> ploidy        =SV_options["ploidy"];
-	this -> readLength = SV_options["readLength"];
+	this->bamFileName		 = bamFileName;
+	this -> ploidy           = SV_options["ploidy"];
+	this -> readLength       = SV_options["readLength"];
 
-	this->outputFileHeader   = outputFileHeader;
+	this->outputFileHeader     = outputFileHeader;
 	string inter_chr_eventsVCF = outputFileHeader + "_inter_chr_events.vcf";
 	this->interChrVariationsVCF.open(inter_chr_eventsVCF.c_str());
 	this->interChrVariationsVCF << VCFHeader() << outputFileHeader << "\n";
