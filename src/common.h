@@ -45,89 +45,15 @@ using namespace std;
 #define DEFAULT_CHANNEL std::cout
 
 static inline std::string package_description() {
-	std::string line("FRC");
+	std::string line("TIDDIT");
 	line.append(" version ");
-	line.append("1.2.0");
+	line.append("1.0.0");
 	return line;
 }
 
 enum readStatus {unmapped, lowQualty, singleton, pair_wrongChrs,
 	pair_proper, pair_wrongDistance, pair_wrongOrientation};
 
-
-enum Feature {LOW_COVERAGE_AREA, HIGH_COVERAGE_AREA, LOW_NORMAL_AREA, HIGH_NORMAL_AREA, HIGH_SINGLE_AREA, HIGH_SPANNING_AREA, HIGH_OUTIE_AREA, COMPRESSION_AREA, STRECH_AREA, TOTAL};
-
-
-enum FeatureTypes {
-	FRC_TOTAL,
-	LOW_COV_PE,
-	HIGH_COV_PE,
-	LOW_NORM_COV_PE,
-	HIGH_NORM_COV_PE,
-	HIGH_SINGLE_PE,
-	HIGH_SPAN_PE,
-	HIGH_OUTIE_PE,
-	COMPR_PE,
-	STRECH_PE,
-	HIGH_SINGLE_MP,
-	HIGH_OUTIE_MP,
-	HIGH_SPAN_MP,
-	COMPR_MP,
-	STRECH_MP,
-};
-
-static string returnFeatureName(FeatureTypes type) {
-	switch (type) {
-	case FRC_TOTAL:
-		return "TOTAL";
-		break;
-	case LOW_COV_PE:
-		return "LOW_COV_PE";
-		break;
-	case HIGH_COV_PE:
-		return "HIGH_COV_PE";
-		break;
-	case LOW_NORM_COV_PE:
-		return "LOW_NORM_COV_PE";
-		break;
-	case HIGH_NORM_COV_PE:
-		return "HIGH_NORM_COV_PE";
-		break;
-	case HIGH_SINGLE_PE:
-		return "HIGH_SINGLE_PE";
-		break;
-	case HIGH_SPAN_PE:
-		return "HIGH_SPAN_PE";
-		break;
-	case HIGH_OUTIE_PE:
-		return "HIGH_OUTIE_PE";
-		break;
-	case COMPR_PE:
-		return "COMPR_PE";
-		break;
-	case STRECH_PE:
-		return "STRECH_PE";
-		break;
-	case HIGH_SINGLE_MP:
-		return "HIGH_SINGLE_MP";
-		break;
-	case HIGH_OUTIE_MP:
-		return "HIGH_OUTIE_MP";
-		break;
-	case HIGH_SPAN_MP:
-		return "HIGH_SPAN_MP";
-		break;
-	case COMPR_MP:
-		return "COMPR_MP";
-		break;
-	case STRECH_MP:
-		return "STRECH_MP";
-		break;
-	default:
-		cout << "THis whould never happen\n";
-	}
-
-}
 
 
 class Cov{
@@ -284,8 +210,6 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	uint64_t mappedReadsLength= 0;
 
 
-
-
 	uint64_t insertsLength = 0; // total inserts length
 	float insertMean;
 	float insertStd;
@@ -344,7 +268,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
         
 		if (al.IsFirstMate() && al.IsMateMapped()) {
 			if( al.IsReverseStrand() != al.IsMateReverseStrand() ){
-				if(al.IsMapped() and al.MapQuality > 20 and al.RefID == al.MateRefID and al.MatePosition-al.Position+1 < max_insert ){
+				if(al.IsMapped() and al.MapQuality > quality and al.RefID == al.MateRefID and al.MatePosition-al.Position+1 < max_insert ){
 					iSize = abs(al.InsertSize);
 					if(counterK == 1) {
 						Mk = iSize;

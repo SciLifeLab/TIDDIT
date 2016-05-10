@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
 	}	
 	bamFile.Close();
 
-	//if the find structural variations module is chosen collect the options 
+	//if the find structural variations module is chosen collect the options
 	if(vm["--sv"] == "found"){
 		if(vm["--output"] != ""){
 		    outputFileHeader=vm["--output"];
@@ -193,11 +193,14 @@ int main(int argc, char **argv) {
             		int ploidy = convert_str( vm["--plody"],"--plody" );
         	}
 		
+        //now compute library stats
 		LibraryStatistics library;
 		size_t start = time(NULL);
-		library = computeLibraryStats(alignmentFile, genomeLength, max_insert,40, outtie,minimum_mapping_quality,outputFileHeader);
+		library = computeLibraryStats(alignmentFile, genomeLength, max_insert, 40 , outtie,minimum_mapping_quality,outputFileHeader); // min insert size is fixed to 40
 		printf ("library stats time consumption= %lds\n", time(NULL) - start);
-		coverage   = library.C_A;
+		
+        
+        coverage   = library.C_A;
 		if(vm["--coverage"] != ""){
 			coverage    = convert_str( vm["--coverage"],"--coverage" );
 		}
@@ -218,25 +221,24 @@ int main(int argc, char **argv) {
 		} else {
 			max_insert =meanInsert+4*insertStd;
 		}
-
 		if(vm["--insert"] != ""){
 			max_insert  = convert_str( vm["--insert"], "--insert");
 		}
 
-        	int ploidy = 2;
-        	if(vm["--plody"] != ""){
-            		ploidy = convert_str( vm["--plody"],"--plody" );
-        	}
+        int ploidy = 2;
+        if(vm["--plody"] != ""){
+            ploidy = convert_str( vm["--plody"],"--plody" );
+        }
         
         map<string,int> SV_options;
-		SV_options["max_insert"]=max_insert;
-		SV_options["pairs"]=minimumSupportingPairs;
-		SV_options["mapping_quality"]=minimum_mapping_quality;
-		SV_options["readLength"]=library.readLength;
-		SV_options["ploidy"]=ploidy;
-		SV_options["contigsNumber"]=contigsNumber;
-        SV_options["meanInsert"]=meanInsert;
-        SV_options["STDInsert"]=insertStd;
+		SV_options["max_insert"]      = max_insert;
+		SV_options["pairs"]           = minimumSupportingPairs;
+		SV_options["mapping_quality"] = minimum_mapping_quality;
+		SV_options["readLength"]      = library.readLength;
+		SV_options["ploidy"]          = ploidy;
+		SV_options["contigsNumber"]   = contigsNumber;
+        SV_options["meanInsert"]      = meanInsert;
+        SV_options["STDInsert"]       = insertStd;
         
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();		
