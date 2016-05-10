@@ -35,15 +35,12 @@ int main(int argc, char **argv) {
 
 	bool outtie 				    = true;	 // library orientation
 	uint32_t minimumSupportingPairs = 3;
-	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 100000;  // max insert size
-	int minimum_mapping_quality		=20;
+	int minimum_mapping_quality		= 20;
 	float coverage;
 	float coverageStd;
 	float meanInsert;
 	float insertStd;
-	string roi;
-	string indexFile="";
 	string outputFileHeader ="output";
 	
 	
@@ -140,16 +137,12 @@ int main(int argc, char **argv) {
 	}
 
 	string alignmentFile	= vm["--bam"];
-	map<string,unsigned int> contig2position;
-	map<unsigned int,string> position2contig;
 	uint64_t genomeLength = 0;
 	uint32_t contigsNumber = 0;
 
 	// Now parse BAM header and extract information about genome lenght
-		
 	BamReader bamFile;
 	bamFile.Open(alignmentFile);
-
 	SamHeader head = bamFile.GetHeader();
 	if (head.HasSortOrder()) {
 		string sortOrder = head.SortOrder;
@@ -162,18 +155,14 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-
 	SamSequenceDictionary sequences  = head.Sequences;
 	for(SamSequenceIterator sequence = sequences.Begin() ; sequence != sequences.End(); ++sequence) {
 		genomeLength += StringToNumber(sequence->Length);
-		contig2position[sequence->Name] = contigsNumber; // keep track of contig name and position in order to avoid problems when processing two libraries
-
-		position2contig[contigsNumber] = sequence->Name;
 		contigsNumber++;
 	}	
 	bamFile.Close();
 
-	//if the find structural variations module is chosen
+	//if the find structural variations module is chosen collect the options 
 	if(vm["--sv"] == "found"){
 		if(vm["--output"] != ""){
 		    outputFileHeader=vm["--output"];
@@ -214,7 +203,7 @@ int main(int argc, char **argv) {
 		}
 		
 		if(vm["--orientation"] == ""){
-	    		outtie=library.mp;
+            outtie=library.mp;
 			if(outtie == true){
 				cout << "auto-config orientation: outtie" << endl;
 			}else{
@@ -226,11 +215,10 @@ int main(int argc, char **argv) {
 		insertStd  = library.insertStd;
 		if(outtie == false){
 			max_insert =meanInsert+3*insertStd;
-		}else{
+		} else {
 			max_insert =meanInsert+4*insertStd;
 		}
 
-        	min_insert = meanInsert/2; 
 		if(vm["--insert"] != ""){
 			max_insert  = convert_str( vm["--insert"], "--insert");
 		}
@@ -240,7 +228,7 @@ int main(int argc, char **argv) {
             		ploidy = convert_str( vm["--plody"],"--plody" );
         	}
         
-        	map<string,int> SV_options;
+        map<string,int> SV_options;
 		SV_options["max_insert"]=max_insert;
 		SV_options["pairs"]=minimumSupportingPairs;
 		SV_options["mapping_quality"]=minimum_mapping_quality;
