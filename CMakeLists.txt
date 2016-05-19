@@ -1,7 +1,7 @@
 
 
 cmake_minimum_required (VERSION 2.6)
-project(FindTranslocations)
+project(TIDDIT)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
@@ -18,9 +18,9 @@ include_directories("${PROJECT_SOURCE_DIR}/lib/")
 include_directories("${PROJECT_SOURCE_DIR}/lib/bamtools/src")
 
 
-# sorgenti da compilare
-file(GLOB FIND_TRANS_FILES
-    ${PROJECT_SOURCE_DIR}/src/FindTranslocations.cpp
+# source code
+file(GLOB TIDDIT_FILES
+    ${PROJECT_SOURCE_DIR}/src/TIDDIT.cpp
     ${PROJECT_SOURCE_DIR}/src/data_structures/Translocation.cpp
 	${PROJECT_SOURCE_DIR}/src/data_structures/findTranslocationsOnTheFly.cpp
     ${PROJECT_SOURCE_DIR}/src/common.h
@@ -31,7 +31,7 @@ file(GLOB FIND_TRANS_FILES
 add_subdirectory(lib)
 
 
-# Find_translocations executable
-add_executable(FindTranslocations ${FIND_TRANS_FILES})
-target_link_libraries(FindTranslocations ${ZLIB_LIBRARIES})
-target_link_libraries(FindTranslocations  BamTools)
+# TIDDIT executable
+add_executable(TIDDIT ${TIDDIT_FILES})
+target_link_libraries(TIDDIT ${ZLIB_LIBRARIES})
+target_link_libraries(TIDDIT  BamTools)

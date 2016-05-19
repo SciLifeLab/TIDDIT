@@ -35,15 +35,12 @@ int main(int argc, char **argv) {
 
 	bool outtie 				    = true;	 // library orientation
 	uint32_t minimumSupportingPairs = 3;
-	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 100000;  // max insert size
-	int minimum_mapping_quality		=20;
+	int minimum_mapping_quality		= 20;
 	float coverage;
 	float coverageStd;
 	float meanInsert;
 	float insertStd;
-	string roi;
-	string indexFile="";
 	string outputFileHeader ="output";
 	
 	
@@ -53,12 +50,11 @@ int main(int argc, char **argv) {
 
 	map<string,string> vm;
 	//general options
-	vm["-b"]="";
-	vm["-bai"]="";
-	vm["-o"]="";
+	vm["--bam"]="";
+	vm["--output"]="";
 	vm["--help"] ="store";
 	
-	string general_help="TIDDIT - a structural variant caller\nUsage: tiddit <module> [options] \n";
+	string general_help="TIDDIT - a structural variant caller\nUsage: TIDDIT <module> [options] \n";
 	general_help+="modules\n\t--help\tproduce help message\n";
 	general_help+="\t--sv\tselect the sv module to find structural variations\n";
 	general_help+="\t--cov\tselect the cov module to analyse the coverage of the genome using bins of a specified size\n";
@@ -67,16 +63,16 @@ int main(int argc, char **argv) {
 	vm["--sv"]="store";
 	vm["--insert"]="";
 	vm["--orientation"]="";
-	vm["-p"]="";
-	vm["-q"]="";
+	vm["--supporting-pairs"]="";
+	vm["--mapping-quality"]="";
 	vm["--coverage"]="";
 	vm["--plody"]="";
 	
-	string sv_help ="\nUsage: tiddit --sv [Options] -b inputfile -o prefix(optional) \nOptions\n";
-	sv_help +="\t-max--insert\tpaired reads maximum allowed insert size. pairs aligning on the same chr at a distance higher than this are considered candidates for SV(default=1.5std+mean insert size)\n";
+	string sv_help ="\nUsage: TIDDIT --sv --bam inputfile [--output prefix] \nOther options\n";
+	sv_help +="\t--insert\tpaired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (if not specified default=1.5std + mean_insert_size)\n";
 	sv_help +="\t--orientation\texpected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset\n";
-	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 3)\n";
-	sv_help +="\t-q\tMinimum mapping quality to consider an alignment (default 0)\n";
+	sv_help +="\t--supporting-pairs\tMinimum number of supporting pairs in order to call a variation event (default 3)\n";
+	sv_help +="\t--mapping-quality\tMinimum mapping quality to consider an alignment (default 0)\n";
 	sv_help +="\t--coverage\tdo not compute coverage from bam file, use the one specified here\n";
 	sv_help +="\t--plody\tthe number of sets of chromosomes,(default = 2)\n";
 			
@@ -84,7 +80,7 @@ int main(int argc, char **argv) {
 	vm["--cov"]="store";
 	vm["--bin_size"]="";
 	
-	string coverage_help="\nUsage: tiddit --cov [Mode] --b inputfile --output outputFile(optional) \nOptions:only one mode may be selected\n";
+	string coverage_help="\nUsage: TIDDIT --cov [Mode] --bam inputfile [--output prefix] \nOptions:only one mode may be selected\n";
 	coverage_help +="\n\t-bin_size\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
 	
 	
@@ -134,23 +130,19 @@ int main(int argc, char **argv) {
 	}
 	
 	//the bam file is required by all modules
-	if(vm["-b"] == ""){
+	if(vm["--bam"] == ""){
 		cout << general_help;
-		cout << "ERROR: select a bam file using the -b option" << endl;
+		cout << "ERROR: select a bam file using the --bam option" << endl;
 		return(1);
 	}
 
-	string alignmentFile	= vm["-b"];
-	map<string,unsigned int> contig2position;
-	map<unsigned int,string> position2contig;
+	string alignmentFile	= vm["--bam"];
 	uint64_t genomeLength = 0;
 	uint32_t contigsNumber = 0;
 
 	// Now parse BAM header and extract information about genome lenght
-		
 	BamReader bamFile;
 	bamFile.Open(alignmentFile);
-
 	SamHeader head = bamFile.GetHeader();
 	if (head.HasSortOrder()) {
 		string sortOrder = head.SortOrder;
@@ -163,29 +155,25 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-
 	SamSequenceDictionary sequences  = head.Sequences;
 	for(SamSequenceIterator sequence = sequences.Begin() ; sequence != sequences.End(); ++sequence) {
 		genomeLength += StringToNumber(sequence->Length);
-		contig2position[sequence->Name] = contigsNumber; // keep track of contig name and position in order to avoid problems when processing two libraries
-
-		position2contig[contigsNumber] = sequence->Name;
 		contigsNumber++;
 	}	
 	bamFile.Close();
 
-	//if the find structural variations module is chosen
+	//if the find structural variations module is chosen collect the options
 	if(vm["--sv"] == "found"){
-		if(vm["-o"] != ""){
-		    outputFileHeader=vm["-o"];
+		if(vm["--output"] != ""){
+		    outputFileHeader=vm["--output"];
 		}
 	
 	
-		if(vm["-q"] != ""){
-			minimum_mapping_quality=convert_str( vm["-q"] ,"-q");
+		if(vm["--mapping-quality"] != ""){
+			minimum_mapping_quality=convert_str( vm["--mapping-quality"] ,"--mapping-quality");
 		}
 		if(vm["-p"] != ""){
-			minimumSupportingPairs=convert_str( vm["-p"] , "-p");
+			minimumSupportingPairs=convert_str( vm["--supporting-pairs"] , "--supporting-pairs");
 		}
 		if(vm["--insert"] != ""){
 			int insert_test  = convert_str( vm["--insert"], "--insert");
@@ -205,17 +193,20 @@ int main(int argc, char **argv) {
             		int ploidy = convert_str( vm["--plody"],"--plody" );
         	}
 		
+        //now compute library stats
 		LibraryStatistics library;
 		size_t start = time(NULL);
-		library = computeLibraryStats(alignmentFile, genomeLength, max_insert,40, outtie,minimum_mapping_quality,outputFileHeader);
+		library = computeLibraryStats(alignmentFile, genomeLength, max_insert, 40 , outtie,minimum_mapping_quality,outputFileHeader); // min insert size is fixed to 40
 		printf ("library stats time consumption= %lds\n", time(NULL) - start);
-		coverage   = library.C_A;
+		
+        
+        coverage   = library.C_A;
 		if(vm["--coverage"] != ""){
 			coverage    = convert_str( vm["--coverage"],"--coverage" );
 		}
 		
 		if(vm["--orientation"] == ""){
-	    		outtie=library.mp;
+            outtie=library.mp;
 			if(outtie == true){
 				cout << "auto-config orientation: outtie" << endl;
 			}else{
@@ -227,29 +218,27 @@ int main(int argc, char **argv) {
 		insertStd  = library.insertStd;
 		if(outtie == false){
 			max_insert =meanInsert+3*insertStd;
-		}else{
+		} else {
 			max_insert =meanInsert+4*insertStd;
 		}
-
-        	min_insert = meanInsert/2; 
 		if(vm["--insert"] != ""){
 			max_insert  = convert_str( vm["--insert"], "--insert");
 		}
 
-        	int ploidy = 2;
-        	if(vm["--plody"] != ""){
-            		ploidy = convert_str( vm["--plody"],"--plody" );
-        	}
+        int ploidy = 2;
+        if(vm["--plody"] != ""){
+            ploidy = convert_str( vm["--plody"],"--plody" );
+        }
         
-        	map<string,int> SV_options;
-		SV_options["max_insert"]=max_insert;
-		SV_options["pairs"]=minimumSupportingPairs;
-		SV_options["mapping_quality"]=minimum_mapping_quality;
-		SV_options["readLength"]=library.readLength;
-		SV_options["ploidy"]=ploidy;
-		SV_options["contigsNumber"]=contigsNumber;
-        	SV_options["meanInsert"]=meanInsert;
-        	SV_options["STDInsert"]=insertStd;
+        map<string,int> SV_options;
+		SV_options["max_insert"]      = max_insert;
+		SV_options["pairs"]           = minimumSupportingPairs;
+		SV_options["mapping_quality"] = minimum_mapping_quality;
+		SV_options["readLength"]      = library.readLength;
+		SV_options["ploidy"]          = ploidy;
+		SV_options["contigsNumber"]   = contigsNumber;
+        SV_options["meanInsert"]      = meanInsert;
+        SV_options["STDInsert"]       = insertStd;
         
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();		
