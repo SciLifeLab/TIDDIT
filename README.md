@@ -16,7 +16,7 @@ FindTranslocations: tool to identify  chromosomal rearrangements using Mate Pair
 The SV module
 =============
 The main FT modules, detects structural variant using discordant pairs, split reads and coverage information
-    FindTransloctions --sv [Options] --bam inputfile 
+    TIDDIT --sv [Options] --bam inputfile 
 
     options:
     ploidy - the ploidy of the organism, 2 is default
