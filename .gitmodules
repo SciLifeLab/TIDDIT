@@ -1,0 +1,3 @@
+[submodule "SVDB"]
+	path = SVDB
+	url = https://github.com/J35P312/SVDB.git
