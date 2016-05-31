@@ -34,9 +34,10 @@ int main(int argc, char **argv) {
 	//MAIN VARIABLE
 
 	bool outtie 				    = true;	 // library orientation
-	uint32_t minimumSupportingPairs = 3;
+	uint32_t minimumSupportingPairs = 4;
+	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 100000;  // max insert size
-	int minimum_mapping_quality		= 20;
+	int minimum_mapping_quality		=10;
 	float coverage;
 	float coverageStd;
 	float meanInsert;
@@ -50,8 +51,8 @@ int main(int argc, char **argv) {
 
 	map<string,string> vm;
 	//general options
-	vm["--bam"]="";
-	vm["--output"]="";
+	vm["-b"]="";
+	vm["-o"]="";
 	vm["--help"] ="store";
 	
 	string general_help="TIDDIT - a structural variant caller\nUsage: TIDDIT <module> [options] \n";
@@ -63,25 +64,25 @@ int main(int argc, char **argv) {
 	vm["--sv"]="store";
 	vm["--insert"]="";
 	vm["--orientation"]="";
-	vm["--supporting-pairs"]="";
-	vm["--mapping-quality"]="";
-	vm["--coverage"]="";
+	vm["-p"]="";
+	vm["-q"]="";
+	vm["-c"]="";
 	vm["--plody"]="";
 	
-	string sv_help ="\nUsage: TIDDIT --sv --bam inputfile [--output prefix] \nOther options\n";
-	sv_help +="\t--insert\tpaired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (if not specified default=1.5std + mean_insert_size)\n";
+	string sv_help ="\nUsage: TIDDIT --sv -b inputfile [-o prefix] \nOther options\n";
+	sv_help +="\t--insert\tpaired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (if not specified default=2std + mean_insert_size)\n";
 	sv_help +="\t--orientation\texpected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset\n";
-	sv_help +="\t--supporting-pairs\tMinimum number of supporting pairs in order to call a variation event (default 3)\n";
-	sv_help +="\t--mapping-quality\tMinimum mapping quality to consider an alignment (default 0)\n";
-	sv_help +="\t--coverage\tdo not compute coverage from bam file, use the one specified here\n";
+	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 4)\n";
+	sv_help +="\t-q\tMinimum mapping quality to consider an alignment (default 10)\n";
+	sv_help +="\t-c\taverage coverage, (default= computed from the bam file)\n";
 	sv_help +="\t--plody\tthe number of sets of chromosomes,(default = 2)\n";
 			
 	//the coverage module
 	vm["--cov"]="store";
 	vm["--bin_size"]="";
 	
-	string coverage_help="\nUsage: TIDDIT --cov [Mode] --bam inputfile [--output prefix] \nOptions:only one mode may be selected\n";
-	coverage_help +="\n\t-bin_size\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
+	string coverage_help="\nUsage: TIDDIT --cov [Mode] -b inputfile [-o prefix]\n";
+	coverage_help +="\n\t--bin_size\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
 	
 	
 	//store the options in a map
@@ -130,13 +131,13 @@ int main(int argc, char **argv) {
 	}
 	
 	//the bam file is required by all modules
-	if(vm["--bam"] == ""){
+	if(vm["-b"] == ""){
 		cout << general_help;
 		cout << "ERROR: select a bam file using the --bam option" << endl;
 		return(1);
 	}
 
-	string alignmentFile	= vm["--bam"];
+	string alignmentFile	= vm["-b"];
 	uint64_t genomeLength = 0;
 	uint32_t contigsNumber = 0;
 
@@ -164,16 +165,16 @@ int main(int argc, char **argv) {
 
 	//if the find structural variations module is chosen collect the options
 	if(vm["--sv"] == "found"){
-		if(vm["--output"] != ""){
-		    outputFileHeader=vm["--output"];
+		if(vm["-o"] != ""){
+		    outputFileHeader=vm["-o"];
 		}
 	
 	
-		if(vm["--mapping-quality"] != ""){
-			minimum_mapping_quality=convert_str( vm["--mapping-quality"] ,"--mapping-quality");
+		if(vm["-q"] != ""){
+			minimum_mapping_quality=convert_str( vm["-q"] ,"-q");
 		}
 		if(vm["-p"] != ""){
-			minimumSupportingPairs=convert_str( vm["--supporting-pairs"] , "--supporting-pairs");
+			minimumSupportingPairs=convert_str( vm["-p"] , "-p");
 		}
 		if(vm["--insert"] != ""){
 			int insert_test  = convert_str( vm["--insert"], "--insert");
@@ -201,8 +202,8 @@ int main(int argc, char **argv) {
 		
         
         coverage   = library.C_A;
-		if(vm["--coverage"] != ""){
-			coverage    = convert_str( vm["--coverage"],"--coverage" );
+		if(vm["-c"] != ""){
+			coverage    = convert_str( vm["-c"],"-c" );
 		}
 		
 		if(vm["--orientation"] == ""){
@@ -217,12 +218,14 @@ int main(int argc, char **argv) {
 		meanInsert = library.insertMean;
 		insertStd  = library.insertStd;
 		if(outtie == false){
-			max_insert =meanInsert+3*insertStd;
-		} else {
+			max_insert =meanInsert+2*insertStd;
+		}else{
 			max_insert =meanInsert+4*insertStd;
 		}
 		if(vm["--insert"] != ""){
 			max_insert  = convert_str( vm["--insert"], "--insert");
+		}else{
+			cout << "insert size threshold:" << max_insert << endl;
 		}
 
         int ploidy = 2;

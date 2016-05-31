@@ -251,7 +251,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	
     //initiate the coverage computation class
     Cov *calculateCoverage;
-	calculateCoverage = new Cov(500,bamFileName,outputFileHeader);
+	calculateCoverage = new Cov(300,bamFileName,outputFileHeader);
 	BamAlignment al;
 	
 
@@ -263,7 +263,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 			mappedReadsLength += al.Length;
 		}
 
-        //calculate the coverage in bins of size 500 bases
+        //calculate the coverage in bins of size 400 bases
         calculateCoverage -> bin(al);
         
 		if (al.IsFirstMate() && al.IsMateMapped()) {

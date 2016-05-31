@@ -24,15 +24,15 @@ int str2int(string to_be_converted){
 //this function tries to classify intrachromosomal events
 vector<string> Window::classification(int chr, int startA,int endA,double covA,int startB,int endB,double covB,int meanInsert,int STDInsert,bool outtie,vector<double> isReverse){
 	string svType="BND";
-	string start=int2str(startA);
-	string end= int2str(endB);
+	string start=int2str(endA);
+	string end= int2str(startB);
 	
 	string GT="./1";
 	int CN=1;
 
 	double coverage= this -> meanCoverage;
 	//the tolerance is dependent on read depth
-	float coverageToleranceFraction = 0.6*pow((coverage+1)/coverage,2)/double(this -> ploidy);
+	float coverageToleranceFraction = 0.7/double(this -> ploidy);
 	float coverageTolerance=this -> meanCoverage*coverageToleranceFraction;
 	float covAB;
 	if(endA <= startB){
@@ -117,14 +117,6 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	if(svType == "BND"){
 		if(covA > coverage+coverageTolerance or covB > coverage+coverageTolerance or covAB > coverage+coverageTolerance){
 			svType = "DUP";
-		}
-		//if a deletion is small enough, the coverage will be low on the sides of the variation
-		if(covA < coverage-coverageTolerance and covB < coverage-coverageTolerance){
-			svType = "DEL";
-			if (covA < coverageTolerance or covB < coverageTolerance) {
-			  GT = "1/1";
-			  CN = 0;
-			}
 		}
 	}
 	vector<string> svVector;
@@ -361,19 +353,19 @@ float Window::computeCoverageB(int chrB, int start, int end, int32_t secondWindo
 	int bins=0;
 	float coverageB=0;
 	int element=0;
-	unsigned int pos =floor(double(start)/500.0)*500;
+	unsigned int pos =floor(double(start)/300.0)*300;
 	bool on = false;
 
-	unsigned int nextpos =pos+500;
+	unsigned int nextpos =pos+300;
 	string line;
 	string coverageFile=this ->outputFileHeader+".tab";
 	ifstream inputFile( coverageFile.c_str() );
-	while(nextpos >= start and pos <= end and pos/500 < binnedCoverage[chrB].size() ){
+	while(nextpos >= start and pos <= end and pos/300 < binnedCoverage[chrB].size() ){
 			bins++;
-			element=pos/500;
+			element=pos/300;
 			coverageB+=double(binnedCoverage[chrB][element]-coverageB)/double(bins);
-			pos+=500;
-			nextpos=pos+500;
+			pos+=300;
+			nextpos=pos+300;
 	}
 	return(coverageB);
 	
