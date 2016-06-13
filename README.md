@@ -1,17 +1,25 @@
-INSTALLATION
+DESCRIPTION
 ==============
+TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Pair End data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications, intersperesed duplications and inversions. 
+TIDDIT is distributed together with a database software called SVDB. SVDB is used to create structural variant databases, merge strctural variants and to use the structural variant databases as a frequency filter.
+TIDDIT has two modes of analysing bam files. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a ba file and generates a coverage report.
 
-From the TIDDIT directory run
+NSTALLATION
+==============
+Do a recursive clone of TIDDIT in order to get the database software:
 ```
+git clone --recursive https://github.com/SciLifeLab/TIDDIT.git
+```
+
+Do the following to install TIDDIT:
+```
+cd TIDDIT
 mkdir build
 cd build
 cmake ..
 make
 ```
-
-DESCRIPTION
-==============
-TIDDIT: tool to identify  chromosomal rearrangements using Mate Pair or Pair End data. The idea is to identify areas having clusters of discordant pairs or abnormal coverage.
+The binaries are found in the bin folder
 
 The SV module
 =============
@@ -38,7 +46,7 @@ The main TIDDIT module, detects structural variant using discordant pairs, split
 The cov module
 ==============
 Computes the coverge of different regions of the bam file
-    TIDDIT --cov [Mode] -b inputfile
+    TIDDIT --cov [Options] -b inputfile
     
     options:
     bin_size - compute the coverage within bins of a specified size across the entire genome, default bin size is 500
