@@ -2,9 +2,9 @@ DESCRIPTION
 ==============
 TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Pair End data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications, intersperesed duplications and inversions. 
 TIDDIT is distributed together with a database software called SVDB. SVDB is used to create structural variant databases, merge strctural variants and to use the structural variant databases as a frequency filter.
-TIDDIT has two modes of analysing bam files. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a ba file and generates a coverage report.
+TIDDIT has two modes of analysing bam files. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a bam file and generates a coverage report.
 
-NSTALLATION
+INSTALLATION
 ==============
 Do a recursive clone of TIDDIT in order to get the database software:
 ```
