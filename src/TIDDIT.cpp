@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
 	//the bam file is required by all modules
 	if(vm["-b"] == ""){
 		cout << general_help;
-		cout << "ERROR: select a bam file using the --bam option" << endl;
+		cout << "ERROR: select a bam file using the -b option" << endl;
 		return(1);
 	}
 
