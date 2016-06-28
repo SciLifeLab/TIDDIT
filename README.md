@@ -19,12 +19,12 @@ cd build
 cmake ..
 make
 ```
-The executable is located in teh bin folder:
+The executable is located in the bin folder:
 ```
 cd ..
 cd bin
 ```
-run the executable file to get view the help message or run TIDDIT:
+run the executable file to view the help message or run TIDDIT:
 ```
 ./TIDDIT
 ./TIDDIT --help
