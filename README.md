@@ -19,7 +19,18 @@ cd build
 cmake ..
 make
 ```
-The binaries are found in the bin folder
+The executable is located in the bin folder:
+```
+cd ..
+cd bin
+```
+run the executable file to view the help message or run TIDDIT:
+```
+./TIDDIT
+./TIDDIT --help
+./TIDDIT  --sv --help
+./TIDDIT  --cov --help
+```
 
 The SV module
 =============
