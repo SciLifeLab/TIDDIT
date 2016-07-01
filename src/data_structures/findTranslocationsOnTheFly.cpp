@@ -22,11 +22,21 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	window = new Window(bamFileName,outtie,meanCoverage,outputFileHeader,SV_options);
 	window->initTrans(head);
 	//expands a vector so that it is large enough to hold reads from each contig in separate elements
-	window->eventReads.resize(SV_options["contigsNumber"]);
+	window->eventReads.resize(4);
+	window->eventReads[0].resize(SV_options["contigsNumber"]);
+	window->eventReads[1].resize(SV_options["contigsNumber"]);
+	window->eventReads[2].resize(SV_options["contigsNumber"]);
+	window->eventReads[3].resize(SV_options["contigsNumber"]);
+	
 	window->eventSplitReads.resize(SV_options["contigsNumber"]);
 
 	window-> binnedCoverage.resize(SV_options["contigsNumber"]);
-	window-> linksFromWin.resize(SV_options["contigsNumber"]);
+	
+	window-> linksFromWin.resize(4);
+	window-> linksFromWin[0].resize(SV_options["contigsNumber"]);
+	window-> linksFromWin[1].resize(SV_options["contigsNumber"]);
+	window-> linksFromWin[2].resize(SV_options["contigsNumber"]);
+	window-> linksFromWin[3].resize(SV_options["contigsNumber"]);
 	
 	window -> numberOfEvents = 0;
 
@@ -58,14 +68,20 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	    window->insertRead(currentRead);
 	  }
 	}
-	for(int i=0;i< window-> eventReads.size();i++){
-	  if(window -> eventReads[i].size() >= window -> minimumPairs){
-	    window->computeVariations(i);
-	  }
-	  window->eventReads[i]=queue<BamAlignment>();
-	  window->eventSplitReads[i] = vector<BamAlignment>();
+	
+	
+	for(int i=0;i< SV_options["contigsNumber"];i++){
+		for (int j=0;j<4;j++){
+			if(window -> eventReads[j][i].size() >= window -> minimumPairs){
+				window -> O = j;
+				window->computeVariations(i);
+			}
+			window->eventReads[j][i]=queue<BamAlignment>();
+		}
+		window->eventSplitReads[i] = vector<BamAlignment>();
+		
 	}
-	  
+	
 	window->interChrVariationsVCF.close();
 	window->intraChrVariationsVCF.close();
 	printf ("variant calling time consumption= %lds\n", time(NULL) - start);
