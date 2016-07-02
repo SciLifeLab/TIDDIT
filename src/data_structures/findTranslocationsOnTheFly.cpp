@@ -73,7 +73,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	for(int i=0;i< SV_options["contigsNumber"];i++){
 		for (int j=0;j<4;j++){
 			if(window -> eventReads[j][i].size() >= window -> minimumPairs){
-				window -> O = j;
+				window -> pairOrientation = j;
 				window->computeVariations(i);
 			}
 			window->eventReads[j][i]=queue<BamAlignment>();

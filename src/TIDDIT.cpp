@@ -263,6 +263,7 @@ int main(int argc, char **argv) {
 	    	calculateCoverage -> bin(currentRead);
 		}
 		bam.Close();
+		calculateCoverage -> printCoverage();
 	}
 
 }

@@ -64,7 +64,7 @@ public:
     int binStart;
 	int binEnd;
 	int currentChr;
-	vector<unsigned int> sequencedBases;
+	vector< vector<unsigned int> > coverageStructure;
 	map<unsigned int,string> position2contig;
 	map<string,unsigned int> contig2position;
 	vector<int> contigLength;
@@ -76,6 +76,7 @@ public:
 	Cov(int binSize,string bamFile,string output);
 	//module used to calculate the coverage of the genome
 	void bin(BamAlignment currentRead);
+	void printCoverage();
 };
 
 
@@ -363,6 +364,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	cout << "----------\n";
 
 	bamFile.Close();
+	calculateCoverage -> printCoverage();
 	return library;
 }
 
