@@ -217,7 +217,7 @@ int main(int argc, char **argv) {
 		
 		meanInsert = library.insertMean;
 		insertStd  = library.insertStd;
-		max_insert=3*meanInsert;
+		max_insert=meanInsert+2.5*insertStd;
 		if(vm["--insert"] != ""){
 			max_insert  = convert_str( vm["--insert"], "--insert");
 		}else{
