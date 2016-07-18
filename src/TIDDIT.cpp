@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 	//MAIN VARIABLE
 
 	bool outtie 				    = true;	 // library orientation
-	uint32_t minimumSupportingPairs = 4;
+	uint32_t minimumSupportingPairs = 8;
 	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 100000;  // max insert size
 	int minimum_mapping_quality		=10;
@@ -70,9 +70,9 @@ int main(int argc, char **argv) {
 	vm["--plody"]="";
 	
 	string sv_help ="\nUsage: TIDDIT --sv -b inputfile [-o prefix] \nOther options\n";
-	sv_help +="\t--insert\tpaired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (if not specified default=2std + mean_insert_size)\n";
+	sv_help +="\t--insert\tpaired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (if not specified default=3std + mean_insert_size)\n";
 	sv_help +="\t--orientation\texpected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset\n";
-	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 4)\n";
+	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 8)\n";
 	sv_help +="\t-q\tMinimum mapping quality to consider an alignment (default 10)\n";
 	sv_help +="\t-c\taverage coverage, (default= computed from the bam file)\n";
 	sv_help +="\t--plody\tthe number of sets of chromosomes,(default = 2)\n";
@@ -217,7 +217,7 @@ int main(int argc, char **argv) {
 		
 		meanInsert = library.insertMean;
 		insertStd  = library.insertStd;
-		max_insert=meanInsert+2.5*insertStd;
+		max_insert=meanInsert+3*insertStd;
 		if(vm["--insert"] != ""){
 			max_insert  = convert_str( vm["--insert"], "--insert");
 		}else{
