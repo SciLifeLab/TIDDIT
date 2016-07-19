@@ -110,7 +110,7 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	return(svVector);
 }
 
-string filterFunction(double RATIO, int linksToB, int linksFromWindow,float mean_insert, float std_insert,int estimatedDistance,double coverageA,double coverageB,double coverageAVG){
+string filterFunction(double RATIO, int linksToB, int linksFromWindow,float mean_insert, float std_insert,double coverageA,double coverageB,double coverageAVG){
 	string filter = "PASS";
 	double linkratio= (double)linksToB/(double)linksFromWindow;
 	if(RATIO < 0.4){
@@ -473,7 +473,63 @@ bool Window::computeVariations(int chr2) {
 						}
 					}		
 				}
-				VCFLine(chr2,startSecondWindow,stopSecondWindow,startchrA,stopchrA,pairsFormingLink,splitsFormingLink,numLinksToChr2,estimatedDistance);
+				
+				//compute the coverage on the region of chromosome B
+				double coverageRealSecondWindow=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
+				//compute coverage on the region of chromosome A, as well as the number of discordant pairs within this region
+				vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, chr2, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
+				double coverageRealFirstWindow	= statisticsFirstWindow[0];
+				int linksFromWindow=int(statisticsFirstWindow[1]);
+
+				//calculate the expected number of reads
+				int secondWindowLength=(stopSecondWindow-startSecondWindow+1);
+				int firstWindowLength=stopchrA-startchrA+1;
+
+				if(estimatedDistance > firstWindowLength) {
+					estimatedDistance = estimatedDistance - firstWindowLength;
+				}else{
+					estimatedDistance = 1;
+				}
+				float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);					
+				
+				string svType = "BND";
+				string GT="./1";
+				string CN=".";
+				if(this->chr == chr2) {
+					vector<string> svVector=classification(chr2,startchrA, stopchrA,coverageRealFirstWindow,startSecondWindow, stopSecondWindow,coverageRealSecondWindow,this -> mean_insert,this -> std_insert,this -> 	outtie);
+					svType=svVector[0];
+					GT = svVector[3];
+					CN = svVector[4];
+				}
+				//THese are the statistics used to define a variant detected by discordant pairs
+				map<string,int> discordantPairStatistics;
+				discordantPairStatistics["chrA"]=this -> chr;
+				discordantPairStatistics["chrB"]=chr2;
+				discordantPairStatistics["start"]=stopchrA;
+				discordantPairStatistics["windowA_start"]=startchrA;
+				discordantPairStatistics["windowA_end"]=stopchrA;
+				discordantPairStatistics["end"]=startSecondWindow;
+				discordantPairStatistics["windowB_start"]=startSecondWindow;
+				discordantPairStatistics["windowB_end"]=stopSecondWindow;
+				discordantPairStatistics["coverage_start"]=coverageRealFirstWindow;
+				discordantPairStatistics["coverage_end"]=coverageRealSecondWindow;
+				discordantPairStatistics["coverage_mid"]=0;
+				discordantPairStatistics["orientation"]=pairOrientation;
+				discordantPairStatistics["links_window"]=linksFromWindow;
+				discordantPairStatistics["links_chr"]=numLinksToChr2;
+				discordantPairStatistics["links_event"]=pairsFormingLink;
+				discordantPairStatistics["expected_links"]=expectedLinksInWindow;
+	
+				//These statistics define the variants detected by split reads
+				map<string,int> splitReadStatistics;
+				splitReadStatistics["chrA"]=-1;
+				splitReadStatistics["chrB"]=-1;
+				splitReadStatistics["start"]=-1;
+				splitReadStatistics["end"]=-1;
+				splitReadStatistics["split_reads"]=splitsFormingLink;
+				discordantPairStatistics["coverage_mid"]=-1;	
+				
+				VCFLine(discordantPairStatistics,splitReadStatistics,svType,GT,CN);
 				found = true;
 			}
 		}
@@ -574,130 +630,117 @@ vector<long> Window::newChrALimit(queue<BamAlignment> alignmentQueue,long Bstart
 }
 
 //function that prints the statistics to a vcf file
-void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int startchrA,int stopchrA,int pairsFormingLink, int splitsFormingLink, int numLinksToChr2,int estimatedDistance){
-	//compute the coverage on the region of chromosome B
-	double coverageRealSecondWindow=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
-	//compute coverage on the region of chromosome A, as well as the number of discordant pairs within this region
-	vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, chr2, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
-	double coverageRealFirstWindow	= statisticsFirstWindow[0];
-	int linksFromWindow=int(statisticsFirstWindow[1]);
+void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> splitReadStatistics,string svType,string GT, string CN){
+		
+	string filter = "PASS";
+	string infoField;
+	infoField= "SVTYPE=" + svType;
+	int chrB = -1;
+	int chrA = -1;
+	int posA= -1;
+	int posB= -1;
+	 
+	//if we have detected a variant using discordant pairs
+	if (discordantPairStatistics["chrA"] != -1){
+		
+		string read1_orientation;
+		string read2_orientation;
+		if (discordantPairStatistics["orientation"] == 0){
+			read1_orientation="Forward";
+			read2_orientation="Forward";
+		}else if (discordantPairStatistics["orientation"] == 1){
+			read1_orientation="Forward";
+			read2_orientation="Reverse";
 
-	//calculate the expected number of reads
-	int secondWindowLength=(stopSecondWindow-startSecondWindow+1);
-	int firstWindowLength=stopchrA-startchrA+1;
-
-	if(estimatedDistance > firstWindowLength) {
-		estimatedDistance = estimatedDistance - firstWindowLength;
-	}else{
-		estimatedDistance = 1;
-	}
-	float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);
+		}else if (discordantPairStatistics["orientation"] == 2){
+			read1_orientation="Reverse";
+			read2_orientation="Forward";
+				
+		}else{
+			read1_orientation="Reverse";
+			read2_orientation="Reverse";
+		}
+		std::stringstream ss;
+		
+		ss << ";CHRA=" << position2contig[discordantPairStatistics["chrA"]] << ";WINA=" << discordantPairStatistics["windowA_start"] << "," << discordantPairStatistics["windowA_end"];
+		ss << ";CHRB=" << position2contig[discordantPairStatistics["chrB"]] << ";WINB=" << discordantPairStatistics["windowB_start"] << "," << discordantPairStatistics["windowB_end"];
+		ss << ";END=" << discordantPairStatistics["end"] << ";LFW=" << discordantPairStatistics["links_window"];
+		ss << ";LCB="  << discordantPairStatistics["links_chr"] << ";LTE=" << discordantPairStatistics["links_event"] << ";COVA=" <<  discordantPairStatistics["coverage_start"];
+		ss << ";COVB=" << discordantPairStatistics["coverage_end"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+		if(discordantPairStatistics["expected_links"] > 0){
+			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  (float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
+			filter=filterFunction((float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"],discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage);	
 	
-	//Set the orientation of the reads, this will be printed to the vcf and used to determine variant type
-	string read1_orientation;
-	string read2_orientation;
-	if (this -> pairOrientation == 0){
-		read1_orientation="Forward";
-		read2_orientation="Forward";
-	}else if (this -> pairOrientation == 1){
-		read1_orientation="Forward";
-		read2_orientation="Reverse";
-
-	}else if (this -> pairOrientation == 2){
-		read1_orientation="Reverse";
-		read2_orientation="Forward";
-					
-	}else{
-		read1_orientation="Reverse";
-		read2_orientation="Reverse";
+		}else{
+			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=inf";
+				filter=filterFunction(0,discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage);	
+	
+		}
+		infoField += ss.str();
+		chrB= discordantPairStatistics["chrB"];
+		chrA = discordantPairStatistics["chrA"];
+		posA= discordantPairStatistics["start"];
+		posB= discordantPairStatistics["end"];
 	}
 	
-	string filter;
-	filter=filterFunction(pairsFormingLink/expectedLinksInWindow,numLinksToChr2,linksFromWindow,mean_insert,std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);	
+	//we have yet to implement split reads calling
+	if (discordantPairStatistics["chrA"] != -1){
+		//If we have any split read information, then we should update the variant position and add statistics to the info field
+		chrB= splitReadStatistics["chrB"];
+		chrA = splitReadStatistics["chrA"];
+		posA= splitReadStatistics["start"];
+		posB= splitReadStatistics["end"];
+	}
+	
+	//Print the variant
 	this -> numberOfEvents++;
-	if(this->chr == chr2) {
-
-		vector<string> svVector=classification(chr2,startchrA, stopchrA,coverageRealFirstWindow,startSecondWindow, stopSecondWindow,coverageRealSecondWindow,this -> mean_insert,this -> std_insert,this -> outtie);
-		string svType=svVector[0];
-		string start=svVector[1];
-		string end = svVector[2];
-		string GT = svVector[3];
-		string CN = svVector[4];
-
+	if(chrA == chrB) {
+		
 		//TODO generate the info field as a string, instead of printing the separate variable directly to the file
 		if(svType != "INS" and svType !="BND"){
-			intraChrVariationsVCF << this -> position2contig[this -> chr]  << "\t" <<     start   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
+			intraChrVariationsVCF << this -> position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
 			intraChrVariationsVCF << "N"       << "\t"	<< "<" << svType << ">";
-			intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-			intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";END="<< end <<";LFW=" << linksFromWindow;
-			intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-			intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-			intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow ;
-			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" <<pairsFormingLink << ":" << splitsFormingLink << "\n";
+			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 		}else{
-				intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
-				intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
-				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+			intraChrVariationsVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
+			intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
-				//print the second breakend
-				intraChrVariationsVCF <<   position2contig[chr2]<< "\t" <<    startSecondWindow    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
-				intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[this -> chr]  << ":" << stopchrA << "]";
-				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+			//print the second breakend
+			intraChrVariationsVCF <<  position2contig[chrB] << "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
+			intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 		}
 		if(svType == "IDUP"){
-				intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "_2" << "\t";
-				intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
-				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+			intraChrVariationsVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_2" << "\t";
+			intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
-				//print the second breakend
-				intraChrVariationsVCF <<   position2contig[chr2]<< "\t" <<    startSecondWindow    << "\tSV_" << this -> numberOfEvents <<  "_3" << "\t";
-				intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[this -> chr]  << ":" << stopchrA << "]";
-				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+			//print the second breakend
+			intraChrVariationsVCF <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_3" << "\t";
+			intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 		}
 
 
 	} else {
-		string svType="BND";
 		//print the first breakend
-		interChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
-		interChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
-		interChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-		interChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-		interChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-		interChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-		interChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-		interChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+		interChrVariationsVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
+		interChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+		interChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+		interChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 		//print the second breakend
-		interChrVariationsVCF <<   position2contig[chr2]<< "\t" <<    startSecondWindow    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
-		interChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[this -> chr]  << ":" << stopchrA << "]";
-		interChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-		interChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-		interChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-		interChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-		interChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-		interChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+		interChrVariationsVCF <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
+		interChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+		interChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+		interChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 	}
 	return;
 
