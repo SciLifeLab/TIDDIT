@@ -227,6 +227,7 @@ void Window::insertRead(BamAlignment alignment) {
 		cout << "working on seqence " << position2contig[alignment.RefID] << "\n";
 	}
 	
+	//check for soft clip, then populate char data
 	vector <int > clipSizes;
 	vector< int > readPositions;
 	vector<int> genomePos;
@@ -238,59 +239,61 @@ void Window::insertRead(BamAlignment alignment) {
 	}
 
 	if (alignment_split) {
-	  
-	  // parse split read to get the other segment position, akin to a mate.
+		// parse split read to get the other segment position, akin to a mate.
+		string SA;
+		alignment.GetTag("SA",SA);
+		/* From the VCF documentation:
+		// Other canonical alignments in a chimeric alignment, formatted as a semicolon-delimited list: 
+		// (rname,pos,strand,CIGAR,mapQ,NM;)+. 
+		// Each element in the list represents a part of the chimeric alignment. 
+		// Conventionally, at a supplementary line, the first element points to the primary line.
+		*/
 
-	  string SA;
-	  alignment.GetTag("SA",SA);
-	  /* From the VCF documentation:
-	  // Other canonical alignments in a chimeric alignment, formatted as a semicolon-delimited list: 
-	  // (rname,pos,strand,CIGAR,mapQ,NM;)+. 
-	  // Each element in the list represents a part of the chimeric alignment. 
-	  // Conventionally, at a supplementary line, the first element points to the primary line.
-	  */
-
-	  vector <string> SA_elements;
-      stringstream ss(SA);
-	  std::string item;
-      while (std::getline(ss, item, ';')) {
-        stringstream SS(item);
-        string SA_data;
-        while (std::getline(SS, SA_data, ',')) {
-      	    SA_elements.push_back(SA_data);
-      	}
-      }
+		vector <string> SA_elements;
+		stringstream ss(SA);
+		std::string item;
+		while (std::getline(ss, item, ';')) {
+			stringstream SS(item);
+			string SA_data;
+			while (std::getline(SS, SA_data, ',')) {
+				SA_elements.push_back(SA_data);
+			}
+		}	
 
 	  
-	  int contigNr = contig2position[SA_elements[0]];
-
-	  
-	  //Check if the distance between the split read and the previous alignment is larger than max distance
-
-
-	  bool add = false;
-	  // we may or may not have a past event
-	  if (eventReads[this -> pairOrientation][contigNr].size() > 0) {	    
-	    int currrentAlignmentPos=alignment.Position;
-	    int pastAlignmentPos= eventReads[this -> pairOrientation][contigNr].back().Position;
-	    int distance= currrentAlignmentPos - pastAlignmentPos;
-	    // If the distance between the two reads is less than the maximum allowed distace, add it to the other reads of the event
-	    if(distance <= mean_insert){
-	      // parse tag and add it to the destination chr
-	      add = true;
-	    }
-	  }
-	  if (add) {;
-	    eventSplitReads[contigNr].push_back(alignment);    
-	  } else {
-	    // for now, we don't allow split reads to start a new window.
-	    //	    cout << "Warning: split read outside current window found. Ignored.\n";
-	  }
+		int contigNr = contig2position[SA_elements[0]];
+		int currrentAlignmentPos=alignment.Position;
+		int discordantDistance=0;
+		int splitDistance = 0;
+		
+		if (eventReads[this -> pairOrientation][contigNr].size() > 0){
+			discordantDistance = currrentAlignmentPos- eventReads[this -> pairOrientation][contigNr].back().Position;
+		}
+		if( eventSplitReads[contigNr].size() > 0){
+			splitDistance = currrentAlignmentPos - eventSplitReads[contigNr].back().Position;
+		}
+		//if we have any active set on these pairs of contigs
+		if(eventSplitReads[contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
+			//if we are close enough
+			if (discordantDistance <= mean_insert/2 and splitDistance <= this -> readLength){
+				eventSplitReads[contigNr].push_back(alignment);
+			}
+		//otherwise we add the alignment
+		}else{
+			eventSplitReads[contigNr].push_back(alignment);
+		}
 	}
+	
 	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
 		if(alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) {  // insert only "forward" variations
 
 
+			for(int i=0;i< eventReads[this -> pairOrientation].size();i++){
+				for(int j=0;j <4;j++){
+					linksFromWin[j][i].push(alignment.Position);
+				}
+			}
+			
 			//check the orientation of the reads
 			if( alignment.IsReverseStrand() == false and alignment.IsMateReverseStrand() == false  ){
 				this -> pairOrientation = 0;
@@ -301,10 +304,9 @@ void Window::insertRead(BamAlignment alignment) {
 			}else{
 				this -> pairOrientation =3;
 			}
-			int alignmentNumber= eventReads[this -> pairOrientation][alignment.MateRefID].size();
             
 			//if there currently is no sign of a translocation event between the current chromosome and the chromosome of the current alignment
-			if( alignmentNumber == 0) {
+			if( eventReads[this -> pairOrientation][alignment.MateRefID].size() == 0) {
 				eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 			} else {
 				//if there already are alignments of the current chromosome and chromosome of the current alignment:
@@ -315,7 +317,7 @@ void Window::insertRead(BamAlignment alignment) {
 				int distance= currrentAlignmentPos - pastAlignmentPos;
 
 				//If the distance between the two reads is less than the maximum allowed distace, add it to the other reads of the event
-				if(distance <= mean_insert){
+				if(distance <= mean_insert/2){
 					//add the read to the current window
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}else{
@@ -331,11 +333,7 @@ void Window::insertRead(BamAlignment alignment) {
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}
 			}
-			for(int i=0;i< eventReads[this -> pairOrientation].size();i++){
-				for(int j=0;j <4;j++){
-					linksFromWin[j][i].push(alignment.Position);
-				}
-			}
+
 		}
 
 	}
@@ -684,7 +682,7 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 	}
 	
 	//we have yet to implement split reads calling
-	if (discordantPairStatistics["chrA"] != -1){
+	if (splitReadStatistics["chrA"] != -1){
 		//If we have any split read information, then we should update the variant position and add statistics to the info field
 		chrB= splitReadStatistics["chrB"];
 		chrA = splitReadStatistics["chrA"];
