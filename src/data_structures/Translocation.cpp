@@ -501,7 +501,7 @@ bool Window::computeVariations(int chr2) {
 			int splitsFormingLink=0;
 			for(int j=0;j< splitReadPositions[0].size();j++){
 				if(startSecondWindow <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow){	
-					if(startchrA <= splitReadPositions[0][j] and splitReadPositions[1][j] <= stopchrA){
+					if(startchrA <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA){
 						splitsFormingLink++;
 					}			
 				}			

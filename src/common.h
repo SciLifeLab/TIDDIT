@@ -65,6 +65,7 @@ public:
 	int binEnd;
 	int currentChr;
 	vector< vector<unsigned int> > coverageStructure;
+	vector< vector< vector<unsigned int> > >qualityStructure;
 	map<unsigned int,string> position2contig;
 	map<string,unsigned int> contig2position;
 	vector<int> contigLength;
