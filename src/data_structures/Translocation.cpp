@@ -7,6 +7,7 @@
 
 #include "Translocation.h"
 #include <string>
+#include <cmath>  
 
 string int2str(int to_be_converted){
 	string converted= static_cast<ostringstream*>( &(ostringstream() << to_be_converted) )->str();
@@ -227,16 +228,9 @@ void Window::insertRead(BamAlignment alignment) {
 		cout << "working on seqence " << position2contig[alignment.RefID] << "\n";
 	}
 	
-	//check for soft clip, then populate char data
-	vector <int > clipSizes;
-	vector< int > readPositions;
-	vector<int> genomePos;
-	bool test=alignment.GetSoftClips(clipSizes,readPositions,genomePos);
 	bool alignment_split = false;	
-	if (test){
-		alignment.BuildCharData(); // Somewhat costly, but needed to check for any SA tag.			
-		alignment_split = alignment.HasTag("SA");
-	}
+	alignment.BuildCharData();			
+	alignment_split = alignment.HasTag("SA");
 
 	if (alignment_split) {
 		// parse split read to get the other segment position, akin to a mate.
@@ -249,38 +243,41 @@ void Window::insertRead(BamAlignment alignment) {
 		// Conventionally, at a supplementary line, the first element points to the primary line.
 		*/
 
-		vector <string> SA_elements;
+		
 		stringstream ss(SA);
 		std::string item;
 		while (std::getline(ss, item, ';')) {
 			stringstream SS(item);
 			string SA_data;
+			vector <string> SA_elements;
 			while (std::getline(SS, SA_data, ',')) {
 				SA_elements.push_back(SA_data);
 			}
-		}	
+			
 
 	  
-		int contigNr = contig2position[SA_elements[0]];
-		int currrentAlignmentPos=alignment.Position;
-		int discordantDistance=0;
-		int splitDistance = 0;
-		
-		if (eventReads[this -> pairOrientation][contigNr].size() > 0){
-			discordantDistance = currrentAlignmentPos- eventReads[this -> pairOrientation][contigNr].back().Position;
-		}
-		if( eventSplitReads[contigNr].size() > 0){
-			splitDistance = currrentAlignmentPos - eventSplitReads[contigNr].back().Position;
-		}
-		//if we have any active set on these pairs of contigs
-		if(eventSplitReads[contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
-			//if we are close enough
-			if (discordantDistance <= mean_insert/2 and splitDistance <= this -> readLength){
+			int contigNr = contig2position[SA_elements[0]];
+			int currrentAlignmentPos=alignment.Position;
+			int discordantDistance=0;
+			int splitDistance = 0;
+			if (eventReads[this -> pairOrientation][contigNr].size() > 0){
+				discordantDistance = currrentAlignmentPos- eventReads[this -> pairOrientation][contigNr].back().Position;
+			}
+			if( eventSplitReads[contigNr].size() > 0){
+				splitDistance = currrentAlignmentPos - eventSplitReads[contigNr].back().Position;
+			}
+			//if we have any active set on these pairs of contigs
+			if(eventSplitReads[contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
+				//if we are close enough
+				if (discordantDistance <= mean_insert/2 and splitDistance <= this -> readLength){
+					eventSplitReads[contigNr].push_back(alignment);
+				}
+				
+				
+			//otherwise we add the alignment
+			}else{
 				eventSplitReads[contigNr].push_back(alignment);
 			}
-		//otherwise we add the alignment
-		}else{
-			eventSplitReads[contigNr].push_back(alignment);
 		}
 	}
 	
