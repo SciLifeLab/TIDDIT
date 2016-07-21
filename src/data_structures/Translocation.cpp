@@ -432,7 +432,7 @@ bool Window::computeVariations(int chr2) {
 	queue <BamAlignment> test_queue = this-> eventReads[this -> pairOrientation][chr2];
 	
 	//transfer the positions of the split reads and discordant pairs into vectors
-	if( test_queue.size() >= minimumPairs) {
+	if( test_queue.size() >= minimumPairs) {		
 		while(test_queue.size() > 0 ){
 			discordantPairPositions[0].push_back(test_queue.front().Position);
 			discordantPairPositions[1].push_back(test_queue.front().MatePosition);
@@ -440,7 +440,7 @@ bool Window::computeVariations(int chr2) {
 		}
 		discordantPairs=true;
 	}
-	
+
 	if(this->eventSplitReads[chr2].size() > 0){
 		for (vector<BamAlignment>::iterator alnit = eventSplitReads[chr2].begin(); alnit != eventSplitReads[chr2].end(); ++alnit) {
 			string SA;
@@ -465,7 +465,6 @@ bool Window::computeVariations(int chr2) {
 					SA_elements.push_back(SA_data);
 				}
 			}	
-		
 			for(int j=0; j< SA_elements.size(); j+=6) {
 				string contig = SA_elements[j];
 				string chr2name = this -> position2contig[chr2];
@@ -506,7 +505,6 @@ bool Window::computeVariations(int chr2) {
 					}			
 				}			
 			}
-
 			vector<int> statsOnB=findLinksToChr2(eventReads[this -> pairOrientation][chr2],startchrA, stopchrA,startSecondWindow,stopSecondWindow,pairsFormingLink);
 			int numLinksToChr2=statsOnB[0];
 			int estimatedDistance=statsOnB[1];
@@ -569,14 +567,14 @@ bool Window::computeVariations(int chr2) {
 				splitReadStatistics["start"]=-1;
 				splitReadStatistics["end"]=-1;
 				splitReadStatistics["split_reads"]=splitsFormingLink;
-				discordantPairStatistics["coverage_mid"]=-1;	
+				splitReadStatistics["coverage_mid"]=-1;	
 				
 				VCFLine(discordantPairStatistics,splitReadStatistics,svType,GT,CN);
 				found = true;
-				
 			}
 		}
-	}else if(chr2 == this -> chr){
+	//we only check for intrachromosomal variants, oherwise we would detect discrodant pairs aswell
+	}else if(chr2 == this -> chr and splitReads){
 		vector<long> chr2regions= findRegionOnB( splitReadPositions[1] ,minimumPairs,this ->readLength);
 	
 		for(int i=0;i < chr2regions.size()/3;i++){
