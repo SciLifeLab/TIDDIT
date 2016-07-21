@@ -150,6 +150,7 @@ string Window::VCFHeader(){
 	headerString+="##INFO=<ID=LCB,Number=1,Type=Integer,Description=\"Links to chromosome B\">\n";
 	headerString+="##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\">\n";
 	headerString+="##INFO=<ID=COVA,Number=1,Type=Float,Description=\"Coverage on window A\">\n";
+	headerString+="##INFO=<ID=COVM,Number=1,Type=Float,Description=\"The coverage between A and B\">\n";
 	headerString+="##INFO=<ID=COVB,Number=1,Type=Float,Description=\"Coverage on window B\">\n";
 	headerString+="##INFO=<ID=OA,Number=1,Type=String,Description=\"Orientation of the reads in window A\">\n";
 	headerString+="##INFO=<ID=OB,Number=1,Type=String,Description=\"Orientation of the mates in window B\">\n";
@@ -159,6 +160,8 @@ string Window::VCFHeader(){
 	headerString+="##INFO=<ID=WINB,Number=2,Type=Integer,Description=\"start and stop position of window B\">\n";
 	headerString+="##INFO=<ID=EL,Number=1,Type=Float,Description=\"Expected links to window B\">\n";
 	headerString+="##INFO=<ID=RATIO,Number=1,Type=Float,Description=\"The number of links divided by the expected number of links\">\n";
+	headerString+="##INFO=<ID=QUALA,Number=1,Type=String,Description=\"The average mapping quality of the reads in window A\">\n";
+	headerString+="##INFO=<ID=QUALB,Number=1,Type=String,Description=\"The average mapping quality of the reads in window B\">\n";
 	//set filters
 	headerString+="##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links between A and B is less than 40\% of the expected value\">\n";
 	headerString+="##FILTER=<ID=FewLinks,Description=\"Fewer than 40% of the links in window A link to chromosome B\">\n";
@@ -269,7 +272,7 @@ void Window::insertRead(BamAlignment alignment) {
 			//if we have any active set on these pairs of contigs
 			if(eventSplitReads[contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
 				//if we are close enough
-				if (discordantDistance <= mean_insert/2 and splitDistance <= this -> readLength){
+				if (discordantDistance <= 2*mean_insert/minimumPairs and splitDistance <= this -> readLength){
 					eventSplitReads[contigNr].push_back(alignment);
 				}else{
 					if(eventReads[this -> pairOrientation][contigNr].size() >= minimumPairs or eventSplitReads[contigNr].size() > minimumPairs){
@@ -323,7 +326,7 @@ void Window::insertRead(BamAlignment alignment) {
 				int distance= currrentAlignmentPos - pastAlignmentPos;
 
 				//If the distance between the two reads is less than the maximum allowed distace, add it to the other reads of the event
-				if(distance <= mean_insert/2){
+				if(distance <= 2*mean_insert/minimumPairs){
 					//add the read to the current window
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}else{
@@ -360,6 +363,24 @@ float Window::computeCoverageB(int chrB, int start, int end, int32_t secondWindo
 			bins++;
 			element=pos/300;
 			coverageB+=double(binnedCoverage[chrB][element]-coverageB)/double(bins);
+			pos=nextpos;
+			nextpos += 300;
+	}
+	return(coverageB);
+	
+}
+
+float Window::computeRegionalQuality(int chrB, int start, int end,int bin_size = 300){
+	int bins=0;
+	float coverageB=0;
+	int element=0;
+	unsigned int pos =floor(double(start)/300.0)*bin_size;
+	
+	unsigned int nextpos =pos+300;
+	while(nextpos >= start and pos <= end and pos/300 < binnedQuality[chrB].size() ){
+			bins++;
+			element=pos/300;
+			coverageB+=double(binnedQuality[chrB][element]-coverageB)/double(bins);
 			pos=nextpos;
 			nextpos += 300;
 	}
@@ -479,7 +500,7 @@ bool Window::computeVariations(int chr2) {
 	}
 	
 	if(discordantPairs){
-		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,this ->mean_insert);
+		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,2*mean_insert/minimumPairs);
 	
 		for(int i=0;i < chr2regions.size()/3;i++){
 			long startSecondWindow=chr2regions[i*3];
@@ -512,6 +533,12 @@ bool Window::computeVariations(int chr2) {
 				
 				//compute the coverage on the region of chromosome B
 				double coverageRealSecondWindow=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
+				double coverageMid=0;
+				if(this -> chr == chr2){
+					double coverageMid=computeCoverageB(chr2, startchrA, stopSecondWindow, (startchrA-startSecondWindow+1) );
+				}				
+				double qualityB = computeRegionalQuality(chr2, startSecondWindow, stopSecondWindow,300);
+				double qualityA = computeRegionalQuality(this -> chr, startchrA, stopchrA,300);
 				//compute coverage on the region of chromosome A, as well as the number of discordant pairs within this region
 				vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, chr2, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
 				double coverageRealFirstWindow	= statisticsFirstWindow[0];
@@ -553,13 +580,14 @@ bool Window::computeVariations(int chr2) {
 				discordantPairStatistics["windowB_end"]=stopSecondWindow;
 				discordantPairStatistics["coverage_start"]=coverageRealFirstWindow;
 				discordantPairStatistics["coverage_end"]=coverageRealSecondWindow;
-				discordantPairStatistics["coverage_mid"]=0;
+				discordantPairStatistics["coverage_mid"]=coverageMid;
 				discordantPairStatistics["orientation"]=pairOrientation;
 				discordantPairStatistics["links_window"]=linksFromWindow;
 				discordantPairStatistics["links_chr"]=numLinksToChr2;
 				discordantPairStatistics["links_event"]=pairsFormingLink;
 				discordantPairStatistics["expected_links"]=expectedLinksInWindow;
-	
+				discordantPairStatistics["qualityB"]=qualityB;
+				discordantPairStatistics["qualityA"]=qualityA;
 				//These statistics define the variants detected by split reads
 				map<string,int> splitReadStatistics;
 				splitReadStatistics["chrA"]=-1;
@@ -748,7 +776,9 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		ss << ";CHRB=" << position2contig[discordantPairStatistics["chrB"]] << ";WINB=" << discordantPairStatistics["windowB_start"] << "," << discordantPairStatistics["windowB_end"];
 		ss << ";END=" << discordantPairStatistics["end"] << ";LFW=" << discordantPairStatistics["links_window"];
 		ss << ";LCB="  << discordantPairStatistics["links_chr"] << ";LTE=" << discordantPairStatistics["links_event"] << ";COVA=" <<  discordantPairStatistics["coverage_start"];
+		ss << ";COVM=" << discordantPairStatistics["coverage_mid"];
 		ss << ";COVB=" << discordantPairStatistics["coverage_end"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+		ss << ";QUALA=" << discordantPairStatistics["qualityA"] << ";QUALB=" << discordantPairStatistics["qualityB"];
 		if(discordantPairStatistics["expected_links"] > 0){
 			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  (float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
 			filter=filterFunction((float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"],discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage);	
@@ -772,7 +802,7 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		posA= splitReadStatistics["start"];
 		posB= splitReadStatistics["end"];
 		std::stringstream ss;
-		ss << ";COVA=" << splitReadStatistics["coverage_mid"] << ";END=" << posB;
+		ss << ";COVM=" << splitReadStatistics["coverage_mid"] << ";END=" << posB;
 		infoField += ss.str();
 	}
 	

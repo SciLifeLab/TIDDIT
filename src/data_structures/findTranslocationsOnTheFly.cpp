@@ -31,6 +31,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	window->eventSplitReads.resize(SV_options["contigsNumber"]);
 
 	window-> binnedCoverage.resize(SV_options["contigsNumber"]);
+	window-> binnedQuality.resize(SV_options["contigsNumber"]);
 	
 	window-> linksFromWin.resize(4);
 	window-> linksFromWin[0].resize(SV_options["contigsNumber"]);
@@ -53,6 +54,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
         		splitline.push_back(item);
     		}
 			window -> binnedCoverage[window -> contig2position[splitline[0]]].push_back(atof(splitline[3].c_str()));
+			window -> binnedQuality[window -> contig2position[splitline[0]]].push_back(atof(splitline[4].c_str()));
 		}
 		line_number += 1;
 	}

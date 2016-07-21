@@ -48,6 +48,7 @@ public:
 	map<string,unsigned int> contig2position;
 	map<unsigned int,string> position2contig;
 	vector< vector<float> > binnedCoverage;
+	vector< vector<float> > binnedQuality;
 	//Output part
 	string outputFileHeader;
 	ofstream interChrVariationsVCF;
@@ -65,6 +66,7 @@ public:
 	vector<long> newChrALimit(vector< vector< long > > variantPositions,long Bstart,long Bend); //resizes the window on CHRA
 	vector<double> computeStatisticsA(string bamFileName, int chrB, int start, int end, int32_t WindowLength, string indexFile); //compute coverage and number of links from window on the chrA
 	vector<string> classification(int chr, int startA,int endA,double covA,int startB,int endB,double covB,int meanInsert,int STDInsert,bool outtie);
+	float computeRegionalQuality(int chrB, int start, int end,int bin_size);
 	string VCFHeader();
 	void VCFLine(map<string,int> discordantPairStatistics, map<string,int> splitReadStatistics,string svType,string GT, string CN);
 	vector<int> findLinksToChr2(queue<BamAlignment> ReadQueue,long startChrA,long stopChrA,long startChrB,long endChrB, int pairsFormingLink);
