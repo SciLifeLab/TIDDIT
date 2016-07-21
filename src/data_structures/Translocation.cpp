@@ -269,18 +269,31 @@ void Window::insertRead(BamAlignment alignment) {
 	  		if(splitPos < currrentAlignmentPos){
 				continue;
 			}
-
-			//determine the "pair" orientation
-			if( alignment.IsReverseStrand() == false and SA_elements[2] == "-"  ){
-				this -> pairOrientation = 0;
-			}else if( alignment.IsReverseStrand() == false and SA_elements[2] == "+" ){
-				this -> pairOrientation = 1;
-			}else if( alignment.IsReverseStrand() == true and SA_elements[2] == "-" ){
-				this -> pairOrientation =2;
+			
+			if(alignment.IsFirstMate() ){	
+				//determine the "pair" orientation
+				if( alignment.IsReverseStrand() == false and SA_elements[2] == "-"  ){
+					this -> pairOrientation = 0;
+				}else if( alignment.IsReverseStrand() == false and SA_elements[2] == "+" ){
+					this -> pairOrientation = 1;
+				}else if( alignment.IsReverseStrand() == true and SA_elements[2] == "-" ){
+					this -> pairOrientation =2;
+				}else{
+					this -> pairOrientation =3;
+				}
 			}else{
-				this -> pairOrientation =3;
+				//the orientation of the mate is inverted compared to the first read
+				if( alignment.IsReverseStrand() == true and SA_elements[2] == "+"  ){
+					this -> pairOrientation = 0;
+				}else if( alignment.IsReverseStrand() == true and SA_elements[2] == "-" ){
+					this -> pairOrientation = 1;
+				}else if( alignment.IsReverseStrand() == false and SA_elements[2] == "+" ){
+					this -> pairOrientation =2;
+				}else{
+					this -> pairOrientation =3;
+				}
+			
 			}
-
 			if (eventReads[this -> pairOrientation][contigNr].size() > 0){
 				discordantDistance = currrentAlignmentPos- eventReads[this -> pairOrientation][contigNr].back().Position;
 			}
