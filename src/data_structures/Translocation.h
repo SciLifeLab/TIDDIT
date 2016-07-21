@@ -19,7 +19,7 @@ public:
 
 	vector< vector < queue<BamAlignment> > >	eventReads;
 	
-	vector< vector<BamAlignment> > eventSplitReads;
+	vector< vector < vector<BamAlignment> > > eventSplitReads;
 
 	vector<long> covOnChrA;
 	vector<long> tmpCovOnChrA;

@@ -217,15 +217,16 @@ void Window::insertRead(BamAlignment alignment) {
 		for(int i=0;i<eventReads[this -> pairOrientation].size();i++){
 			//check for events
 			for (int j=0; j<4;j++){
-				if( eventReads[j][i].size() >= minimumPairs){
+				if( eventReads[j][i].size() >= minimumPairs or eventSplitReads[j][i].size() > minimumPairs){
 					this -> pairOrientation = j;
 					computeVariations(i);
 				}
 				//empty the alignmentqueues
 				eventReads[j][i]=queue<BamAlignment>();
+				eventSplitReads[j][i]=vector<BamAlignment>();
 				linksFromWin[j][alignment.MateRefID]=queue<int>();
 			}
-			eventSplitReads[i]=vector<BamAlignment>();
+			
 			
 		}
 		cout << "working on seqence " << position2contig[alignment.RefID] << "\n";
@@ -258,37 +259,54 @@ void Window::insertRead(BamAlignment alignment) {
 			}
 			
 
-	  
+
 			int contigNr = contig2position[SA_elements[0]];
 			int currrentAlignmentPos=alignment.Position;
 			int discordantDistance=0;
 			int splitDistance = 0;
+
+			long splitPos = atol(SA_elements[1].c_str());
+	  		if(splitPos < currrentAlignmentPos){
+				continue;
+			}
+
+			//determine the "pair" orientation
+			if( alignment.IsReverseStrand() == false and SA_elements[2] == "-"  ){
+				this -> pairOrientation = 0;
+			}else if( alignment.IsReverseStrand() == false and SA_elements[2] == "+" ){
+				this -> pairOrientation = 1;
+			}else if( alignment.IsReverseStrand() == true and SA_elements[2] == "-" ){
+				this -> pairOrientation =2;
+			}else{
+				this -> pairOrientation =3;
+			}
+
 			if (eventReads[this -> pairOrientation][contigNr].size() > 0){
 				discordantDistance = currrentAlignmentPos- eventReads[this -> pairOrientation][contigNr].back().Position;
 			}
-			if( eventSplitReads[contigNr].size() > 0){
-				splitDistance = currrentAlignmentPos - eventSplitReads[contigNr].back().Position;
+			if( eventSplitReads[this -> pairOrientation][contigNr].size() > 0){
+				splitDistance = currrentAlignmentPos - eventSplitReads[this -> pairOrientation][contigNr].back().Position;
 			}
 			//if we have any active set on these pairs of contigs
-			if(eventSplitReads[contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
+			if(eventSplitReads[this -> pairOrientation][contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
 				//if we are close enough
-				if (discordantDistance <= 2*mean_insert/minimumPairs and splitDistance <= this -> readLength){
-					eventSplitReads[contigNr].push_back(alignment);
+				if (discordantDistance <= 2*mean_insert/minimumPairs or splitDistance <= this -> readLength){
+					eventSplitReads[this -> pairOrientation][contigNr].push_back(alignment);
 				}else{
-					if(eventReads[this -> pairOrientation][contigNr].size() >= minimumPairs or eventSplitReads[contigNr].size() > minimumPairs){
-						computeVariations(alignment.MateRefID);
+					if(eventReads[this -> pairOrientation][contigNr].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][contigNr].size() > minimumPairs){
+						computeVariations(contigNr);
 					}
 					//Thereafter the alignments are removed
 					eventReads[this -> pairOrientation][contigNr]=queue<BamAlignment>();
 					linksFromWin[this -> pairOrientation][contigNr]=queue<int>();										
-					eventSplitReads[contigNr]=vector<BamAlignment>();
+					eventSplitReads[this -> pairOrientation][contigNr]=vector<BamAlignment>();
 
 					//the current alignment is inserted
-					eventSplitReads[contigNr].push_back(alignment);
+					eventSplitReads[this -> pairOrientation][contigNr].push_back(alignment);
 				}
 			//otherwise we add the alignment
 			}else{
-				eventSplitReads[contigNr].push_back(alignment);
+				eventSplitReads[this -> pairOrientation][contigNr].push_back(alignment);
 			}
 		}
 	}
@@ -330,13 +348,13 @@ void Window::insertRead(BamAlignment alignment) {
 					//add the read to the current window
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}else{
-					if(eventReads[this -> pairOrientation][alignment.MateRefID].size() >= minimumPairs or eventSplitReads[alignment.MateRefID].size() > minimumPairs){
+					if(eventReads[this -> pairOrientation][alignment.MateRefID].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][alignment.MateRefID].size() >= minimumPairs){
 						computeVariations(alignment.MateRefID);
 					}
 					//Thereafter the alignments are removed
 					eventReads[this -> pairOrientation][alignment.MateRefID]=queue<BamAlignment>();
 					linksFromWin[this -> pairOrientation][alignment.MateRefID]=queue<int>();										
-					eventSplitReads[alignment.MateRefID]=vector<BamAlignment>();
+					eventSplitReads[this -> pairOrientation][alignment.MateRefID]=vector<BamAlignment>();
 
 					//the current alignment is inserted
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
@@ -370,19 +388,19 @@ float Window::computeCoverageB(int chrB, int start, int end, int32_t secondWindo
 	
 }
 
-float Window::computeRegionalQuality(int chrB, int start, int end,int bin_size = 300){
+float Window::computeRegionalQuality(int chrB, int start, int end,int bin_size){
 	int bins=0;
 	float coverageB=0;
 	int element=0;
-	unsigned int pos =floor(double(start)/300.0)*bin_size;
+	unsigned int pos =floor(double(start)/bin_size)*bin_size;
 	
-	unsigned int nextpos =pos+300;
-	while(nextpos >= start and pos <= end and pos/300 < binnedQuality[chrB].size() ){
+	unsigned int nextpos =pos+bin_size;
+	while(nextpos >= start and pos <= end and pos/bin_size < binnedQuality[chrB].size() ){
 			bins++;
-			element=pos/300;
+			element=pos/bin_size;
 			coverageB+=double(binnedQuality[chrB][element]-coverageB)/double(bins);
 			pos=nextpos;
-			nextpos += 300;
+			nextpos += bin_size;
 	}
 	return(coverageB);
 	
@@ -462,8 +480,8 @@ bool Window::computeVariations(int chr2) {
 		discordantPairs=true;
 	}
 
-	if(this->eventSplitReads[chr2].size() > 0){
-		for (vector<BamAlignment>::iterator alnit = eventSplitReads[chr2].begin(); alnit != eventSplitReads[chr2].end(); ++alnit) {
+	if(this->eventSplitReads[this -> pairOrientation][chr2].size() > 0){
+		for (vector<BamAlignment>::iterator alnit = eventSplitReads[this -> pairOrientation][chr2].begin(); alnit != eventSplitReads[this -> pairOrientation][chr2].end(); ++alnit) {
 			string SA;
 			(alnit)->GetTag("SA",SA);
 			/* From the VCF documentation: Other canonical
@@ -595,8 +613,7 @@ bool Window::computeVariations(int chr2) {
 				splitReadStatistics["start"]=-1;
 				splitReadStatistics["end"]=-1;
 				splitReadStatistics["split_reads"]=splitsFormingLink;
-				splitReadStatistics["coverage_mid"]=-1;	
-				
+				splitReadStatistics["coverage_mid"]=-1;
 				VCFLine(discordantPairStatistics,splitReadStatistics,svType,GT,CN);
 				found = true;
 			}
@@ -634,11 +651,15 @@ bool Window::computeVariations(int chr2) {
 			//compute coverage on the region of chromosome A, as well as the number of discordant pairs within this region
 			//we need a model for determination of variant type based on split reads
 			string svType = "BND";
-			if(coverageRealSecondWindow > 1.25*meanCoverage){
-				svType = "DUP";
+			
+			if(this -> pairOrientation == 0 or this -> pairOrientation == 3){
+				svType = "INV";
+			}else if(coverageRealSecondWindow > 1.25*meanCoverage){
+				svType = "TDUP";
 			}else if(coverageRealSecondWindow < 0.75*meanCoverage){
 				svType = "DEL";
 			}
+
 			string GT="./1";
 			string CN=".";
 			//THese are the statistics used to define a variant detected by discordant pairs
@@ -653,7 +674,9 @@ bool Window::computeVariations(int chr2) {
 			splitReadStatistics["start"]=startchrA;
 			splitReadStatistics["end"]=stopSecondWindow;
 			splitReadStatistics["split_reads"]=splitsFormingLink;
-			splitReadStatistics["coverage_mid"]=coverageRealSecondWindow;	
+			splitReadStatistics["coverage_mid"]=coverageRealSecondWindow;
+			splitReadStatistics["splitOrientation"]= this -> pairOrientation;
+			splitReadStatistics["qualityA"]=computeRegionalQuality(this -> chr, startchrA, stopSecondWindow,300);
 				
 			VCFLine(discordantPairStatistics,splitReadStatistics,svType,GT,CN);
 			found = true;
@@ -741,6 +764,9 @@ vector<long> Window::newChrALimit(vector< vector< long > > variantPositions,long
 
 //function that prints the statistics to a vcf file
 void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> splitReadStatistics,string svType,string GT, string CN){
+	
+
+
 		
 	string filter = "PASS";
 	string infoField;
@@ -752,7 +778,6 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 	 
 	//if we have detected a variant using discordant pairs
 	if (discordantPairStatistics["chrA"] != -1){
-		
 		string read1_orientation;
 		string read2_orientation;
 		if (discordantPairStatistics["orientation"] == 0){
@@ -770,6 +795,7 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 			read1_orientation="Reverse";
 			read2_orientation="Reverse";
 		}
+
 		std::stringstream ss;
 		
 		ss << ";CHRA=" << position2contig[discordantPairStatistics["chrA"]] << ";WINA=" << discordantPairStatistics["windowA_start"] << "," << discordantPairStatistics["windowA_end"];
@@ -797,12 +823,34 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 	
 
 	if (splitReadStatistics["chrA"] != -1){
+		string read1_orientation;
+		string read2_orientation;
+		if (splitReadStatistics["splitOrientation"] == 0){
+			read1_orientation="Forward";
+			read2_orientation="Reverse";
+		}else if (splitReadStatistics["splitOrientation"] == 1){
+			read1_orientation="Forward";
+			read2_orientation="Forward";
+
+		}else if (splitReadStatistics["splitOrientation"] == 2){
+			read1_orientation="Reverse";
+			read2_orientation="Reverse";
+				
+		}else{
+			read1_orientation="Reverse";
+			read2_orientation="Forward";
+		}
+
+
 		chrB= splitReadStatistics["chrB"];
 		chrA = splitReadStatistics["chrA"];
 		posA= splitReadStatistics["start"];
 		posB= splitReadStatistics["end"];
 		std::stringstream ss;
-		ss << ";COVM=" << splitReadStatistics["coverage_mid"] << ";END=" << posB;
+		if(svType != "BND"){
+			ss << ";END=" << posB;
+		}
+		ss << ";COVM=" << splitReadStatistics["coverage_mid"] << ";QUALA=" << splitReadStatistics["qualityA"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
 		infoField += ss.str();
 	}
 	
