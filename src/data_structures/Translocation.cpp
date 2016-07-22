@@ -236,7 +236,7 @@ void Window::insertRead(BamAlignment alignment) {
 	alignment.BuildCharData();			
 	alignment_split = alignment.HasTag("SA");
 
-	if (alignment_split) {
+	if (alignment_split ) {
 		// parse split read to get the other segment position, akin to a mate.
 		string SA;
 		alignment.GetTag("SA",SA);
@@ -266,11 +266,12 @@ void Window::insertRead(BamAlignment alignment) {
 			int splitDistance = 0;
 
 			long splitPos = atol(SA_elements[1].c_str());
-	  		if(splitPos < currrentAlignmentPos){
+	  		if(splitPos < currrentAlignmentPos and alignment.RefID < contigNr ){
+	  			//only forward variants
 				continue;
 			}
-			
-			if(alignment.IsFirstMate() ){	
+			//
+			if(  (alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) ){	
 				//determine the "pair" orientation
 				if( alignment.IsReverseStrand() == false and SA_elements[2] == "-"  ){
 					this -> pairOrientation = 0;
@@ -292,8 +293,8 @@ void Window::insertRead(BamAlignment alignment) {
 				}else{
 					this -> pairOrientation =3;
 				}
-			
 			}
+			
 			if (eventReads[this -> pairOrientation][contigNr].size() > 0){
 				discordantDistance = currrentAlignmentPos- eventReads[this -> pairOrientation][contigNr].back().Position;
 			}
@@ -651,14 +652,10 @@ bool Window::computeVariations(int chr2) {
 			long startchrA=chrALimit[0];
 			long stopchrA=chrALimit[1];
 			//The variant needs to be larger than 250 bp, but small enough not to be detected by discordnt pairs
-			if(stopSecondWindow-startchrA < 250 or stopSecondWindow-startchrA  > this->max_insert) {
+			if(stopSecondWindow-startchrA < 200 or stopSecondWindow-startchrA  > this->max_insert) {
 				continue;
 			}
-			
-			vector<int> statsOnB=findLinksToChr2(eventReads[this -> pairOrientation][chr2],startchrA, stopchrA,startSecondWindow,stopSecondWindow,splitsFormingLink);
-			int numLinksToChr2=statsOnB[0];
-			int estimatedDistance=statsOnB[1];
-			//and stopSecondWindow-startchrA  < this->max_insert
+
 			//compute the coverage on the region of chromosome B
 			double coverageRealSecondWindow=computeCoverageB(chr2, startchrA, stopSecondWindow, (startchrA-startSecondWindow+1) );
 			//compute coverage on the region of chromosome A, as well as the number of discordant pairs within this region
@@ -679,7 +676,11 @@ bool Window::computeVariations(int chr2) {
 			map<string,int> discordantPairStatistics;
 			discordantPairStatistics["chrA"]=-1;
 			discordantPairStatistics["links_event"]=0;
-	
+			
+			
+			//compute coverage on the region of chromosome A, as well as the number of discordant pairs within this region
+			vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, chr2, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
+			
 			//These statistics define the variants detected by split reads
 			map<string,int> splitReadStatistics;
 			splitReadStatistics["chrA"]=this -> chr;
@@ -690,7 +691,9 @@ bool Window::computeVariations(int chr2) {
 			splitReadStatistics["coverage_mid"]=coverageRealSecondWindow;
 			splitReadStatistics["splitOrientation"]= this -> pairOrientation;
 			splitReadStatistics["qualityA"]=computeRegionalQuality(this -> chr, startchrA, stopSecondWindow,300);
-				
+			splitReadStatistics["links_window"]=int(statisticsFirstWindow[1]);
+			splitReadStatistics["coverage_start"]=statisticsFirstWindow[0];
+			splitReadStatistics["coverage_end"]=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (startchrA-startSecondWindow+1) );
 			VCFLine(discordantPairStatistics,splitReadStatistics,svType,GT,CN);
 			found = true;
 		}
@@ -855,6 +858,8 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		}
 
 
+		filter=filterFunction(1,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,splitReadStatistics["coverage_start"],splitReadStatistics["coverage_end"],meanCoverage);
+
 		chrB= splitReadStatistics["chrB"];
 		chrA = splitReadStatistics["chrA"];
 		posA= splitReadStatistics["start"];
@@ -863,7 +868,8 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		if(svType != "BND"){
 			ss << ";END=" << posB;
 		}
-		ss << ";COVM=" << splitReadStatistics["coverage_mid"] << ";QUALA=" << splitReadStatistics["qualityA"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+		ss << ";COVA=" << splitReadStatistics["coverage_start"] << ";COVM=" << splitReadStatistics["coverage_mid"] << ";COVB" << splitReadStatistics["coverage_end"];
+		ss <<  ";QUALA=" << splitReadStatistics["qualityA"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation << ";LFW=" << splitReadStatistics["links_window"] ;
 		infoField += ss.str();
 	}
 	
