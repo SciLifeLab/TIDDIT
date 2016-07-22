@@ -567,7 +567,7 @@ bool Window::computeVariations(int chr2) {
 				double coverageRealSecondWindow=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
 				double coverageMid=0;
 				if(this -> chr == chr2){
-					double coverageMid=computeCoverageB(chr2, startchrA, stopSecondWindow, (startchrA-startSecondWindow+1) );
+					coverageMid=computeCoverageB(chr2, startchrA, stopSecondWindow, (startchrA-startSecondWindow+1) );
 				}				
 				double qualityB = computeRegionalQuality(chr2, startSecondWindow, stopSecondWindow,300);
 				double qualityA = computeRegionalQuality(this -> chr, startchrA, stopchrA,300);
@@ -577,8 +577,8 @@ bool Window::computeVariations(int chr2) {
 				int linksFromWindow=int(statisticsFirstWindow[1]);
 
 				//calculate the expected number of reads
-				int secondWindowLength=(stopSecondWindow-startSecondWindow+1);
-				int firstWindowLength=stopchrA-startchrA+1;
+				int secondWindowLength=(stopSecondWindow-startSecondWindow+1+this-> readLength);
+				int firstWindowLength=stopchrA-startchrA+1+this-> readLength;
 
 				if(estimatedDistance > firstWindowLength) {
 					estimatedDistance = estimatedDistance - firstWindowLength;
@@ -617,7 +617,7 @@ bool Window::computeVariations(int chr2) {
 				discordantPairStatistics["links_window"]=linksFromWindow;
 				discordantPairStatistics["links_chr"]=numLinksToChr2;
 				discordantPairStatistics["links_event"]=pairsFormingLink;
-				discordantPairStatistics["expected_links"]=expectedLinksInWindow;
+				discordantPairStatistics["expected_links"]=abs(expectedLinksInWindow);
 				discordantPairStatistics["qualityB"]=qualityB;
 				discordantPairStatistics["qualityA"]=qualityA;
 				//These statistics define the variants detected by split reads
@@ -821,13 +821,13 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		ss << ";COVM=" << discordantPairStatistics["coverage_mid"];
 		ss << ";COVB=" << discordantPairStatistics["coverage_end"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
 		ss << ";QUALA=" << discordantPairStatistics["qualityA"] << ";QUALB=" << discordantPairStatistics["qualityB"];
-		if(discordantPairStatistics["expected_links"] > 0){
+		if(discordantPairStatistics["expected_links"] != 0){
 			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  (float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
 			filter=filterFunction((float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"],discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage);	
 	
 		}else{
-			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=inf";
-				filter=filterFunction(0,discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage);	
+			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=-1";
+				filter=filterFunction(1,discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage);	
 	
 		}
 		infoField += ss.str();
