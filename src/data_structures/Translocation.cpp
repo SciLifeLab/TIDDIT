@@ -111,7 +111,7 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	return(svVector);
 }
 
-string filterFunction(double RATIO, int linksToB, int linksFromWindow,float mean_insert, float std_insert,double coverageA,double coverageB,double coverageAVG){
+string filterFunction(double RATIO, int linksToB, int linksFromWindow,float mean_insert, float std_insert,double coverageA,double coverageB,double coverageAVG,int endA, int startB, int chrA, int chrB){
 	string filter = "PASS";
 	double linkratio= (double)linksToB/(double)linksFromWindow;
 	if(RATIO < 0.4){
@@ -120,6 +120,9 @@ string filterFunction(double RATIO, int linksToB, int linksFromWindow,float mean
 		filter="FewLinks";
 	} else if(coverageA > 10*coverageAVG or coverageB > coverageAVG*10){
 		filter="UnexpectedCoverage";
+	} else if(endA > startB and chrB == chrA){
+	    filter = "Smear";
+	
 	}
 
 	return(filter);
@@ -166,6 +169,7 @@ string Window::VCFHeader(){
 	headerString+="##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links between A and B is less than 40\% of the expected value\">\n";
 	headerString+="##FILTER=<ID=FewLinks,Description=\"Fewer than 40% of the links in window A link to chromosome B\">\n";
 	headerString+="##FILTER=<ID=UnexpectedCoverage,Description=\"The coverage of the window on chromosome B or A is higher than 10*average coverage\">\n";
+	headerString+="##FILTER=<ID=Smear,Description=\"window A and Window B overlap\">\n";
 	//set format 
 	headerString+="##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n";
 	headerString+="##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy number genotype for imprecise events\">\n";
@@ -577,8 +581,8 @@ bool Window::computeVariations(int chr2) {
 				int linksFromWindow=int(statisticsFirstWindow[1]);
 
 				//calculate the expected number of reads
-				int secondWindowLength=(stopSecondWindow-startSecondWindow+1+this-> readLength);
-				int firstWindowLength=stopchrA-startchrA+1+this-> readLength;
+				int secondWindowLength=this-> readLength+(stopSecondWindow-startSecondWindow+1);
+				int firstWindowLength=+this-> readLength+stopchrA-startchrA;
 
 				if(estimatedDistance > firstWindowLength) {
 					estimatedDistance = estimatedDistance - firstWindowLength;
@@ -823,11 +827,11 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		ss << ";QUALA=" << discordantPairStatistics["qualityA"] << ";QUALB=" << discordantPairStatistics["qualityB"];
 		if(discordantPairStatistics["expected_links"] != 0){
 			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  (float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
-			filter=filterFunction((float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"],discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage);	
+			filter=filterFunction((float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"],discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage, discordantPairStatistics["windowA_start"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
 	
 		}else{
 			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=-1";
-				filter=filterFunction(1,discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage);	
+				filter=filterFunction(1,discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage, discordantPairStatistics["windowA_start"], discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
 	
 		}
 		infoField += ss.str();
@@ -858,7 +862,7 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		}
 
 
-		filter=filterFunction(1,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,splitReadStatistics["coverage_start"],splitReadStatistics["coverage_end"],meanCoverage);
+		filter=filterFunction(1,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,splitReadStatistics["coverage_start"],splitReadStatistics["coverage_end"],meanCoverage,splitReadStatistics["start"],splitReadStatistics["end"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
 
 		chrB= splitReadStatistics["chrB"];
 		chrA = splitReadStatistics["chrA"];
