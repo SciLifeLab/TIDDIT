@@ -589,6 +589,11 @@ bool Window::computeVariations(int chr2) {
 				}else{
 					estimatedDistance = 1;
 				}
+				//the pairs spanning the first and second window must have normal insert size, otherwise they are discordant
+				if(estimatedDistance + firstWindowLength < mean_insert){
+				    estimatedDistance = mean_insert - firstWindowLength;
+				}
+				
 				float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);					
 				if (expectedLinksInWindow > 10*pairsFormingLink){
 					//dont print the variant if it is pure garbage
