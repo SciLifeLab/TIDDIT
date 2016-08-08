@@ -825,7 +825,10 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		
 		ss << ";CHRA=" << position2contig[discordantPairStatistics["chrA"]] << ";WINA=" << discordantPairStatistics["windowA_start"] << "," << discordantPairStatistics["windowA_end"];
 		ss << ";CHRB=" << position2contig[discordantPairStatistics["chrB"]] << ";WINB=" << discordantPairStatistics["windowB_start"] << "," << discordantPairStatistics["windowB_end"];
-		ss << ";END=" << discordantPairStatistics["end"] << ";LFW=" << discordantPairStatistics["links_window"];
+		if(discordantPairStatistics["chrA"] == discordantPairStatistics["chrB"]){
+		ss << ";END=" << discordantPairStatistics["end"];
+		} 
+		ss << ";LFW=" << discordantPairStatistics["links_window"];
 		ss << ";LCB="  << discordantPairStatistics["links_chr"] << ";LTE=" << discordantPairStatistics["links_event"] << ";COVA=" <<  discordantPairStatistics["coverage_start"];
 		ss << ";COVM=" << discordantPairStatistics["coverage_mid"];
 		ss << ";COVB=" << discordantPairStatistics["coverage_end"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
