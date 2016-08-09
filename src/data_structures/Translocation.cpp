@@ -162,11 +162,12 @@ string Window::VCFHeader(){
 	headerString+="##INFO=<ID=WINA,Number=2,Type=Integer,Description=\"start and stop positon of window A\">\n";
 	headerString+="##INFO=<ID=WINB,Number=2,Type=Integer,Description=\"start and stop position of window B\">\n";
 	headerString+="##INFO=<ID=EL,Number=1,Type=Float,Description=\"Expected links to window B\">\n";
+	headerString+="##INFO=<ID=ER,Number=1,Type=Float,Description=\"Expected number of split reads\">\n";
 	headerString+="##INFO=<ID=RATIO,Number=1,Type=Float,Description=\"The number of links divided by the expected number of links\">\n";
 	headerString+="##INFO=<ID=QUALA,Number=1,Type=String,Description=\"The average mapping quality of the reads in window A\">\n";
 	headerString+="##INFO=<ID=QUALB,Number=1,Type=String,Description=\"The average mapping quality of the reads in window B\">\n";
 	//set filters
-	headerString+="##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links between A and B is less than 40\% of the expected value\">\n";
+	headerString+="##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links or reads between A and B is less than 40\% of the expected value\">\n";
 	headerString+="##FILTER=<ID=FewLinks,Description=\"Fewer than 40% of the links in window A link to chromosome B\">\n";
 	headerString+="##FILTER=<ID=UnexpectedCoverage,Description=\"The coverage of the window on chromosome B or A is higher than 10*average coverage\">\n";
 	headerString+="##FILTER=<ID=Smear,Description=\"window A and Window B overlap\">\n";
@@ -694,12 +695,17 @@ bool Window::computeVariations(int chr2) {
 			map<string,int> splitReadStatistics;
 			splitReadStatistics["chrA"]=this -> chr;
 			splitReadStatistics["chrB"]=chr2;
+			splitReadStatistics["windowA_start"]=startchrA;
+			splitReadStatistics["windowA_end"]=stopchrA;
 			splitReadStatistics["start"]=startchrA;
+			splitReadStatistics["windowB_start"]=startSecondWindow;
+			splitReadStatistics["windowB_end"]=stopSecondWindow;
 			splitReadStatistics["end"]=stopSecondWindow;
 			splitReadStatistics["split_reads"]=splitsFormingLink;
-			splitReadStatistics["coverage_mid"]=coverageRealSecondWindow;
+			splitReadStatistics["coverage_mid"]=computeCoverageB(chr2,stopchrA, startSecondWindow, (startSecondWindow+1-stopchrA) );
 			splitReadStatistics["splitOrientation"]= this -> pairOrientation;
-			splitReadStatistics["qualityA"]=computeRegionalQuality(this -> chr, startchrA, stopSecondWindow,300);
+			splitReadStatistics["qualityA"]=computeRegionalQuality(this -> chr, startchrA, stopchrA,300);
+			splitReadStatistics["qualityB"]=computeRegionalQuality(this -> chr, startSecondWindow, stopSecondWindow,300);
 			splitReadStatistics["links_window"]=int(statisticsFirstWindow[1]);
 			splitReadStatistics["coverage_start"]=statisticsFirstWindow[0];
 			splitReadStatistics["coverage_end"]=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (startchrA-startSecondWindow+1) );
@@ -869,13 +875,13 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 			read2_orientation="Forward";
 		}
 
-		if (discordantPairStatistics["chrA"] != -1){
-			double RATIO =1;
-			if(splitReadStatistics["coverage_start"] > 0){
-				double RATIO=this -> ploidy*splitReadStatistics["split_reads"]/double(splitReadStatistics["coverage_start"]);
-			}
-			filter=filterFunction(RATIO,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,splitReadStatistics["coverage_start"],splitReadStatistics["coverage_end"],meanCoverage,splitReadStatistics["start"],splitReadStatistics["end"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
+		double RATIO =1;
+		int E_links= double(splitReadStatistics["coverage_start"]);
+		if(splitReadStatistics["coverage_start"] > 0){
+			double RATIO=this -> ploidy*splitReadStatistics["split_reads"]/double(splitReadStatistics["coverage_start"]);
 		}
+		filter=filterFunction(RATIO,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,splitReadStatistics["coverage_start"],splitReadStatistics["coverage_end"],meanCoverage,splitReadStatistics["start"],splitReadStatistics["end"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
+		
 		
 		chrB= splitReadStatistics["chrB"];
 		chrA = splitReadStatistics["chrA"];
@@ -885,8 +891,12 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		if(svType != "BND"){
 			ss << ";END=" << posB;
 		}
-		ss << ";COVA=" << splitReadStatistics["coverage_start"] << ";COVM=" << splitReadStatistics["coverage_mid"] << ";COVB" << splitReadStatistics["coverage_end"];
-		ss <<  ";QUALA=" << splitReadStatistics["qualityA"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation << ";LFW=" << splitReadStatistics["links_window"] ;
+		ss << ";WINA=" << splitReadStatistics["windowA_start"] << "," << splitReadStatistics["windowA_end"];
+		ss << ";WINB=" << discordantPairStatistics["windowB_start"] << "," << discordantPairStatistics["windowB_end"];
+		ss << ";COVA=" << splitReadStatistics["coverage_start"] << ";COVM=" << splitReadStatistics["coverage_mid"] << ";COVB=" << splitReadStatistics["coverage_end"];
+		ss <<  ";QUALA=" << splitReadStatistics["qualityA"] << ";QUALB=" << splitReadStatistics["qualityB"];
+		ss << ";OA=" << read1_orientation << ";OB=" << read2_orientation << ";LFW=" << splitReadStatistics["links_window"] ;
+		ss << ";ER=" << E_links << ";RATIO=" << RATIO << endl;
 		infoField += ss.str();
 	}
 	
