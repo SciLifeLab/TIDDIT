@@ -869,9 +869,14 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 			read2_orientation="Forward";
 		}
 
-
-		filter=filterFunction(1,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,splitReadStatistics["coverage_start"],splitReadStatistics["coverage_end"],meanCoverage,splitReadStatistics["start"],splitReadStatistics["end"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
-
+		if (discordantPairStatistics["chrA"] != -1){
+			double RATIO =1;
+			if(splitReadStatistics["coverage_start"] > 0){
+				double RATIO=this -> ploidy*splitReadStatistics["split_reads"]/double(splitReadStatistics["coverage_start"]);
+			}
+			filter=filterFunction(RATIO,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,splitReadStatistics["coverage_start"],splitReadStatistics["coverage_end"],meanCoverage,splitReadStatistics["start"],splitReadStatistics["end"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
+		}
+		
 		chrB= splitReadStatistics["chrB"];
 		chrA = splitReadStatistics["chrA"];
 		posA= splitReadStatistics["start"];
