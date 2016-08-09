@@ -111,7 +111,7 @@ def main(args):
         try:  
             pysam.sort(output_dir+".bam","-o" + output_dir+".sorted.bam")
         except:
-            pysam.sort(output_dir+".bam",output_dir+".sorted.bam")
+            pysam.sort(output_dir+".bam",output_dir+".sorted")
         os.rename(output_dir+".sorted.bam", output_dir+".bam")
     return()
 
