@@ -841,7 +841,7 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		ss << ";QUALA=" << discordantPairStatistics["qualityA"] << ";QUALB=" << discordantPairStatistics["qualityB"];
 		if(discordantPairStatistics["expected_links"] != 0){
 			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  (float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
-			filter=filterFunction((float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"],discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage, discordantPairStatistics["windowA_start"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
+			filter=filterFunction((float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"],discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
 	
 		}else{
 			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=-1";
@@ -876,7 +876,7 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		}
 
 		double RATIO =1;
-		int E_links= splitReadStatistics["coverage_start"];
+		int E_links= splitReadStatistics["coverage_start"]/(double(this -> ploidy));
 		if(E_links > 0){
 			RATIO=this -> ploidy*double(splitReadStatistics["split_reads"])/double(E_links);
 		}
