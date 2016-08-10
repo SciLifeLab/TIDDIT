@@ -876,9 +876,9 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		}
 
 		double RATIO =1;
-		int E_links= double(splitReadStatistics["coverage_start"]);
-		if(splitReadStatistics["coverage_start"] > 0){
-			double RATIO=this -> ploidy*splitReadStatistics["split_reads"]/double(splitReadStatistics["coverage_start"]);
+		int E_links= splitReadStatistics["coverage_start"];
+		if(E_links > 0){
+			RATIO=this -> ploidy*double(splitReadStatistics["split_reads"])/double(E_links);
 		}
 		filter=filterFunction(RATIO,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,splitReadStatistics["coverage_start"],splitReadStatistics["coverage_end"],meanCoverage,splitReadStatistics["start"],splitReadStatistics["end"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
 		
@@ -892,11 +892,11 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 			ss << ";END=" << posB;
 		}
 		ss << ";WINA=" << splitReadStatistics["windowA_start"] << "," << splitReadStatistics["windowA_end"];
-		ss << ";WINB=" << discordantPairStatistics["windowB_start"] << "," << discordantPairStatistics["windowB_end"];
+		ss << ";WINB=" << splitReadStatistics["windowB_start"] << "," << splitReadStatistics["windowB_end"];
 		ss << ";COVA=" << splitReadStatistics["coverage_start"] << ";COVM=" << splitReadStatistics["coverage_mid"] << ";COVB=" << splitReadStatistics["coverage_end"];
 		ss <<  ";QUALA=" << splitReadStatistics["qualityA"] << ";QUALB=" << splitReadStatistics["qualityB"];
 		ss << ";OA=" << read1_orientation << ";OB=" << read2_orientation << ";LFW=" << splitReadStatistics["links_window"] ;
-		ss << ";ER=" << E_links << ";RATIO=" << RATIO << endl;
+		ss << ";ER=" << E_links << ";RATIO=" << RATIO;
 		infoField += ss.str();
 	}
 	
