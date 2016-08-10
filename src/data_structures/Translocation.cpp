@@ -702,13 +702,13 @@ bool Window::computeVariations(int chr2) {
 			splitReadStatistics["windowB_end"]=stopSecondWindow;
 			splitReadStatistics["end"]=stopSecondWindow;
 			splitReadStatistics["split_reads"]=splitsFormingLink;
-			splitReadStatistics["coverage_mid"]=computeCoverageB(chr2,stopchrA, startSecondWindow, (startSecondWindow+1-stopchrA) );
+			splitReadStatistics["coverage_mid"]=computeCoverageB(chr2,startchrA, stopSecondWindow, (stopSecondWindow+1-startchrA) );
 			splitReadStatistics["splitOrientation"]= this -> pairOrientation;
 			splitReadStatistics["qualityA"]=computeRegionalQuality(this -> chr, startchrA, stopchrA,300);
 			splitReadStatistics["qualityB"]=computeRegionalQuality(this -> chr, startSecondWindow, stopSecondWindow,300);
 			splitReadStatistics["links_window"]=int(statisticsFirstWindow[1]);
 			splitReadStatistics["coverage_start"]=statisticsFirstWindow[0];
-			splitReadStatistics["coverage_end"]=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (startchrA-startSecondWindow+1) );
+			splitReadStatistics["coverage_end"]=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
 			VCFLine(discordantPairStatistics,splitReadStatistics,svType,GT,CN);
 			found = true;
 		}
@@ -845,7 +845,7 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 	
 		}else{
 			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=-1";
-				filter=filterFunction(1,discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage, discordantPairStatistics["windowA_start"], discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
+				filter=filterFunction(1,discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"], discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
 	
 		}
 		infoField += ss.str();
@@ -880,7 +880,7 @@ void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> s
 		if(E_links > 0){
 			RATIO=this -> ploidy*double(splitReadStatistics["split_reads"])/double(E_links);
 		}
-		filter=filterFunction(RATIO,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,splitReadStatistics["coverage_start"],splitReadStatistics["coverage_end"],meanCoverage,splitReadStatistics["start"],splitReadStatistics["end"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
+		filter=filterFunction(RATIO,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,splitReadStatistics["coverage_start"],splitReadStatistics["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
 		
 		
 		chrB= splitReadStatistics["chrB"];
