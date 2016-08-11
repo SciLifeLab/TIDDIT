@@ -65,6 +65,7 @@ public:
 	int binEnd;
 	int currentChr;
 	vector< vector<unsigned int> > coverageStructure;
+	vector< vector< vector<unsigned int> > >qualityStructure;
 	map<unsigned int,string> position2contig;
 	map<string,unsigned int> contig2position;
 	vector<int> contigLength;
@@ -263,6 +264,13 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 			mappedReads ++;
 			mappedReadsLength += al.Length;
 		}
+		
+		vector <int > clipSizes;
+		vector< int > readPositions;
+		vector<int> genomePos;
+		if ( al.GetSoftClips(clipSizes,readPositions,genomePos) ){
+			splitReads += 1;
+		}
 
         //calculate the coverage in bins of size 400 bases
         calculateCoverage -> bin(al);
@@ -325,10 +333,8 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	cout << "\t total reads number "	<< reads << "\n";
 	cout << "\t total mapped reads " 	<< mappedReads << "\n";
 	cout << "\t total unmapped reads " 	<< unmappedReads << "\n";
-	cout << "\t proper pairs " 	       	<< matedReads << "\n";
 	cout << "\t split reads "               << splitReads << "\n";
-	cout << "\t wrong distance "		<< wrongDistanceReads << "\n";
-	cout << "\t zero quality reads " 	<< lowQualityReads << "\n";
+	cout << "\t low quality reads " 	<< lowQualityReads << "\n";
 	cout << "\t wrongly contig "		<< matedDifferentContig << "\n";
 	cout << "\t singletons " 		<< singletonReads << "\n";
 

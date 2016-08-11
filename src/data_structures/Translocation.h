@@ -19,7 +19,7 @@ public:
 
 	vector< vector < queue<BamAlignment> > >	eventReads;
 	
-	vector< vector<BamAlignment> > eventSplitReads;
+	vector< vector < vector<BamAlignment> > > eventSplitReads;
 
 	vector<long> covOnChrA;
 	vector<long> tmpCovOnChrA;
@@ -48,6 +48,7 @@ public:
 	map<string,unsigned int> contig2position;
 	map<unsigned int,string> position2contig;
 	vector< vector<float> > binnedCoverage;
+	vector< vector<float> > binnedQuality;
 	//Output part
 	string outputFileHeader;
 	ofstream interChrVariationsVCF;
@@ -61,12 +62,13 @@ public:
 	void initTrans(SamHeader head);				   // initialise the contig to position array
 	void insertRead(BamAlignment alignment);	   // inserts a new read
 	queue<BamAlignment> queueAppend(queue<BamAlignment> queueOne,queue<BamAlignment> queueTwo); //append queues;
-	vector<long> findRegionOnB( queue<BamAlignment> alignmentQueue, int minimumPairs,int maxDistance); //Finds the region of the event on chromosome B
-	vector<long> newChrALimit(queue<BamAlignment> alignmentQueue,long Bstart,long Bend); //resizes the window on CHRA
+	vector<long> findRegionOnB( vector<long> mate_positions, int minimumPairs,int maxDistance); //Finds the region of the event on chromosome B
+	vector<long> newChrALimit(vector< vector< long > > variantPositions,long Bstart,long Bend); //resizes the window on CHRA
 	vector<double> computeStatisticsA(string bamFileName, int chrB, int start, int end, int32_t WindowLength, string indexFile); //compute coverage and number of links from window on the chrA
 	vector<string> classification(int chr, int startA,int endA,double covA,int startB,int endB,double covB,int meanInsert,int STDInsert,bool outtie);
+	float computeRegionalQuality(int chrB, int start, int end,int bin_size);
 	string VCFHeader();
-	void VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int startchrA,int stopchrA,int pairsFormingLink,int splitsFormingLink,int numLinksToChr2,int estimatedDistance);
+	void VCFLine(map<string,int> discordantPairStatistics, map<string,int> splitReadStatistics,string svType,string GT, string CN);
 	vector<int> findLinksToChr2(queue<BamAlignment> ReadQueue,long startChrA,long stopChrA,long startChrB,long endChrB, int pairsFormingLink);
 	float computeCoverageB(int chrB, int start, int end, int32_t secondWindowLength); //computes the coverage of the window of chromosome B
 	bool computeVariations(int chr2);

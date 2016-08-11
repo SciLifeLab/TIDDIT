@@ -7,6 +7,7 @@
 
 #include "Translocation.h"
 #include <string>
+#include <cmath>  
 
 string int2str(int to_be_converted){
 	string converted= static_cast<ostringstream*>( &(ostringstream() << to_be_converted) )->str();
@@ -110,7 +111,7 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	return(svVector);
 }
 
-string filterFunction(double RATIO, int linksToB, int linksFromWindow,float mean_insert, float std_insert,int estimatedDistance,double coverageA,double coverageB,double coverageAVG){
+string filterFunction(double RATIO, int linksToB, int linksFromWindow,float mean_insert, float std_insert,double coverageA,double coverageB,double coverageAVG,int endA, int startB, int chrA, int chrB){
 	string filter = "PASS";
 	double linkratio= (double)linksToB/(double)linksFromWindow;
 	if(RATIO < 0.4){
@@ -119,6 +120,9 @@ string filterFunction(double RATIO, int linksToB, int linksFromWindow,float mean
 		filter="FewLinks";
 	} else if(coverageA > 10*coverageAVG or coverageB > coverageAVG*10){
 		filter="UnexpectedCoverage";
+	} else if(endA > startB and chrB == chrA){
+	    filter = "Smear";
+	
 	}
 
 	return(filter);
@@ -149,6 +153,7 @@ string Window::VCFHeader(){
 	headerString+="##INFO=<ID=LCB,Number=1,Type=Integer,Description=\"Links to chromosome B\">\n";
 	headerString+="##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\">\n";
 	headerString+="##INFO=<ID=COVA,Number=1,Type=Float,Description=\"Coverage on window A\">\n";
+	headerString+="##INFO=<ID=COVM,Number=1,Type=Float,Description=\"The coverage between A and B\">\n";
 	headerString+="##INFO=<ID=COVB,Number=1,Type=Float,Description=\"Coverage on window B\">\n";
 	headerString+="##INFO=<ID=OA,Number=1,Type=String,Description=\"Orientation of the reads in window A\">\n";
 	headerString+="##INFO=<ID=OB,Number=1,Type=String,Description=\"Orientation of the mates in window B\">\n";
@@ -157,11 +162,15 @@ string Window::VCFHeader(){
 	headerString+="##INFO=<ID=WINA,Number=2,Type=Integer,Description=\"start and stop positon of window A\">\n";
 	headerString+="##INFO=<ID=WINB,Number=2,Type=Integer,Description=\"start and stop position of window B\">\n";
 	headerString+="##INFO=<ID=EL,Number=1,Type=Float,Description=\"Expected links to window B\">\n";
+	headerString+="##INFO=<ID=ER,Number=1,Type=Float,Description=\"Expected number of split reads\">\n";
 	headerString+="##INFO=<ID=RATIO,Number=1,Type=Float,Description=\"The number of links divided by the expected number of links\">\n";
+	headerString+="##INFO=<ID=QUALA,Number=1,Type=String,Description=\"The average mapping quality of the reads in window A\">\n";
+	headerString+="##INFO=<ID=QUALB,Number=1,Type=String,Description=\"The average mapping quality of the reads in window B\">\n";
 	//set filters
-	headerString+="##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links between A and B is less than 40\% of the expected value\">\n";
+	headerString+="##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links or reads between A and B is less than 40\% of the expected value\">\n";
 	headerString+="##FILTER=<ID=FewLinks,Description=\"Fewer than 40% of the links in window A link to chromosome B\">\n";
 	headerString+="##FILTER=<ID=UnexpectedCoverage,Description=\"The coverage of the window on chromosome B or A is higher than 10*average coverage\">\n";
+	headerString+="##FILTER=<ID=Smear,Description=\"window A and Window B overlap\">\n";
 	//set format 
 	headerString+="##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n";
 	headerString+="##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy number genotype for imprecise events\">\n";
@@ -213,84 +222,124 @@ void Window::insertRead(BamAlignment alignment) {
 		for(int i=0;i<eventReads[this -> pairOrientation].size();i++){
 			//check for events
 			for (int j=0; j<4;j++){
-				if( eventReads[j][i].size() >= minimumPairs){
+				if( eventReads[j][i].size() >= minimumPairs or eventSplitReads[j][i].size() > minimumPairs){
 					this -> pairOrientation = j;
 					computeVariations(i);
 				}
 				//empty the alignmentqueues
 				eventReads[j][i]=queue<BamAlignment>();
+				eventSplitReads[j][i]=vector<BamAlignment>();
 				linksFromWin[j][alignment.MateRefID]=queue<int>();
 			}
-			eventSplitReads[i]=vector<BamAlignment>();
+			
 			
 		}
 		cout << "working on seqence " << position2contig[alignment.RefID] << "\n";
 	}
 	
-	vector <int > clipSizes;
-	vector< int > readPositions;
-	vector<int> genomePos;
-	bool test=alignment.GetSoftClips(clipSizes,readPositions,genomePos);
 	bool alignment_split = false;	
-	if (test){
-		alignment.BuildCharData(); // Somewhat costly, but needed to check for any SA tag.			
-		alignment_split = alignment.HasTag("SA");
+	alignment.BuildCharData();			
+	alignment_split = alignment.HasTag("SA");
+
+	if (alignment_split ) {
+		// parse split read to get the other segment position, akin to a mate.
+		string SA;
+		alignment.GetTag("SA",SA);
+		/* From the VCF documentation:
+		// Other canonical alignments in a chimeric alignment, formatted as a semicolon-delimited list: 
+		// (rname,pos,strand,CIGAR,mapQ,NM;)+. 
+		// Each element in the list represents a part of the chimeric alignment. 
+		// Conventionally, at a supplementary line, the first element points to the primary line.
+		*/
+
+		
+		stringstream ss(SA);
+		std::string item;
+		while (std::getline(ss, item, ';')) {
+			stringstream SS(item);
+			string SA_data;
+			vector <string> SA_elements;
+			while (std::getline(SS, SA_data, ',')) {
+				SA_elements.push_back(SA_data);
+			}
+			
+
+
+			int contigNr = contig2position[SA_elements[0]];
+			int currrentAlignmentPos=alignment.Position;
+			int discordantDistance=0;
+			int splitDistance = 0;
+
+			long splitPos = atol(SA_elements[1].c_str());
+	  		if(splitPos < currrentAlignmentPos and alignment.RefID < contigNr ){
+	  			//only forward variants
+				continue;
+			}
+			//
+			if(  (alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) ){	
+				//determine the "pair" orientation
+				if( alignment.IsReverseStrand() == false and SA_elements[2] == "-"  ){
+					this -> pairOrientation = 0;
+				}else if( alignment.IsReverseStrand() == false and SA_elements[2] == "+" ){
+					this -> pairOrientation = 1;
+				}else if( alignment.IsReverseStrand() == true and SA_elements[2] == "-" ){
+					this -> pairOrientation =2;
+				}else{
+					this -> pairOrientation =3;
+				}
+			}else{
+				//the orientation of the mate is inverted compared to the first read
+				if( alignment.IsReverseStrand() == true and SA_elements[2] == "+"  ){
+					this -> pairOrientation = 0;
+				}else if( alignment.IsReverseStrand() == true and SA_elements[2] == "-" ){
+					this -> pairOrientation = 1;
+				}else if( alignment.IsReverseStrand() == false and SA_elements[2] == "+" ){
+					this -> pairOrientation =2;
+				}else{
+					this -> pairOrientation =3;
+				}
+			}
+			
+			if (eventReads[this -> pairOrientation][contigNr].size() > 0){
+				discordantDistance = currrentAlignmentPos- eventReads[this -> pairOrientation][contigNr].back().Position;
+			}
+			if( eventSplitReads[this -> pairOrientation][contigNr].size() > 0){
+				splitDistance = currrentAlignmentPos - eventSplitReads[this -> pairOrientation][contigNr].back().Position;
+			}
+			//if we have any active set on these pairs of contigs
+			if(eventSplitReads[this -> pairOrientation][contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
+				//if we are close enough
+				if (discordantDistance <= 2*mean_insert/minimumPairs or splitDistance <= this -> readLength){
+					eventSplitReads[this -> pairOrientation][contigNr].push_back(alignment);
+				}else{
+					if(eventReads[this -> pairOrientation][contigNr].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][contigNr].size() > minimumPairs){
+						computeVariations(contigNr);
+					}
+					//Thereafter the alignments are removed
+					eventReads[this -> pairOrientation][contigNr]=queue<BamAlignment>();
+					linksFromWin[this -> pairOrientation][contigNr]=queue<int>();										
+					eventSplitReads[this -> pairOrientation][contigNr]=vector<BamAlignment>();
+
+					//the current alignment is inserted
+					eventSplitReads[this -> pairOrientation][contigNr].push_back(alignment);
+				}
+			//otherwise we add the alignment
+			}else{
+				eventSplitReads[this -> pairOrientation][contigNr].push_back(alignment);
+			}
+		}
 	}
-
-	if (alignment_split) {
-	  
-	  // parse split read to get the other segment position, akin to a mate.
-
-	  string SA;
-	  alignment.GetTag("SA",SA);
-	  /* From the VCF documentation:
-	  // Other canonical alignments in a chimeric alignment, formatted as a semicolon-delimited list: 
-	  // (rname,pos,strand,CIGAR,mapQ,NM;)+. 
-	  // Each element in the list represents a part of the chimeric alignment. 
-	  // Conventionally, at a supplementary line, the first element points to the primary line.
-	  */
-
-	  vector <string> SA_elements;
-      stringstream ss(SA);
-	  std::string item;
-      while (std::getline(ss, item, ';')) {
-        stringstream SS(item);
-        string SA_data;
-        while (std::getline(SS, SA_data, ',')) {
-      	    SA_elements.push_back(SA_data);
-      	}
-      }
-
-	  
-	  int contigNr = contig2position[SA_elements[0]];
-
-	  
-	  //Check if the distance between the split read and the previous alignment is larger than max distance
-
-
-	  bool add = false;
-	  // we may or may not have a past event
-	  if (eventReads[this -> pairOrientation][contigNr].size() > 0) {	    
-	    int currrentAlignmentPos=alignment.Position;
-	    int pastAlignmentPos= eventReads[this -> pairOrientation][contigNr].back().Position;
-	    int distance= currrentAlignmentPos - pastAlignmentPos;
-	    // If the distance between the two reads is less than the maximum allowed distace, add it to the other reads of the event
-	    if(distance <= mean_insert){
-	      // parse tag and add it to the destination chr
-	      add = true;
-	    }
-	  }
-	  if (add) {;
-	    eventSplitReads[contigNr].push_back(alignment);    
-	  } else {
-	    // for now, we don't allow split reads to start a new window.
-	    //	    cout << "Warning: split read outside current window found. Ignored.\n";
-	  }
-	}
+	
 	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
 		if(alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) {  // insert only "forward" variations
 
 
+			for(int i=0;i< eventReads[this -> pairOrientation].size();i++){
+				for(int j=0;j <4;j++){
+					linksFromWin[j][i].push(alignment.Position);
+				}
+			}
+			
 			//check the orientation of the reads
 			if( alignment.IsReverseStrand() == false and alignment.IsMateReverseStrand() == false  ){
 				this -> pairOrientation = 0;
@@ -301,10 +350,9 @@ void Window::insertRead(BamAlignment alignment) {
 			}else{
 				this -> pairOrientation =3;
 			}
-			int alignmentNumber= eventReads[this -> pairOrientation][alignment.MateRefID].size();
             
 			//if there currently is no sign of a translocation event between the current chromosome and the chromosome of the current alignment
-			if( alignmentNumber == 0) {
+			if( eventReads[this -> pairOrientation][alignment.MateRefID].size() == 0) {
 				eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 			} else {
 				//if there already are alignments of the current chromosome and chromosome of the current alignment:
@@ -315,27 +363,23 @@ void Window::insertRead(BamAlignment alignment) {
 				int distance= currrentAlignmentPos - pastAlignmentPos;
 
 				//If the distance between the two reads is less than the maximum allowed distace, add it to the other reads of the event
-				if(distance <= mean_insert){
+				if(distance <= 2*mean_insert/minimumPairs){
 					//add the read to the current window
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}else{
-					if(eventReads[this -> pairOrientation][alignment.MateRefID].size() >= minimumPairs){
+					if(eventReads[this -> pairOrientation][alignment.MateRefID].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][alignment.MateRefID].size() >= minimumPairs){
 						computeVariations(alignment.MateRefID);
 					}
 					//Thereafter the alignments are removed
 					eventReads[this -> pairOrientation][alignment.MateRefID]=queue<BamAlignment>();
 					linksFromWin[this -> pairOrientation][alignment.MateRefID]=queue<int>();										
-					eventSplitReads[alignment.MateRefID]=vector<BamAlignment>();
+					eventSplitReads[this -> pairOrientation][alignment.MateRefID]=vector<BamAlignment>();
 
 					//the current alignment is inserted
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}
 			}
-			for(int i=0;i< eventReads[this -> pairOrientation].size();i++){
-				for(int j=0;j <4;j++){
-					linksFromWin[j][i].push(alignment.Position);
-				}
-			}
+
 		}
 
 	}
@@ -358,6 +402,24 @@ float Window::computeCoverageB(int chrB, int start, int end, int32_t secondWindo
 			coverageB+=double(binnedCoverage[chrB][element]-coverageB)/double(bins);
 			pos=nextpos;
 			nextpos += 300;
+	}
+	return(coverageB);
+	
+}
+
+float Window::computeRegionalQuality(int chrB, int start, int end,int bin_size){
+	int bins=0;
+	float coverageB=0;
+	int element=0;
+	unsigned int pos =floor(double(start)/bin_size)*bin_size;
+	
+	unsigned int nextpos =pos+bin_size;
+	while(nextpos >= start and pos <= end and pos/bin_size < binnedQuality[chrB].size() ){
+			bins++;
+			element=pos/bin_size;
+			coverageB+=double(binnedQuality[chrB][element]-coverageB)/double(bins);
+			pos=nextpos;
+			nextpos += bin_size;
 	}
 	return(coverageB);
 	
@@ -417,66 +479,240 @@ vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int star
 //Compute statistics of the variations and print them to file
 bool Window::computeVariations(int chr2) {
 	bool found = false;
-	vector<long> chr2regions= findRegionOnB( this-> eventReads[this -> pairOrientation][chr2] ,minimumPairs,this ->mean_insert);
 	
-	for(int i=0;i < chr2regions.size()/3;i++){
-		long startSecondWindow=chr2regions[i*3];
-		long stopSecondWindow=chr2regions[i*3+1];
-		long pairsFormingLink=chr2regions[i*3+2];
-		if(pairsFormingLink >= minimumPairs) {
+	
+	vector< vector< long > > discordantPairPositions;
+	vector< vector< long > > splitReadPositions;
+	discordantPairPositions.resize(2);
+	splitReadPositions.resize(2);
+	bool discordantPairs=false;
+	bool splitReads=false;
+	queue <BamAlignment> test_queue = this-> eventReads[this -> pairOrientation][chr2];
+	
+	//transfer the positions of the split reads and discordant pairs into vectors
+	if( test_queue.size() >= minimumPairs) {		
+		while(test_queue.size() > 0 ){
+			discordantPairPositions[0].push_back(test_queue.front().Position);
+			discordantPairPositions[1].push_back(test_queue.front().MatePosition);
+			test_queue.pop();
+		}
+		discordantPairs=true;
+	}
+
+	if(this->eventSplitReads[this -> pairOrientation][chr2].size() > 0){
+		for (vector<BamAlignment>::iterator alnit = eventSplitReads[this -> pairOrientation][chr2].begin(); alnit != eventSplitReads[this -> pairOrientation][chr2].end(); ++alnit) {
+			string SA;
+			(alnit)->GetTag("SA",SA);
+			/* From the VCF documentation: Other canonical
+			// alignments in a chimeric alignment, formatted as
+			// a semicolon-delimited list:
+			/ (rname,pos,strand,CIGAR,mapQ,NM;)+.  Each element	
+			// in the list represents a part of the chimeric
+			// alignment.  Conventionally, at a supplementary
+			// line, the first element points to the primary
+			// line.
+			*/	  
+			//First split at ;, keep only the 0th elemnt
+			vector <string> SA_elements;
+			stringstream ss(SA);
+			std::string item;
+			while (std::getline(ss, item, ';')) {
+				stringstream SS(item);
+				string SA_data;
+				while (std::getline(SS, SA_data, ',')) {
+					SA_elements.push_back(SA_data);
+				}
+			}	
+			for(int j=0; j< SA_elements.size(); j+=6) {
+				string contig = SA_elements[j];
+				string chr2name = this -> position2contig[chr2];
+				long pos = atol(SA_elements[j+1].c_str());
+				if (contig == chr2name) {
+					splitReadPositions[0].push_back((alnit)-> Position);
+					splitReadPositions[1].push_back(pos);
+				}
+			}
+		}
+		splitReads=true;
+	}
+	
+	if(discordantPairs){
+		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,2*mean_insert/minimumPairs);
+	
+		for(int i=0;i < chr2regions.size()/3;i++){
+			long startSecondWindow=chr2regions[i*3];
+			long stopSecondWindow=chr2regions[i*3+1];
+			long pairsFormingLink=chr2regions[i*3+2];
+			
+
+			if(pairsFormingLink < minimumPairs) {
+				continue;
+			}
 			//resize region so that it is just large enough to cover the reads that have mates in the present cluster
-			vector<long> chrALimit=newChrALimit(this-> eventReads[this -> pairOrientation][chr2],startSecondWindow,stopSecondWindow);					
+			vector<long> chrALimit=newChrALimit(discordantPairPositions,startSecondWindow,stopSecondWindow);					
 
 			long startchrA=chrALimit[0];
 			long stopchrA=chrALimit[1];
 
 
+			int splitsFormingLink=0;
+			for(int j=0;j< splitReadPositions[0].size();j++){
+				if(startSecondWindow <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow){	
+					if(startchrA <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA){
+						splitsFormingLink++;
+					}			
+				}			
+			}
 			vector<int> statsOnB=findLinksToChr2(eventReads[this -> pairOrientation][chr2],startchrA, stopchrA,startSecondWindow,stopSecondWindow,pairsFormingLink);
 			int numLinksToChr2=statsOnB[0];
 			int estimatedDistance=statsOnB[1];
-            if(pairsFormingLink/double(numLinksToChr2) > 0.15){
-				// event accepted on discordant pairs. any split reads?
-				int splitsFormingLink = 0;
-				if (this->eventSplitReads[chr2].size() > 0) {
-					for (vector<BamAlignment>::iterator alnit = eventSplitReads[chr2].begin(); alnit != eventSplitReads[chr2].end(); ++alnit) {
-						// parse split read to get the other segment position, akin to a mate.
-						string SA;
-						(alnit)->GetTag("SA",SA);
-						/* From the VCF documentation: Other canonical
-						// alignments in a chimeric alignment, formatted as
-							// a semicolon-delimited list:
-						// (rname,pos,strand,CIGAR,mapQ,NM;)+.  Each element	
-						// in the list represents a part of the chimeric
-						// alignment.  Conventionally, at a supplementary
-						// line, the first element points to the primary
-						// line.
-						*/	  
-						//First split at ;, keep only the 0th elemnt
-						vector <string> SA_elements;
-						stringstream ss(SA);
-						std::string item;
-						while (std::getline(ss, item, ';')) {
-							stringstream SS(item);
-							string SA_data;
-							while (std::getline(SS, SA_data, ',')) {
-							SA_elements.push_back(SA_data);
-							}
-						}	
-		
-						for(int j=0; j< SA_elements.size(); j+=6) {
-							string contig = SA_elements[j];
-							string chr2name = this -> position2contig[chr2];
-						    long pos = atol(SA_elements[j+1].c_str());
-							if (contig == chr2name && pos >= startSecondWindow && pos <= stopSecondWindow) {
-								++splitsFormingLink;
-						    }
-						}
-					}		
+			if(pairsFormingLink/double(numLinksToChr2) > 0.15){
+				
+				//compute the coverage on the region of chromosome B
+				double coverageRealSecondWindow=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
+				double coverageMid=0;
+				if(this -> chr == chr2){
+					coverageMid=computeCoverageB(chr2, startchrA, stopSecondWindow, (startchrA-startSecondWindow+1) );
+				}				
+				double qualityB = computeRegionalQuality(chr2, startSecondWindow, stopSecondWindow,300);
+				double qualityA = computeRegionalQuality(this -> chr, startchrA, stopchrA,300);
+				//compute coverage on the region of chromosome A, as well as the number of discordant pairs within this region
+				vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, chr2, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
+				double coverageRealFirstWindow	= statisticsFirstWindow[0];
+				int linksFromWindow=int(statisticsFirstWindow[1]);
+
+				//calculate the expected number of reads
+				int secondWindowLength=this-> readLength+(stopSecondWindow-startSecondWindow+1);
+				int firstWindowLength=+this-> readLength+stopchrA-startchrA;
+
+				if(estimatedDistance > firstWindowLength) {
+					estimatedDistance = estimatedDistance - firstWindowLength;
+				}else{
+					estimatedDistance = 1;
 				}
-				VCFLine(chr2,startSecondWindow,stopSecondWindow,startchrA,stopchrA,pairsFormingLink,splitsFormingLink,numLinksToChr2,estimatedDistance);
+				//the pairs spanning the first and second window must have normal insert size, otherwise they are discordant
+				if(estimatedDistance + firstWindowLength < mean_insert){
+				    estimatedDistance = mean_insert - firstWindowLength;
+				}
+				
+				float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);					
+				if (expectedLinksInWindow > 10*pairsFormingLink){
+					//dont print the variant if it is pure garbage
+					continue;
+				}
+					
+				string svType = "BND";
+				string GT="./1";
+				string CN=".";
+				if(this->chr == chr2) {
+					vector<string> svVector=classification(chr2,startchrA, stopchrA,coverageRealFirstWindow,startSecondWindow, stopSecondWindow,coverageRealSecondWindow,this -> mean_insert,this -> std_insert,this -> 	outtie);
+					svType=svVector[0];
+					GT = svVector[3];
+					CN = svVector[4];
+				}
+				//THese are the statistics used to define a variant detected by discordant pairs
+				map<string,int> discordantPairStatistics;
+				discordantPairStatistics["chrA"]=this -> chr;
+				discordantPairStatistics["chrB"]=chr2;
+				discordantPairStatistics["start"]=stopchrA;
+				discordantPairStatistics["windowA_start"]=startchrA;
+				discordantPairStatistics["windowA_end"]=stopchrA;
+				discordantPairStatistics["end"]=startSecondWindow;
+				discordantPairStatistics["windowB_start"]=startSecondWindow;
+				discordantPairStatistics["windowB_end"]=stopSecondWindow;
+				discordantPairStatistics["coverage_start"]=coverageRealFirstWindow;
+				discordantPairStatistics["coverage_end"]=coverageRealSecondWindow;
+				discordantPairStatistics["coverage_mid"]=coverageMid;
+				discordantPairStatistics["orientation"]=pairOrientation;
+				discordantPairStatistics["links_window"]=linksFromWindow;
+				discordantPairStatistics["links_chr"]=numLinksToChr2;
+				discordantPairStatistics["links_event"]=pairsFormingLink;
+				discordantPairStatistics["expected_links"]=abs(expectedLinksInWindow);
+				discordantPairStatistics["qualityB"]=qualityB;
+				discordantPairStatistics["qualityA"]=qualityA;
+				//These statistics define the variants detected by split reads
+				map<string,int> splitReadStatistics;
+				splitReadStatistics["chrA"]=-1;
+				splitReadStatistics["chrB"]=-1;
+				splitReadStatistics["start"]=-1;
+				splitReadStatistics["end"]=-1;
+				splitReadStatistics["split_reads"]=splitsFormingLink;
+				splitReadStatistics["coverage_mid"]=-1;
+				VCFLine(discordantPairStatistics,splitReadStatistics,svType,GT,CN);
 				found = true;
 			}
 		}
+	//we only check for intrachromosomal variants, oherwise we would detect discrodant pairs aswell
+	}else if(chr2 == this -> chr and splitReads){
+		vector<long> chr2regions= findRegionOnB( splitReadPositions[1] ,minimumPairs,this ->readLength);
+	
+		for(int i=0;i < chr2regions.size()/3;i++){
+			long startSecondWindow=chr2regions[i*3];
+			long stopSecondWindow=chr2regions[i*3+1];
+			long splitsFormingLink=chr2regions[i*3+2];
+			
+
+			if(splitsFormingLink < minimumPairs) {
+				continue;
+			}
+			
+			//resize region so that it is just large enough to cover the reads that have mates in the present cluster
+			vector<long> chrALimit=newChrALimit(splitReadPositions,startSecondWindow,stopSecondWindow);					
+
+			long startchrA=chrALimit[0];
+			long stopchrA=chrALimit[1];
+			//The variant needs to be larger than 250 bp, but small enough not to be detected by discordnt pairs
+			if(stopSecondWindow-startchrA < 200 or stopSecondWindow-startchrA  > this->max_insert) {
+				continue;
+			}
+
+			//compute the coverage on the region of chromosome B
+			double coverageRealSecondWindow=computeCoverageB(chr2, startchrA, stopSecondWindow, (startchrA-startSecondWindow+1) );
+			//compute coverage on the region of chromosome A, as well as the number of discordant pairs within this region
+			//we need a model for determination of variant type based on split reads
+			string svType = "BND";
+			
+			if(this -> pairOrientation == 0 or this -> pairOrientation == 3){
+				svType = "INV";
+			}else if(coverageRealSecondWindow > 1.25*meanCoverage){
+				svType = "TDUP";
+			}else if(coverageRealSecondWindow < 0.75*meanCoverage){
+				svType = "DEL";
+			}
+
+			string GT="./1";
+			string CN=".";
+			//THese are the statistics used to define a variant detected by discordant pairs
+			map<string,int> discordantPairStatistics;
+			discordantPairStatistics["chrA"]=-1;
+			discordantPairStatistics["links_event"]=0;
+			
+			
+			//compute coverage on the region of chromosome A, as well as the number of discordant pairs within this region
+			vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, chr2, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
+			
+			//These statistics define the variants detected by split reads
+			map<string,int> splitReadStatistics;
+			splitReadStatistics["chrA"]=this -> chr;
+			splitReadStatistics["chrB"]=chr2;
+			splitReadStatistics["windowA_start"]=startchrA;
+			splitReadStatistics["windowA_end"]=stopchrA;
+			splitReadStatistics["start"]=startchrA;
+			splitReadStatistics["windowB_start"]=startSecondWindow;
+			splitReadStatistics["windowB_end"]=stopSecondWindow;
+			splitReadStatistics["end"]=stopSecondWindow;
+			splitReadStatistics["split_reads"]=splitsFormingLink;
+			splitReadStatistics["coverage_mid"]=computeCoverageB(chr2,startchrA, stopSecondWindow, (stopSecondWindow+1-startchrA) );
+			splitReadStatistics["splitOrientation"]= this -> pairOrientation;
+			splitReadStatistics["qualityA"]=computeRegionalQuality(this -> chr, startchrA, stopchrA,300);
+			splitReadStatistics["qualityB"]=computeRegionalQuality(this -> chr, startSecondWindow, stopSecondWindow,300);
+			splitReadStatistics["links_window"]=int(statisticsFirstWindow[1]);
+			splitReadStatistics["coverage_start"]=statisticsFirstWindow[0];
+			splitReadStatistics["coverage_end"]=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
+			VCFLine(discordantPairStatistics,splitReadStatistics,svType,GT,CN);
+			found = true;
+		}
+		
 	}
 	return(found);
 
@@ -495,23 +731,14 @@ void Window::initTrans(SamHeader head) {
 
 //this is a function that takes a queue containing reads that are involved in an event and calculates the position of the event on chromosome B(the chromosome of the of the mates). The total number of reads
 //inside the region is reported, aswell as the start and stop position on B
-vector<long> Window::findRegionOnB( queue<BamAlignment> alignmentQueue, int minimumPairs,int maxDistance){
-	vector<long> mate_positions;
-	queue<long> linksToRegionQueue;
-	//The positions of the mates are transfered to a vector
-	mate_positions.resize(alignmentQueue.size());
-	int QueueSize=alignmentQueue.size();
-	for(int i=0; i< QueueSize;i++){
-		mate_positions[i]=alignmentQueue.front().MatePosition;
-		alignmentQueue.pop();
-	}
-	
+vector<long> Window::findRegionOnB( vector<long> mate_positions, int minimumPairs,int maxDistance){
+	queue<long> linksToRegionQueue;	
 	vector<long> eventRegionVector;
 	//sort the mate positions
 	sort(mate_positions.begin(), mate_positions.end(), sortMate);
 	//finds the region of the event
 	linksToRegionQueue.push(mate_positions[0]);
-	for(int i=1; i< QueueSize;i++){
+	for(int i=1; i  < mate_positions.size();i++){
 
 		//if the current mate is close enough to the previous mate
 		if( maxDistance >= (mate_positions[i]-linksToRegionQueue.back()) ){
@@ -541,163 +768,187 @@ vector<long> Window::findRegionOnB( queue<BamAlignment> alignmentQueue, int mini
 	}
 	
 	return(eventRegionVector);
-
 }
 
 //this function resizes the region of CHRA so that it fits only around reads that are linking to an event on chrB
-vector<long> Window::newChrALimit(queue<BamAlignment> alignmentQueue,long Bstart,long Bend){
+vector<long> Window::newChrALimit(vector< vector< long > > variantPositions,long Bstart,long Bend){
 	vector<long> startStopPos;
 	long startA=-1;
 	long endA=-1;
-	int len=alignmentQueue.size();
-	int average =0;
-	for(int i=0;i< len;i++){
+	for(int i=0; i< variantPositions[0].size() ;i++){
 		//Checks if the alignment if the mate of the current read is located inside the chrB region	
-		if(alignmentQueue.front().MatePosition >= Bstart and alignmentQueue.front().MatePosition <= Bend){
+		if(variantPositions[1][i] >= Bstart and variantPositions[1][i] <= Bend){
 		//resize the chr A region so that it fits around all the reads that have a mate inside region 
-			if(alignmentQueue.front().Position <= startA or startA ==-1){
-				startA=alignmentQueue.front().Position;
+			if(variantPositions[0][i] <= startA or startA ==-1){
+				startA=variantPositions[0][i];
 			}
-			if(alignmentQueue.front().Position >= endA or endA ==-1){
-				endA=alignmentQueue.front().Position;
+			if(variantPositions[0][i] >= endA or endA ==-1){
+				endA=variantPositions[0][i];
 			}
 
 		}
-		alignmentQueue.pop();
-	
-
 	}
-	
 	startStopPos.push_back(startA);
 	startStopPos.push_back(endA);
 	return(startStopPos);
 }
 
 //function that prints the statistics to a vcf file
-void Window::VCFLine(int chr2,int startSecondWindow, int stopSecondWindow,int startchrA,int stopchrA,int pairsFormingLink, int splitsFormingLink, int numLinksToChr2,int estimatedDistance){
-	//compute the coverage on the region of chromosome B
-	double coverageRealSecondWindow=computeCoverageB(chr2, startSecondWindow, stopSecondWindow, (stopSecondWindow-startSecondWindow+1) );
-	//compute coverage on the region of chromosome A, as well as the number of discordant pairs within this region
-	vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, chr2, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
-	double coverageRealFirstWindow	= statisticsFirstWindow[0];
-	int linksFromWindow=int(statisticsFirstWindow[1]);
-
-	//calculate the expected number of reads
-	int secondWindowLength=(stopSecondWindow-startSecondWindow+1);
-	int firstWindowLength=stopchrA-startchrA+1;
-
-	if(estimatedDistance > firstWindowLength) {
-		estimatedDistance = estimatedDistance - firstWindowLength;
-	}else{
-		estimatedDistance = 1;
-	}
-	float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);
+void Window::VCFLine(map<string,int> discordantPairStatistics, map<string,int> splitReadStatistics,string svType,string GT, string CN){
 	
-	//Set the orientation of the reads, this will be printed to the vcf and used to determine variant type
-	string read1_orientation;
-	string read2_orientation;
-	if (this -> pairOrientation == 0){
-		read1_orientation="Forward";
-		read2_orientation="Forward";
-	}else if (this -> pairOrientation == 1){
-		read1_orientation="Forward";
-		read2_orientation="Reverse";
 
-	}else if (this -> pairOrientation == 2){
-		read1_orientation="Reverse";
-		read2_orientation="Forward";
-					
-	}else{
-		read1_orientation="Reverse";
-		read2_orientation="Reverse";
+
+		
+	string filter = "PASS";
+	string infoField;
+	infoField= "SVTYPE=" + svType;
+	int chrB = -1;
+	int chrA = -1;
+	int posA= -1;
+	int posB= -1;
+	 
+	//if we have detected a variant using discordant pairs
+	if (discordantPairStatistics["chrA"] != -1){
+		string read1_orientation;
+		string read2_orientation;
+		if (discordantPairStatistics["orientation"] == 0){
+			read1_orientation="Forward";
+			read2_orientation="Forward";
+		}else if (discordantPairStatistics["orientation"] == 1){
+			read1_orientation="Forward";
+			read2_orientation="Reverse";
+
+		}else if (discordantPairStatistics["orientation"] == 2){
+			read1_orientation="Reverse";
+			read2_orientation="Forward";
+				
+		}else{
+			read1_orientation="Reverse";
+			read2_orientation="Reverse";
+		}
+
+		std::stringstream ss;
+		
+		ss << ";CHRA=" << position2contig[discordantPairStatistics["chrA"]] << ";WINA=" << discordantPairStatistics["windowA_start"] << "," << discordantPairStatistics["windowA_end"];
+		ss << ";CHRB=" << position2contig[discordantPairStatistics["chrB"]] << ";WINB=" << discordantPairStatistics["windowB_start"] << "," << discordantPairStatistics["windowB_end"];
+		if(discordantPairStatistics["chrA"] == discordantPairStatistics["chrB"]){
+		ss << ";END=" << discordantPairStatistics["end"];
+		} 
+		ss << ";LFW=" << discordantPairStatistics["links_window"];
+		ss << ";LCB="  << discordantPairStatistics["links_chr"] << ";LTE=" << discordantPairStatistics["links_event"] << ";COVA=" <<  discordantPairStatistics["coverage_start"];
+		ss << ";COVM=" << discordantPairStatistics["coverage_mid"];
+		ss << ";COVB=" << discordantPairStatistics["coverage_end"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
+		ss << ";QUALA=" << discordantPairStatistics["qualityA"] << ";QUALB=" << discordantPairStatistics["qualityB"];
+		if(discordantPairStatistics["expected_links"] != 0){
+			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  (float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
+			filter=filterFunction((float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"],discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
+	
+		}else{
+			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=-1";
+				filter=filterFunction(1,discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,discordantPairStatistics["coverage_start"],discordantPairStatistics["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"], discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
+	
+		}
+		infoField += ss.str();
+		chrB= discordantPairStatistics["chrB"];
+		chrA = discordantPairStatistics["chrA"];
+		posA= discordantPairStatistics["start"];
+		posB= discordantPairStatistics["end"];
 	}
 	
-	string filter;
-	filter=filterFunction(pairsFormingLink/expectedLinksInWindow,numLinksToChr2,linksFromWindow,mean_insert,std_insert,estimatedDistance,coverageRealFirstWindow,coverageRealSecondWindow,meanCoverage);	
+
+	if (splitReadStatistics["chrA"] != -1){
+		string read1_orientation;
+		string read2_orientation;
+		if (splitReadStatistics["splitOrientation"] == 0){
+			read1_orientation="Forward";
+			read2_orientation="Reverse";
+		}else if (splitReadStatistics["splitOrientation"] == 1){
+			read1_orientation="Forward";
+			read2_orientation="Forward";
+
+		}else if (splitReadStatistics["splitOrientation"] == 2){
+			read1_orientation="Reverse";
+			read2_orientation="Reverse";
+				
+		}else{
+			read1_orientation="Reverse";
+			read2_orientation="Forward";
+		}
+
+		double RATIO =1;
+		int E_links= splitReadStatistics["coverage_start"]/(double(this -> ploidy));
+		if(E_links > 0){
+			RATIO=this -> ploidy*double(splitReadStatistics["split_reads"])/double(E_links);
+		}
+		filter=filterFunction(RATIO,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,splitReadStatistics["coverage_start"],splitReadStatistics["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
+		
+		
+		chrB= splitReadStatistics["chrB"];
+		chrA = splitReadStatistics["chrA"];
+		posA= splitReadStatistics["start"];
+		posB= splitReadStatistics["end"];
+		std::stringstream ss;
+		if(svType != "BND"){
+			ss << ";END=" << posB;
+		}
+		ss << ";WINA=" << splitReadStatistics["windowA_start"] << "," << splitReadStatistics["windowA_end"];
+		ss << ";WINB=" << splitReadStatistics["windowB_start"] << "," << splitReadStatistics["windowB_end"];
+		ss << ";COVA=" << splitReadStatistics["coverage_start"] << ";COVM=" << splitReadStatistics["coverage_mid"] << ";COVB=" << splitReadStatistics["coverage_end"];
+		ss <<  ";QUALA=" << splitReadStatistics["qualityA"] << ";QUALB=" << splitReadStatistics["qualityB"];
+		ss << ";OA=" << read1_orientation << ";OB=" << read2_orientation << ";LFW=" << splitReadStatistics["links_window"] ;
+		ss << ";ER=" << E_links << ";RATIO=" << RATIO;
+		infoField += ss.str();
+	}
+	
+	//Print the variant
 	this -> numberOfEvents++;
-	if(this->chr == chr2) {
-
-		vector<string> svVector=classification(chr2,startchrA, stopchrA,coverageRealFirstWindow,startSecondWindow, stopSecondWindow,coverageRealSecondWindow,this -> mean_insert,this -> std_insert,this -> outtie);
-		string svType=svVector[0];
-		string start=svVector[1];
-		string end = svVector[2];
-		string GT = svVector[3];
-		string CN = svVector[4];
-
+	if(chrA == chrB) {
+		
 		//TODO generate the info field as a string, instead of printing the separate variable directly to the file
 		if(svType != "INS" and svType !="BND"){
-			intraChrVariationsVCF << this -> position2contig[this -> chr]  << "\t" <<     start   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
+			intraChrVariationsVCF << this -> position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
 			intraChrVariationsVCF << "N"       << "\t"	<< "<" << svType << ">";
-			intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-			intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";END="<< end <<";LFW=" << linksFromWindow;
-			intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-			intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-			intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow ;
-			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" <<pairsFormingLink << ":" << splitsFormingLink << "\n";
+			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 		}else{
-				intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
-				intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
-				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+			intraChrVariationsVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
+			intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
-				//print the second breakend
-				intraChrVariationsVCF <<   position2contig[chr2]<< "\t" <<    startSecondWindow    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
-				intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[this -> chr]  << ":" << stopchrA << "]";
-				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+			//print the second breakend
+			intraChrVariationsVCF <<  position2contig[chrB] << "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
+			intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 		}
 		if(svType == "IDUP"){
-				intraChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "_2" << "\t";
-				intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
-				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+			intraChrVariationsVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_2" << "\t";
+			intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
-				//print the second breakend
-				intraChrVariationsVCF <<   position2contig[chr2]<< "\t" <<    startSecondWindow    << "\tSV_" << this -> numberOfEvents <<  "_3" << "\t";
-				intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[this -> chr]  << ":" << stopchrA << "]";
-				intraChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-				intraChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-				intraChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-				intraChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-				intraChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-				intraChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+			//print the second breakend
+			intraChrVariationsVCF <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_3" << "\t";
+			intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 		}
 
 
 	} else {
-		string svType="BND";
 		//print the first breakend
-		interChrVariationsVCF << position2contig[this -> chr]  << "\t" <<     stopchrA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
-		interChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chr2] << ":" << startSecondWindow << "[";
-		interChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-		interChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-		interChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-		interChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-		interChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-		interChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+		interChrVariationsVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
+		interChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+		interChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+		interChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 		//print the second breakend
-		interChrVariationsVCF <<   position2contig[chr2]<< "\t" <<    startSecondWindow    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
-		interChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[this -> chr]  << ":" << stopchrA << "]";
-		interChrVariationsVCF << "\t.\t"  << filter << "\tSVTYPE="+svType <<";CHRA="<<position2contig[this->chr]<<";WINA=" << startchrA << "," <<  stopchrA;
-		interChrVariationsVCF <<";CHRB="<< position2contig[chr2] <<";WINB=" <<  startSecondWindow << "," << stopSecondWindow << ";LFW=" << linksFromWindow;
-		interChrVariationsVCF << ";LCB=" << numLinksToChr2 << ";LTE=" << pairsFormingLink << ";COVA=" << coverageRealFirstWindow;
-		interChrVariationsVCF << ";COVB=" << coverageRealSecondWindow << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-		interChrVariationsVCF << ";EL=" << expectedLinksInWindow << ";RATIO="<< pairsFormingLink/expectedLinksInWindow;
-		interChrVariationsVCF << "\tGT:PE:SR\t" << "./1" << ":" << pairsFormingLink << ":" << splitsFormingLink << "\n";
+		interChrVariationsVCF <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
+		interChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+		interChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
+		interChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 	}
 	return;
 

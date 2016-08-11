@@ -34,7 +34,7 @@ Cov::Cov(int binSize,string bamFile,string output){
 		static ostream& covout=cout;
 	}
 
-	covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << endl;
+	covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "quality" << endl;
 
 	//initialize the function
 	this -> binStart =0;
@@ -58,10 +58,15 @@ Cov::Cov(int binSize,string bamFile,string output){
 		contigsNumber++;
 	}
 	this -> coverageStructure.resize(contigsNumber);
+	this -> qualityStructure.resize(2);
+	qualityStructure[0].resize(contigsNumber);
+	qualityStructure[1].resize(contigsNumber);
 	for(int i=0;i<contigsNumber;i++){
 		//cout << i << endl;
 		//cout << ceil(contigLength[i]/double(binSize)) << endl;
 		coverageStructure[i].resize(ceil(contigLength[i]/double(binSize)),0);
+		qualityStructure[0][i].resize(ceil(contigLength[i]/double(binSize)),0);
+		qualityStructure[1][i].resize(ceil(contigLength[i]/double(binSize)),0);
 	}
 	
 	
@@ -80,25 +85,33 @@ void Cov::bin(BamAlignment currentRead){
 	
 	//if the quality of the read is high enough, it will be added to the data structure
 	readStatus alignmentStatus = computeReadType(currentRead, 100000,100, true);
-	if(alignmentStatus != unmapped and alignmentStatus != lowQualty ) {
+	if(alignmentStatus != unmapped) {
 		int element=floor(double(currentRead.Position)/double(binSize));
+
 		//if the entire read is inside the region, add all the bases to sequenced bases
 		if(currentRead.Position >= element*binSize and currentRead.Position+currentRead.Length-1 <= (element+1)*binSize){
-		coverageStructure[currentRead.RefID][element]+=currentRead.Length;
+			coverageStructure[currentRead.RefID][element]+=currentRead.Length;
+			qualityStructure[0][currentRead.RefID][element] += currentRead.MapQuality;
+			qualityStructure[1][currentRead.RefID][element] += 1;
 		}else{
 		//if the read starts within the region but reaches outside it, add only those bases that fit inside the region.
 			coverageStructure[currentRead.RefID][element]+=(element+1)*binSize-currentRead.Position+1;
+			qualityStructure[0][currentRead.RefID][element] += currentRead.MapQuality;
+			qualityStructure[1][currentRead.RefID][element] += 1;
+		
 			//the part of the read hanging out of the bin is added to the bins following the currentbin
 			int remainingRead=currentRead.Length-((element+1)*binSize-currentRead.Position+1);
 			while (remainingRead >= binSize){
-				cout << 3 << endl;
 				coverageStructure[currentRead.RefID][element]+=binSize;
+				qualityStructure[0][currentRead.RefID][element] += currentRead.MapQuality;
+				qualityStructure[1][currentRead.RefID][element] += 1;
 				remainingRead=remainingRead-binSize;
 			}
 			if (remainingRead > 0){
 				element++;
 				coverageStructure[currentRead.RefID][element]+=remainingRead;
-			
+				qualityStructure[0][currentRead.RefID][element] += currentRead.MapQuality;
+				qualityStructure[1][currentRead.RefID][element] += 1;
 			}
 
 		}
@@ -117,7 +130,11 @@ void Cov::printCoverage(){
 						binEnd=contigLength[i];
 			}
             double coverage=double(coverageStructure[i][j])/double(binEnd-binStart);
-            covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << endl;
+            double quality = 0;
+            if(double(qualityStructure[1][i][j]) > 0){
+            	quality=double(qualityStructure[0][i][j])/double(qualityStructure[1][i][j]);
+            }
+            covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << endl;
         }
 	}
 	
