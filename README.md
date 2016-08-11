@@ -69,6 +69,18 @@ optional parameters:
 
 Filters
 =============
+TIDDIT uses four different filters to detect low quality calls. The filter field of variants passing these tests are set to "PASS". If a variant fail any of these tests, the filter field is set to the filter failing that variant. These are the four filters empoyed by TIDDIT:
+
+    Expectedlinks
+        The number of discordant pairs/supplementary alignments supporting the variant is less than 40% of the expected numer
+    FewLinks
+        The number of discordant pairs supporting the variant is less than 20% of the discordant pairs within that genomic region.
+    Unexpectedcoverage
+        The coverage across the variant is more than 10* the mean coverage.
+    Smear
+        The two windows that define the regions next to the breakpoints overlap.
+
+Failed Variants may be removed using tools such as VCFtools or grep. Removing these variants greatly improves the precision of TIDDIT, but may reduce the sensiivity.
 
 Contents of the vcf info field
 =============
