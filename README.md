@@ -64,7 +64,8 @@ Computes the coverge of different regions of the bam file
     
     
 optional parameters:
-    bin_size - compute the coverage within bins of a specified size across the entire genome, default bin size is 500
+
+    --bin_size - compute the coverage within bins of a specified size across the entire genome, default bin size is 500
 
 Filters
 =============
