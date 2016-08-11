@@ -1,6 +1,6 @@
 DESCRIPTION
 ==============
-TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Pair End data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications, intersperesed duplications and inversions. 
+TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Pair End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications, intersperesed duplications and inversions, using supplementary alignments as well as discordant pairs. 
 TIDDIT is distributed together with a database software called SVDB. SVDB is used to create structural variant databases, merge strctural variants and to use the structural variant databases as a frequency filter.
 TIDDIT has two modes of analysing bam files. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a bam file and generates a coverage report.
 
@@ -35,19 +35,20 @@ run the executable file to view the help message or run TIDDIT:
 The SV module
 =============
 The main TIDDIT module, detects structural variant using discordant pairs, split reads and coverage information
+
     TIDDIT --sv [Options] -b inputfile 
 
-    options:
+
+    optional parameters:
     ploidy - the ploidy of the organism, 2 is default
     -o - the prefix of the output files
         
     --insert - the maximum allowed insert size of a normal pair. Pairs having larger insert 
-                    than this is treated as discordant pairs. Default is 2*std+mean insert size for PE 
-                    data or 4std+ mean on mp data
+                    than this is treated as discordant pairs. Default is 3*std+mean insert size
                         
     --orientation - the pair orientation, use this setting to override the automatic orientation selection
             
-    -p - the minimum number of discordant pairs used to all a variant. Default is 4
+    -p - the minimum number of discordant pairs used to all a variant. Default is 8
             
         -q - the minimum mapping quality of the discordant pairs 
             forming a variant. Default value is 10.
@@ -57,7 +58,9 @@ The main TIDDIT module, detects structural variant using discordant pairs, split
 The cov module
 ==============
 Computes the coverge of different regions of the bam file
+
     TIDDIT --cov [Options] -b inputfile
+    
     
     options:
     bin_size - compute the coverage within bins of a specified size across the entire genome, default bin size is 500
