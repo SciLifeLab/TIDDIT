@@ -39,7 +39,8 @@ The main TIDDIT module, detects structural variant using discordant pairs, split
     TIDDIT --sv [Options] -b inputfile 
 
 
-    optional parameters:
+optional parameters:
+
     ploidy - the ploidy of the organism, 2 is default
     -o - the prefix of the output files
         
@@ -62,7 +63,7 @@ Computes the coverge of different regions of the bam file
     TIDDIT --cov [Options] -b inputfile
     
     
-    options:
+optional parameters:
     bin_size - compute the coverage within bins of a specified size across the entire genome, default bin size is 500
 
 Filters
