@@ -48,9 +48,9 @@ The main TIDDIT module, detects structural variant using discordant pairs, split
                         
     --orientation - the pair orientation, use this setting to override the automatic orientation selection
             
-    -p - the minimum number of discordant pairs used to all a variant. Default is 8
+    -p - the minimum number of discordant pairs/ supplementary alignments used to call a variant. Default is 8
             
-        -q - the minimum mapping quality of the discordant pairs 
+        -q - the minimum mapping quality of the discordant pairs/supplementary aignments 
             forming a variant. Default value is 10.
                                         
         -c - the library coverage. Default is calculated from average genomic coverage.
