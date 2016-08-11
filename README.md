@@ -65,6 +65,14 @@ Computes the coverge of different regions of the bam file
     options:
     bin_size - compute the coverage within bins of a specified size across the entire genome, default bin size is 500
 
+Filters
+=============
+
+Contents of the vcf info field
+=============
+
+Algorithm
+=============
 
 LICENCE
 ==============
