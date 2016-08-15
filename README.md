@@ -1,9 +1,13 @@
 DESCRIPTION
 ==============
 TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Pair End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications, intersperesed duplications and inversions, using supplementary alignments as well as discordant pairs. 
+
 TIDDIT is distributed together with a database software called SVDB. SVDB is used to create structural variant databases, merge strctural variants and to use the structural variant databases as a frequency filter.
+
 TIDDIT has two modes of analysing bam files. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a bam file and generates a coverage report.
+
 TIDDIT is mainly designed to run on whole genome sequencing data. However, TIDDIT is also able to perform variant calling on exome data if the coverage is supplied through the -c parameter.
+
 
 INSTALLATION
 ==============
@@ -39,10 +43,11 @@ The main TIDDIT module, detects structural variant using discordant pairs, split
 
     TIDDIT --sv [Options] -b bam 
 
-Where bam is the input bam file. TIDDIT may be fine tuned by altering these optional parameters:
+Where bam is the input bam file. The reads of the input bam file must be sorted on genome position.
+TIDDIT may be fine tuned by altering these optional parameters:
 
     ploidy - the ploidy of the organism, 2 is default
-    -o - the prefix of the output files
+    -o - the prefix of the output files(default = output)
         
     --insert - the maximum allowed insert size of a normal pair. Pairs having larger insert 
                     than this is treated as discordant pairs. Default is 3*std+mean insert size
@@ -51,10 +56,11 @@ Where bam is the input bam file. TIDDIT may be fine tuned by altering these opti
             
     -p - the minimum number of discordant pairs/ supplementary alignments used to call a variant. Default is 8
             
-        -q - the minimum mapping quality of the discordant pairs/supplementary aignments 
+    -q - the minimum mapping quality of the discordant pairs/supplementary aignments 
             forming a variant. Default value is 10.
                                         
-        -c - the library coverage. Default is calculated from average genomic coverage.
+    -c - the library coverage. Default is calculated from average genomic coverage.
+        
 
 The cov module
 ==============
@@ -88,7 +94,46 @@ Contents of the vcf info field
 =============
 TIDDIT returns the detected variants into two vcf files, one vcf for intrachromosomal variants, and one for interchromosomal variants. The INFO field of the VCF contains the following entries:
 
+    SVTYPE
+        Type of structural variant
+    END
+        End of an intra-chromosomal variant
+    LFW
+        Links from window
+    LCB
+        Links to chromosome B
+    LTE
+        Links to event
+    COVA
+        Coverage on window A
+    COVM
+        The coverage between A and B
+    COVB
+        Coverage on window B
+    OA
+        Orientation of the reads in window A
+    OB
+        Orientation of the mates in window B
+    CHRA
+        The chromosome of window A
+    CHRB
+        The chromosome of window B
+    WINA
+        start and stop positon of window A
+    WINB
+        start and stop position of window B
+    EL
+        Expected links to window B
+    ER
+        Expected number of split reads
+    RATIO
+        The number of links divided by the expected number of links
+    QUALA
+        The average mapping quality of the reads in window A
+    QUALB
+        The average mapping quality of the reads in window B
 
+The content of the info field is used to filter out false positives and to gain more understanding of the structure of the variant.
 
 Algorithm
 =============
