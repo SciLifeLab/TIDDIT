@@ -11,12 +11,14 @@ TIDDIT is mainly designed to run on whole genome sequencing data. However, TIDDI
 
 INSTALLATION
 ==============
+TIDDIT requires only standard c++/c libraries. To compile TIDDIT, cmake must be installed.
+
 Do a recursive clone of TIDDIT in order to get the database software:
 ```
 git clone --recursive https://github.com/SciLifeLab/TIDDIT.git
 ```
 
-Do the following to install TIDDIT:
+To install TIDDIT:
 ```
 cd TIDDIT
 mkdir build
