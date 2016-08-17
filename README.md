@@ -90,7 +90,7 @@ TIDDIT uses four different filters to detect low quality calls. The filter field
     Smear
         The two windows that define the regions next to the breakpoints overlap.
 
-Failed Variants may be removed using tools such as VCFtools or grep. Removing these variants greatly improves the precision of TIDDIT, but may reduce the sensitivity. It is adviced to remove failed variants or prioritize the once that have passed the quality checks.
+Failed Variants may be removed using tools such as VCFtools or grep. Removing these variants greatly improves the precision of TIDDIT, but may reduce the sensitivity. It is adviced to remove failed variants or prioritize the variants that have passed the quality checks.
 
 Contents of the vcf info field
 =============
