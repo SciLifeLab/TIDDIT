@@ -97,15 +97,15 @@ Contents of the vcf info field
 TIDDIT returns the detected variants into two vcf files, one vcf for intrachromosomal variants, and one for interchromosomal variants. The INFO field of the VCF contains the following entries:
 
     SVTYPE
-        Type of structural variant
+        Type of structural variant(DEL,DUP,BND,INV,TDUP,IDUP)
     END
-        End of an intra-chromosomal variant
+        End position of an intra-chromosomal variant
     LFW
-        Links from window
+        The number of discordant pairs close to the breakpoints of the variant
     LCB
-        Links to chromosome B
+        The number of discordant pairs close to the breakpoints of the variant, that map to the same chromosome pair as the pairs defining the variant 
     LTE
-        Links to event
+        The number of discordnat pairs that form the structural variant.
     COVA
         Coverage on window A
     COVM
