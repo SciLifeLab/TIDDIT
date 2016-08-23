@@ -15,14 +15,18 @@ def get_regions(vcf,padding):
                 a[0] =0
                 
             a[1]=int(a[1])+padding
-            chra=line.split("CHRA=")[-1].split(";")[0]
-        
+            if "CHRA=" in line:
+               chra=line.split("CHRA=")[-1].split(";")[0]
+            else:
+               chra=line.split("\t")[0]
+               chrb=chra
             b=line.split("WINB=")[-1].split(";")[0].split(",")
             b[0]=int(b[0])-padding
             if b[0] < 0:
                 b[0] =0
             b[1]=int(b[1])+padding
-            chrb=line.split("CHRB=")[-1].split(";")[0]
+            if "CHRB=" in line:
+               chrb=line.split("CHRB=")[-1].split(";")[0]
             
             #the regions should not overlap
             if(chrb == chra and b[0] <= a[1]):
