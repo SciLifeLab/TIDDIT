@@ -3,7 +3,7 @@ import os
 
 
 
-parser = argparse.ArgumentParser("""assemble the variants extracted through extract_variants.py, generates a vcf file contianing statistics of the assemby and updated variant positions""")
+parser = argparse.ArgumentParser("""assemble the variants extracted through extract_variants.py, generates a sam file for each assembled variants""")
 parser.add_argument('--vcf',type=str,required = True,help="the path to the TIDDIT vcf file")
 parser.add_argument('--fa',type=str,required=True,help="reference genome fasta")
 parser.add_argument('--t',type=int,default=8,help="number of threads(default = 8)")
