@@ -1,8 +1,8 @@
 DESCRIPTION
 ==============
-TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Pair End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications, intersperesed duplications and inversions, using supplementary alignments as well as discordant pairs. 
+TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Paired End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications, intersperesed duplications and inversions, using supplementary alignments as well as discordant pairs. 
 
-TIDDIT is distributed together with a database software called SVDB. SVDB is used to create structural variant databases, merge strctural variants and to use the structural variant databases as a frequency filter.
+TIDDIT is distributed together with a database software called SVDB. SVDB is used to create structural variant databases, merge structural variants and to use the structural variant databases as a frequency filter.
 
 TIDDIT has two modes of analysing bam files. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a bam file and generates a coverage report.
 
@@ -92,7 +92,7 @@ TIDDIT uses four different filters to detect low quality calls. The filter field
 
 Failed Variants may be removed using tools such as VCFtools or grep. Removing these variants greatly improves the precision of TIDDIT, but may reduce the sensitivity. It is adviced to remove failed variants or prioritize the variants that have passed the quality checks.
 
-Contents of the vcf info field
+Contents of the VCF INFO field
 =============
 TIDDIT returns the detected variants into two vcf files, one vcf for intrachromosomal variants, and one for interchromosomal variants. The INFO field of the VCF contains the following entries:
 
@@ -135,18 +135,18 @@ TIDDIT returns the detected variants into two vcf files, one vcf for intrachromo
     QUALB
         The average mapping quality of the reads in window B
 
-The content of the info field is used to filter out false positives and to gain more understanding of the structure of the variant.
+The content of the INFO field can be used to filter out false positives and to gain more understanding of the structure of the variant.
 
 Algorithm
 =============
 TIDDIT detects structural variants using supplementary alignments as well as discordant pairs. A discordant pair is defined as any pair of reads having a larger distance than the --insert parameter(which is set to 3*std+average library distance as default). Supplementary aligments are produced by reads where one part of the read aligns to a certain part of the reference, while another part of the same read aligns to a distant region.
 
 TIDDIT performs a linear search for SV signatures within the input Bam file. These signatures are sets, or clusters of Discordant pairs/supplementary alignments, having similar patterns regarding coverage and position within the genome.
-Any set of discordant pairs or supplementary alignments larger or equal to the -p parameter will be analysed and later returned as a structural variant by printing it to the vcf file. TIDDIT will only consider reads that fullfill the -q parameter, reads having lower mapping quality will not be added to a set, and thus will not contribute to the detection of SV.
+Any set of discordant pairs or supplementary alignments larger or equal to the -p parameter will be analysed and later returned as a structural variant by printing it to the vcf file. TIDDIT will only consider reads that fullfill the -q parameter: reads having lower mapping quality will not be added to a set, and thus will not contribute to the detection of SV.
 
 TIDDIT detects a wide spectra of strutural variants, and is able to classify deletions, duplications(tandem and interspersed), inversions and translocations(intrachromosomal and interchromosomal). Variants are classified based on the pair orientation of the reads defining a structural variant, as well as the coverage across the structural variant and the regions where the read pairs are aligned. If TIDDIT is unnable to classify a variant, it will be returned as a break end event.
 
-LICENCE
+LICENSE
 ==============
 All the tools distributed with this package are distributed under GNU General Public License version 3.0 (GPLv3). 
 
