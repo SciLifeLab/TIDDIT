@@ -150,7 +150,7 @@ for line in open(args.vcf):
         content[6] = "FAIL"
     elif bridge:
         pass
-    elif hit and miss > 5*hit:
+    elif hit and miss >= hit:
         content[6] = "FAIL"
     print "\t".join(content)
         
