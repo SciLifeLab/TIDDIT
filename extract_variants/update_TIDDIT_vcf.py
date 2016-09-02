@@ -52,7 +52,7 @@ def get_sam_data(line):
 
 parser = argparse.ArgumentParser("""use the sam files generated from assemble_variants to update the position of variants, and filter false positives""")
 parser.add_argument('--vcf',type=str,required = True,help="the path to the TIDDIT vcf file")
-parser.add_argument('--q',type = int,default =0,help="the lowest tolerated mapping quality of a contig(default = 0)")
+parser.add_argument('--q',type = int,default =0,help="the lowest tolerated mapping quality of a contig(default = 10)")
 parser.add_argument('--padding',type = int,default =150,help="the lowest tolerated mapping quality of a contig(default = 150)")
 parser.add_argument('--working_dir',required=True,type=str,default="",help="path to the folder containing the bam files of extracted variants")
 args, unknown = parser.parse_known_args()

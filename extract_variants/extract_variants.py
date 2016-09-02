@@ -109,15 +109,6 @@ def main(args):
                 iter = alignmentFile.fetch(variant["chrB"], variant["startB"], variant["endB"])
                 for x in iter:
                     outf.write(x)
-                    
-    #sort the file   
-    for variant in variants:
-        try:  
-            pysam.sort(output_dir+".bam","-o" + output_dir+".sorted.bam")
-        except:
-            pysam.sort(output_dir+".bam",output_dir+".sorted")
-        os.rename(output_dir+".sorted.bam", output_dir+".bam")
-    return()
 
 
 parser = argparse.ArgumentParser("""extracts the alignments of structural variants called by TIDDIT""")

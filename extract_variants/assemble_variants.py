@@ -1,31 +1,33 @@
 import argparse
+import subprocess
 import os
 
-
-
 parser = argparse.ArgumentParser("""assemble the variants extracted through extract_variants.py, generates a sam file for each assembled variants""")
-parser.add_argument('--vcf',type=str,required = True,help="the path to the TIDDIT vcf file")
 parser.add_argument('--fa',type=str,required=True,help="reference genome fasta")
 parser.add_argument('--t',type=int,default=8,help="number of threads(default = 8)")
-parser.add_argument('--working_dir',required=True,type=str,default="",help="path to the folder containing the bam files of extracted variants")
+parser.add_argument('--bam',required=True,type=str,help="path to the variant bam file")
 args, unknown = parser.parse_known_args()
 
-for line in open(args.vcf):
-    if "#" == line[0]:
-        continue
-    if not "WINA" in line and not "WINB" in line:
-        continue
-    input_bam=os.path.join( args.working_dir,line.split("\t")[2]+".bam" )
-    fastq=os.path.join( args.working_dir,line.split("\t")[2]+".fastq" )
-    process="samtools bam2fq {} > {}".format(input_bam,fastq)
-    os.system(process)
-    
-    variant_assembly=os.path.join( args.working_dir,line.split("\t")[2]+".fa" )
-    process="mpirun -np {} ABYSS -k50 {} -o {}".format(args.t,fastq,variant_assembly)
-    os.system(process)
-    
-    blat_results=os.path.join( args.working_dir,line.split("\t")[2]+".sam" )
-    process="bwa bwasw -C {} {} -t {} > {}".format(args.fa,variant_assembly,args.t,blat_results)
-    print process
-    os.system(process)
+fastq=args.bam.replace(".bam",".fastq")
+process=subprocess.check_output("samtools bam2fq {} > {}".format(args.bam,fastq), shell = True)
+
+i=0
+reads={}
+read=[]
+filtered_fastq=args.bam.replace(".bam","_filtered.fastq")
+f=open(filtered_fastq,"w")
+for line in open(fastq):
+        if i == 4:
+                bases= set(['A', 'C', 'G', 'T'])
+                if len(read[1]) > 75 and bases | set(list(read[1])) == bases:
+                        for string in read:
+                                f.write(string+"\n")
+                i = 0
+                read=[]
+        i +=1
+	read.append( line.strip() )
+f.close()
+
+variant_assembly=args.bam.replace(".bam",".fa")
+os.system( "mpirun -np {} ABYSS -k50 {} -o {}".format(args.t,filtered_fastq,variant_assembly))
 
