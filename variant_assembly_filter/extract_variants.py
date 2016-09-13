@@ -1,4 +1,3 @@
-import pysam
 import argparse
 import os
 import sys
@@ -84,7 +83,6 @@ def get_tab(tab,padding):
 def main(args):
     if not os.path.exists(args.working_dir) and not args.working_dir == "":
         os.makedirs(args.working_dir)
-    alignmentFile = pysam.AlignmentFile(args.bam, "rb") 
     if args.vcf:
         variants=get_regions(args.vcf,args.padding)
     elif args.tab:
@@ -96,21 +94,16 @@ def main(args):
     print "please remember these numbers!"
     for variant in variants:
         output_dir=os.path.join(args.working_dir,variant["ID"])
-        with pysam.AlignmentFile(output_dir+".bam", "wb", header=alignmentFile.header) as outf:
-            if not variant["chrB"] == -1 and not variant["startB"] == -1:
-                print("{}|{}:{}-{}|{}:{}-{}".format(variant["ID"],variant["chrA"], variant["startA"], variant["endA"],variant["chrB"], variant["startB"], variant["endB"]))
-            else:
-                print("{}|{}:{}-{}".format(variant["ID"],variant["chrA"], variant["startA"], variant["endA"]))
-            iter = alignmentFile.fetch(variant["chrA"], variant["startA"], variant["endA"])
-            for x in iter:
-                outf.write(x)
-                
-            if not variant["chrB"] == -1 and not variant["startB"] == -1:
-                iter = alignmentFile.fetch(variant["chrB"], variant["startB"], variant["endB"])
-                for x in iter:
-                    outf.write(x)
+        if not variant["chrB"] == -1 and not variant["startB"] == -1:
+            print("{}|{}:{}-{}|{}:{}-{}".format(variant["ID"],variant["chrA"], variant["startA"], variant["endA"],variant["chrB"], variant["startB"], variant["endB"]))
+        else:
+            print("{}|{}:{}-{}".format(variant["ID"],variant["chrA"], variant["startA"], variant["endA"]))
 
-
+        if not variant["chrB"] == -1 and not variant["startB"] == -1:
+            os.system("samtools view -bh {} {}:{}-{} {}:{}-{} > {}".format(args.bam,variant["chrA"],variant["startA"],variant["endA"],variant["chrB"],variant["startB"],variant["endB"],output_dir+".bam"))
+        else:
+            os.system("samtools view -bh {} {}:{}-{} > {}".format(args.bam,variant["chrA"],variant["startA"],variant["endA"],output_dir+".bam"))
+    
 parser = argparse.ArgumentParser("""extracts the alignments of structural variants called by TIDDIT""")
 parser.add_argument('--vcf',type=str,help="the path to the TIDDIT vcf file")
 parser.add_argument('--tab',type=str,help="the path to to a tab file(used instead of vcf)")

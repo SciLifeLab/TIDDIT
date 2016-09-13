@@ -1,7 +1,7 @@
 //setup
-params.extract_variants_path="/home/jesperei/TIDDIT/extract_variants/extract_variants.py"
-params.assemble_variants_path="/home/jesperei/TIDDIT/extract_variants/assemble_variants.py"
-params.update_vcf_path="/home/jesperei/TIDDIT/extract_variants/update_TIDDIT_vcf.py"
+params.extract_variants_path="/home/jesperei/assemblatron_test/FindSV/TIDDIT/variant_assembly_filter/extract_variants.py"
+params.assemble_variants_path="/home/jesperei/assemblatron_test/FindSV/TIDDIT/variant_assembly_filter/assemble_variants.py"
+params.update_vcf_path="/home/jesperei/assemblatron_test/FindSV/TIDDIT/variant_assembly_filter/update_TIDDIT_vcf.py"
 //----##----
 
 params.bam="none"
@@ -44,6 +44,7 @@ process extract_variants {
 
 //Then assemble the variants
 process assemble_variants {
+    time "20m"
 
     input:
     file variant from extracted_bams
@@ -60,6 +61,7 @@ process assemble_variants {
 //Then assemble the variants
 process align_variants {
     validExitStatus 0,137
+    time "20m"
 
 
     input:
@@ -77,11 +79,13 @@ process align_variants {
   
 //lastly update the vcf file
 process update_variants {
+    publishDir "${params.working_dir}"
+
     input:
     file vcf_file
     file sam_file from sam_files.toList()
     output:
-    
+    file "assemblator.vcf" into assemblator_vcf    
     script:
     """
      mkdir ${params.working_dir}
