@@ -106,12 +106,12 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	return(svVector);
 }
 
-string filterFunction(double RATIO, int linksToB, int linksFromWindow,float mean_insert, float std_insert,double coverageA,double coverageB,double coverageAVG,int endA, int startB, int chrA, int chrB){
+string filterFunction(double RATIO,int linksToB, int linksFromWindow,float mean_insert, float std_insert,double coverageA,double coverageB,double coverageAVG,int endA, int startB, int chrA, int chrB){
 	string filter = "PASS";
 	double linkratio= (double)linksToB/(double)linksFromWindow;
 	if(RATIO < 0.4){
 		filter="BelowExpectedLinks";
-	} else if(linkratio < 0.25){
+	}else if(linkratio < 0.25){
 		filter="FewLinks";
 	} else if(coverageA > 10*coverageAVG or coverageB > coverageAVG*10){
 		filter="UnexpectedCoverage";
@@ -158,7 +158,9 @@ string Window::VCFHeader(){
 	headerString+="##INFO=<ID=WINB,Number=2,Type=Integer,Description=\"start and stop position of window B\">\n";
 	headerString+="##INFO=<ID=EL,Number=1,Type=Float,Description=\"Expected links to window B\">\n";
 	headerString+="##INFO=<ID=ER,Number=1,Type=Float,Description=\"Expected number of split reads\">\n";
+	headerString+="##INFO=<ID=ER2,Number=1,Type=Float,Description=\"Expected number of split reads\">\n";
 	headerString+="##INFO=<ID=RATIO,Number=1,Type=Float,Description=\"The number of links divided by the expected number of links\">\n";
+	headerString+="##INFO=<ID=RATIO2,Number=1,Type=Float,Description=\"The number of links divided by the ER2\">\n";
 	headerString+="##INFO=<ID=QUALA,Number=1,Type=String,Description=\"The average mapping quality of the reads in window A\">\n";
 	headerString+="##INFO=<ID=QUALB,Number=1,Type=String,Description=\"The average mapping quality of the reads in window B\">\n";
 	//set filters
@@ -606,7 +608,8 @@ bool Window::computeVariations(int chr2) {
 				    estimatedDistance = mean_insert - firstWindowLength;
 				}
 				
-				float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);					
+				float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);
+				float expectedLinksInWindow2 = ExpectedLinks(mean_insert, mean_insert, 0, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);					
 				if (expectedLinksInWindow > 10*pairsFormingLink){
 					//dont print the variant if it is pure garbage
 					continue;
@@ -636,6 +639,7 @@ bool Window::computeVariations(int chr2) {
 				discordantPairStatistics["links_chr"]=numLinksToChr2;
 				discordantPairStatistics["links_event"]=pairsFormingLink;
 				discordantPairStatistics["expected_links"]=abs(expectedLinksInWindow);
+				discordantPairStatistics["expected_links2"]=abs(expectedLinksInWindow2)/this -> ploidy;
 				discordantPairStatistics["qualityB"]=qualityB;
 				discordantPairStatistics["qualityA"]=qualityA;
 				//These statistics define the variants detected by split reads
@@ -845,6 +849,23 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 			read2_orientation="Reverse";
 		}
 
+
+		float ratio1=-1;
+		float ratio2=-1;
+		float stat_ratio=1;
+		if(discordantPairStatistics["expected_links"] != 0){
+			ratio1=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
+			stat_ratio=ratio1;
+		}
+		if(discordantPairStatistics["expected_links2"] != 0){
+			ratio2=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links2"];
+			if(ratio2 < stat_ratio){
+				stat_ratio=ratio2;
+			}
+		}
+		
+		
+		
 		std::stringstream ss;
 		
 		ss << ";CHRA=" << position2contig[discordantPairStatistics["chrA"]] << ";WINA=" << discordantPairStatistics["windowA_start"] << "," << discordantPairStatistics["windowA_end"];
@@ -857,15 +878,12 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		ss << ";COVM=" << statistics_floats["coverage_mid"];
 		ss << ";COVB=" << statistics_floats["coverage_end"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
 		ss << ";QUALA=" << discordantPairStatistics["qualityA"] << ";QUALB=" << discordantPairStatistics["qualityB"];
-		if(discordantPairStatistics["expected_links"] != 0){
-			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  (float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
-			filter=filterFunction((float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"],discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
-	
-		}else{
-			ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=-1";
-				filter=filterFunction(1,discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"], discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
-	
-		}
+
+		ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  ratio1;
+		ss << ";EL2="  << discordantPairStatistics["expected_links2"] << ";RATIO2=" <<  ratio2;
+		filter=filterFunction(stat_ratio,discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
+
+		
 		infoField += ss.str();
 		chrB= discordantPairStatistics["chrB"];
 		chrA = discordantPairStatistics["chrA"];
@@ -896,7 +914,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		double RATIO =1;
 		int E_links= splitReadStatistics["coverage_start"]/(double(this -> ploidy));
 		if(E_links > 0){
-			RATIO=this -> ploidy*double(splitReadStatistics["split_reads"])/double(E_links);
+			RATIO=double(splitReadStatistics["split_reads"])/double(E_links);
 		}
 		filter=filterFunction(RATIO,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
 		
