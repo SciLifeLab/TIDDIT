@@ -325,8 +325,7 @@ void Window::insertRead(BamAlignment alignment) {
 						computeVariations(contigNr);
 					}
 					//Thereafter the alignments are removed
-					eventReads[this -> pairOrientation][contigNr]=queue<BamAlignment>();
-					linksFromWin[this -> pairOrientation][contigNr]=queue<int>();										
+					eventReads[this -> pairOrientation][contigNr]=queue<BamAlignment>();									
 					eventSplitReads[this -> pairOrientation][contigNr]=vector<BamAlignment>();
 
 					//the current alignment is inserted
