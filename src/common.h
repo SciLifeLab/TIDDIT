@@ -260,9 +260,13 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	while ( bamFile.GetNextAlignmentCore(al) ) {
 		reads ++;
 		readStatus read_status = computeReadType(al, max_insert, min_insert,is_mp);
-		if (read_status != unmapped and read_status != lowQualty) {
+		if (read_status != unmapped and read_status != lowQualty ) {
 			mappedReads ++;
 			mappedReadsLength += al.Length;
+			
+			//calculate the coverage in bins of size 400 bases
+			calculateCoverage -> bin(al);
+			
 		}
 		
 		vector <int > clipSizes;
@@ -272,10 +276,9 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 			splitReads += 1;
 		}
 
-        //calculate the coverage in bins of size 400 bases
-        calculateCoverage -> bin(al);
+
         
-		if (al.IsFirstMate() && al.IsMateMapped()) {
+		if (al.IsFirstMate() && al.IsMateMapped() and read_status != lowQualty ) {
 			if( al.IsReverseStrand() != al.IsMateReverseStrand() ){
 				if(al.IsMapped() and al.MapQuality > quality and al.RefID == al.MateRefID and al.MatePosition-al.Position+1 < max_insert ){
 					iSize = abs(al.InsertSize);

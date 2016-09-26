@@ -85,7 +85,7 @@ void Cov::bin(BamAlignment currentRead){
 	
 	//if the quality of the read is high enough, it will be added to the data structure
 	readStatus alignmentStatus = computeReadType(currentRead, 100000,100, true);
-	if(alignmentStatus != unmapped) {
+	if(alignmentStatus != unmapped and alignmentStatus != lowQualty) {
 		int element=floor(double(currentRead.Position)/double(binSize));
 
 		//if the entire read is inside the region, add all the bases to sequenced bases
