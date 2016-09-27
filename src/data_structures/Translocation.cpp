@@ -911,7 +911,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		}
 
 		double RATIO =1;
-		int E_links= splitReadStatistics["coverage_start"]/(double(this -> ploidy));
+		int E_links= (statistics_floats["coverage_start"]+statistics_floats["coverage_end"])/(double(this -> ploidy))*1/2;
 		if(E_links > 0){
 			RATIO=double(splitReadStatistics["split_reads"])/double(E_links);
 		}
