@@ -318,7 +318,7 @@ void Window::insertRead(BamAlignment alignment) {
 			//if we have any active set on these pairs of contigs
 			if(eventSplitReads[this -> pairOrientation][contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
 				//if we are close enough
-				if (discordantDistance <= 2*mean_insert/minimumPairs or splitDistance <= this -> readLength){
+				if (discordantDistance <= 12*sqrt(mean_insert) or splitDistance <= this -> readLength){
 					eventSplitReads[this -> pairOrientation][contigNr].push_back(alignment);
 				}else{
 					if(eventReads[this -> pairOrientation][contigNr].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][contigNr].size() > minimumPairs){
@@ -371,7 +371,7 @@ void Window::insertRead(BamAlignment alignment) {
 				int distance= currrentAlignmentPos - pastAlignmentPos;
 
 				//If the distance between the two reads is less than the maximum allowed distace, add it to the other reads of the event
-				if(distance <= 2*mean_insert/minimumPairs){
+				if(distance <= 12*sqrt(mean_insert)){
 					//add the read to the current window
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}else{
@@ -545,7 +545,7 @@ bool Window::computeVariations(int chr2) {
 	}
 	
 	if(discordantPairs){
-		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,2*mean_insert/minimumPairs);
+		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,12*sqrt(mean_insert));
 	
 		for(int i=0;i < chr2regions.size()/3;i++){
 			long startSecondWindow=chr2regions[i*3];
