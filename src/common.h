@@ -280,7 +280,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
         
 		if (al.IsFirstMate() && al.IsMateMapped() and read_status != lowQualty ) {
 			if( al.IsReverseStrand() != al.IsMateReverseStrand() ){
-				if(al.IsMapped() and al.MapQuality > quality and al.RefID == al.MateRefID and al.MatePosition-al.Position+1 < max_insert ){
+				if(al.IsMapped() and al.MapQuality > 30 and al.RefID == al.MateRefID and al.MatePosition-al.Position+1 < max_insert ){
 					iSize = abs(al.InsertSize);
 					if(counterK == 1) {
 						Mk = iSize;

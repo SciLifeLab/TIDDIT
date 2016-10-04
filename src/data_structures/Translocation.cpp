@@ -226,7 +226,7 @@ void Window::insertRead(BamAlignment alignment) {
 				//empty the alignmentqueues
 				eventReads[j][i]=queue<BamAlignment>();
 				eventSplitReads[j][i]=vector<BamAlignment>();
-				linksFromWin[j][alignment.MateRefID]=queue<int>();
+				linksFromWin[j][i]=queue<int>();
 			}
 			
 			
