@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 	//MAIN VARIABLE
 
 	bool outtie 				    = true;	 // library orientation
-	uint32_t minimumSupportingPairs = 8;
+	uint32_t minimumSupportingPairs = 6;
 	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 100000;  // max insert size
 	int minimum_mapping_quality		=10;
@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
 	float coverageStd;
 	float meanInsert;
 	float insertStd;
+	int min_variant_size= 250;
 	string outputFileHeader ="output";
 	
 	
@@ -68,14 +69,16 @@ int main(int argc, char **argv) {
 	vm["-q"]="";
 	vm["-c"]="";
 	vm["--plody"]="";
+	vm["-m"] = "";
 	
 	string sv_help ="\nUsage: TIDDIT --sv -b inputfile [-o prefix] \nOther options\n";
-	sv_help +="\t--insert\tpaired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (if not specified default=3std + mean_insert_size)\n";
+	sv_help +="\t--insert\tpaired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (if not specified default=5std + mean_insert_size)\n";
 	sv_help +="\t--orientation\texpected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset\n";
-	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 8)\n";
+	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 6)\n";
 	sv_help +="\t-q\tMinimum mapping quality to consider an alignment (default 10)\n";
 	sv_help +="\t-c\taverage coverage, (default= computed from the bam file)\n";
 	sv_help +="\t--plody\tthe number of sets of chromosomes,(default = 2)\n";
+	sv_help +="\t-m\tminimum variant size,(default = 250)\n";
 			
 	//the coverage module
 	vm["--cov"]="store";
@@ -229,6 +232,10 @@ int main(int argc, char **argv) {
             ploidy = convert_str( vm["--plody"],"--plody" );
         }
         
+        if (vm["-m"] != ""){
+        	min_variant_size = convert_str( vm["-m"],"-m" );
+        }
+        
         map<string,int> SV_options;
 		SV_options["max_insert"]      = max_insert;
 		SV_options["pairs"]           = minimumSupportingPairs;
@@ -238,6 +245,7 @@ int main(int argc, char **argv) {
 		SV_options["contigsNumber"]   = contigsNumber;
         SV_options["meanInsert"]      = meanInsert;
         SV_options["STDInsert"]       = insertStd;
+        SV_options["min_variant_size"]	  = min_variant_size;
         
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();		

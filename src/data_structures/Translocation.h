@@ -39,6 +39,7 @@ public:
 	float meanCoverage;
 	int ploidy;
 	int readLength;
+	int minimumVariantSize;
 	//the file name of the bamfile
 	string bamFileName;
 	string indexFile;

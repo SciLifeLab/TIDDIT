@@ -46,19 +46,12 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	if(svType == "BND"){
 		//Find large tandemduplications
 		if(outtie == true){
-			if( this -> pairOrientation == 1){
-    		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance ){
-    				svType = "TDUP";
-    			}
+			if( this -> pairOrientation == 1 and covAB > coverage+coverageTolerance){
+				svType = "TDUP";
 			}
-
 		}else{
-			if( this -> pairOrientation == 2){
-        	    //if the coverage of the two windows are too high aswell, the event is a tandem dulplication
-    		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance){
-    				svType = "TDUP";
-
-    			}
+			if( this -> pairOrientation == 2 and covAB > coverage+coverageTolerance){
+				svType = "TDUP";
 			}
 		}
 	}
@@ -187,6 +180,7 @@ Window::Window(string bamFileName, bool outtie, float meanCoverage,string output
 	this->mean_insert		 = SV_options["meanInsert"];
 	this ->std_insert		 = SV_options["STDInsert"];
 	this->minimumPairs		 = SV_options["pairs"];
+	this->minimumVariantSize = SV_options["min_variant_size"];
 	this->meanCoverage		 = meanCoverage;
 	this->bamFileName		 = bamFileName;
 	this -> ploidy           = SV_options["ploidy"];
@@ -563,8 +557,8 @@ bool Window::computeVariations(int chr2) {
 
 			int splitsFormingLink=0;
 			for(int j=0;j< splitReadPositions[0].size();j++){
-				if(startSecondWindow <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow){	
-					if(startchrA <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA){
+				if(startSecondWindow-12*sqrt(mean_insert) <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow+12*sqrt(mean_insert)){	
+					if(startchrA-12*sqrt(mean_insert) <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA+12*sqrt(mean_insert)){
 						splitsFormingLink++;
 					}			
 				}			
@@ -679,8 +673,8 @@ bool Window::computeVariations(int chr2) {
 
 			long startchrA=chrALimit[0];
 			long stopchrA=chrALimit[1];
-			//The variant needs to be larger than 250 bp, but small enough not to be detected by discordnt pairs
-			if(stopSecondWindow-startchrA < 200 or stopSecondWindow-startchrA  > this->max_insert) {
+			//The variant needs to be larger than the minimum size bp, but small enough not to be detected by discordnt pairs
+			if(stopSecondWindow-startchrA < this->minimumVariantSize or stopSecondWindow-startchrA  > this->max_insert) {
 				continue;
 			}
 
@@ -693,7 +687,7 @@ bool Window::computeVariations(int chr2) {
 			if(this -> pairOrientation == 0 or this -> pairOrientation == 3){
 				svType = "INV";
 			}else if(coverageRealSecondWindow > 1.25*meanCoverage){
-				svType = "TDUP";
+				svType = "DUP";
 			}else if(coverageRealSecondWindow < 0.75*meanCoverage){
 				svType = "DEL";
 			}
