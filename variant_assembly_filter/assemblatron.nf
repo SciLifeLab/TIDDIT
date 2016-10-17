@@ -1,7 +1,9 @@
 //setup
-params.extract_variants_path="/home/jesperei/assemblatron_test/FindSV/TIDDIT/variant_assembly_filter/extract_variants.py"
-params.assemble_variants_path="/home/jesperei/assemblatron_test/FindSV/TIDDIT/variant_assembly_filter/assemble_variants.py"
-params.update_vcf_path="/home/jesperei/assemblatron_test/FindSV/TIDDIT/variant_assembly_filter/update_TIDDIT_vcf.py"
+params.extract_variants_path="/home/jesperei/TIDDIT/variant_assembly_filter/extract_variants.py"
+params.assemble_variants_path="/home/jesperei/TIDDIT/variant_assembly_filter/assemble_variants.py"
+params.update_vcf_path="/home/jesperei/TIDDIT/variant_assembly_filter/update_TIDDIT_vcf.py"
+params.contig_support_path="/home/jesperei/TIDDIT/variant_assembly_filter/compute_contig_support.py"
+params.TIDDIT_path="/home/jesperei/TIDDIT/bin/TIDDIT"
 //----##----
 
 params.bam="none"
@@ -44,19 +46,30 @@ process extract_variants {
 
 //Then assemble the variants
 process assemble_variants {
-    time "20m"
+    publishDir "${params.working_dir}"
+    time "30m"
 
     input:
     file variant from extracted_bams
     
     output:
-    file "${variant.baseName}.fa" into fa_files
+    file  "${variant.baseName}.fa" into fa_files
     
     script:
     """
     python ${params.assemble_variants_path} --fa ${params.genome} --bam ${variant} --t 1
+    mv ${variant.baseName}.fa ${variant.baseName}.tmp.fa
+    python ${params.contig_support_path} --fa ${variant.baseName}.tmp.fa --TIDDIT ${params.TIDDIT_path} --bam ${variant} --prefix ${variant.baseName}
     """
 }
+
+alignment_fasta =Channel.create()
+stats_fasta =Channel.create()
+
+Channel
+       	.from fa_files
+        .separate( stats_fasta,alignment_fasta) { a -> [a, a] }
+
 
 //Then assemble the variants
 process align_variants {
@@ -65,7 +78,7 @@ process align_variants {
 
 
     input:
-    file variant from fa_files
+    file variant from alignment_fasta
 
     output:
     file "${variant.baseName}.sam" into sam_files
@@ -84,13 +97,16 @@ process update_variants {
     input:
     file vcf_file
     file sam_file from sam_files.toList()
+    file fasta_files from stats_fasta.toList()
+    
     output:
     file "assemblator.vcf" into assemblator_vcf    
     script:
     """
      mkdir ${params.working_dir}
      mv *.sam ${params.working_dir}
-    
+     mv *.fa ${params.working_dir}
+     
      python ${params.update_vcf_path} --vcf ${vcf_file} --working_dir ${params.working_dir} > assemblator.vcf
     """
 }
