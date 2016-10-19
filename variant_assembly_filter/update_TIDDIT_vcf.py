@@ -47,10 +47,10 @@ def get_sam_data(line):
             length += int( SC[i*2] )
 	end+=length
 		    
-    sam={"ID":content[0],"chr":content[2],"start":start,"end": end,"Q":int(content[4]),"CIGAR":content[5]}
+    sam={"ID":content[0],"chr":content[2],"start":start,"end": end,"Q":int(content[4]),"CIGAR":content[5],"length":length}
     return(sam)
 
-parser = argparse.ArgumentParser("""use the sam files generated from assemble_variants to update the position of variants, and filter false positives""")
+parser = argparse.ArgumentParser("""use the sam files and annotated fa files to filter false positives and to update the position of variants, and filter false positives""")
 parser.add_argument('--vcf',type=str,required = True,help="the path to the TIDDIT vcf file")
 parser.add_argument('--q',type = int,default =0,help="the lowest tolerated mapping quality of a contig(default = 10)")
 parser.add_argument('--padding',type = int,default =150,help="the lowest tolerated mapping quality of a contig(default = 150)")
@@ -62,6 +62,7 @@ variants=get_regions(args.vcf,args.padding)
 for ID in variants:
     variant=variants[ID]
     sam_file=os.path.join( args.working_dir,variant["ID"]+".sam" )
+    fa_file=os.path.join( args.working_dir,variant["ID"]+".fa" )
     hit=0;
     miss=0;
     bridge=0
@@ -76,8 +77,26 @@ for ID in variants:
                 if not contig["ID"] in contigs:
                     contigs[contig["ID"]]=[]
                 contigs[contig["ID"]].append(contig)
+ 
+        contigs={}
+        for line in open(fa_file):
+            if line[0] == ">":
+                content=line[1:].strip().split()
+                contig_id=content[0]
+                contigs[contig_id]["significance"]=content[2].split(":")[2]
+                contigs[contig_id]["coverage"]=float( content[1].split(":")[4] )
+                contigs[contig_id]["length"]=int( content[1].split(":")[1] )
+ 
+ 
                 
+        failed=0;
+        bases_inside_roi=0
+        bases_outside_roi=0     
         for cnt in contigs:
+            if contigs[cnt]["significance"] == "False":
+                failed +=1
+                continue
+        
             contig=contigs[cnt]
             A=False
             B=False
@@ -85,34 +104,43 @@ for ID in variants:
             
                 if not alignment["chr"] == variant["chrA"] and not alignment["chr"] == variant["chrB"]:
                     miss += 1
-                
+                    bases_outside_roi += alignment["length"]*contigs[cnt]["coverage"]
+                    
                 elif variant["chrB"] == variant["chrA"]:
                     if (alignment["start"] <= variant["endA"] and alignment["end"] >= variant["startA"]) :
                         hit +=1
+                        bases_inside_roi += alignment["length"]*contigs[cnt]["coverage"]
                         A=True
                     elif (alignment["end"] >= variant["startB"] and alignment["start"] <= variant["endB"]) :
                         hit +=1
+                        bases_inside_roi += alignment["length"]*contigs[cnt]["coverage"]
                         B= True
                     else:
                         miss +=1
+                        bases_outside_roi += alignment["length"]*contigs[cnt]["coverage"]
                         
                 elif alignment["chr"] == variant["chrA"]:
                     if (alignment["start"] <= variant["endA"] and alignment["end"] >= variant["startA"]) :
                         hit +=1
+                        bases_inside_roi += alignment["length"]*contigs[cnt]["coverage"]
                         A=True
                     else:
                         miss +=1
+                        bases_outside_roi += alignment["length"]*contigs[cnt]["coverage"]
                 else:
                     if (alignment["end"] >= variant["startB"] and alignment["start"] <= variant["endB"]) :
                         hit +=1
+                        bases_inside_roi += alignment["length"]*contigs[cnt]["coverage"]
                         B=True
                     else:
                         miss +=1
+                        bases_outside_roi += alignment["length"]*contigs[cnt]["coverage"]
                 if A and B:
-                    bridge += 1; 
+                    bridge += 1;
+                    bases_inside_roi += -alignment["length"]*contigs[cnt]["coverage"]
                            
         if hit or miss:
-            score=miss/float(hit + miss)
+            score=bases_outside_roi/float(bases_inside_roi + bases_outside_roi)
         else:
             score = 0
             
@@ -128,8 +156,9 @@ for line in open(args.vcf):
             print "##INFO=<ID=HIT,Number=1,Type=Integer,Description=\"The number of contigs that map within one of the windows\">"
             print "##INFO=<ID=BRIDGE,Number=1,Type=Integer,Description=\"The number of contigs that map within both windows\">"
             print "##INFO=<ID=MISS,Number=1,Type=Integer,Description=\"The number of contigs that map outside any window\">"
-            print "##INFO=<ID=SCORE,Number=1,Type=Float,Description=\"The assembly score of the variant\">"
-            print "##FILTER=<ID=FAIL,Description=\"The assembly of the variant is too scattered and noisy\">"
+            print "##INFO=<ID=SCORE,Number=1,Type=Float,Description=\"The assembly score of the variant, 0 is the best score, 1 is the worst\">"
+            print "##INFO=<ID=SCORE,Number=2,Type=Integer,Description=\"The number of bases mapping within the region, as well as the numbe rof bases mapping outside\">"
+            print "##FILTER=<ID=FAIL,Description=\"The assembly of the variant is too scattered and noisy to consider the variant\">"
         print line.strip()
         continue
             
@@ -145,14 +174,10 @@ for line in open(args.vcf):
         score = variants[ content[2] ]["score"]
                  
             
-    content[7] += ";HIT={};BRIDGE={};MISS={};SCORE={}".format(hit,bridge,miss,score)
-    if bridge and miss > 10*bridge:
+    content[7] += ";HIT={};BRIDGE={};MISS={};SCORE={};SUPPORTINGBASES={},{}".format(hit,bridge,miss,score,bases_inside_roi,bases_outside_roi)
+    if failed == len(contigs):
         content[6] = "FAIL"
-    elif bridge:
-        pass
-    elif hit == miss and hit == 0:
-        pass
-    elif miss >= 0.5*hit:
+    elif score >= 0.30:
         content[6] = "FAIL"
     print "\t".join(content)
         

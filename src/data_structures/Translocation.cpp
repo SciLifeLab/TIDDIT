@@ -46,19 +46,12 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	if(svType == "BND"){
 		//Find large tandemduplications
 		if(outtie == true){
-			if( this -> pairOrientation == 1){
-    		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance ){
-    				svType = "TDUP";
-    			}
+			if( this -> pairOrientation == 1 and covAB > coverage+coverageTolerance){
+				svType = "TDUP";
 			}
-
 		}else{
-			if( this -> pairOrientation == 2){
-        	    //if the coverage of the two windows are too high aswell, the event is a tandem dulplication
-    		    if( covA > coverage+coverageTolerance and covB > coverage+coverageTolerance){
-    				svType = "TDUP";
-
-    			}
+			if( this -> pairOrientation == 2 and covAB > coverage+coverageTolerance){
+				svType = "TDUP";
 			}
 		}
 	}
@@ -187,6 +180,7 @@ Window::Window(string bamFileName, bool outtie, float meanCoverage,string output
 	this->mean_insert		 = SV_options["meanInsert"];
 	this ->std_insert		 = SV_options["STDInsert"];
 	this->minimumPairs		 = SV_options["pairs"];
+	this->minimumVariantSize = SV_options["min_variant_size"];
 	this->meanCoverage		 = meanCoverage;
 	this->bamFileName		 = bamFileName;
 	this -> ploidy           = SV_options["ploidy"];
@@ -226,7 +220,7 @@ void Window::insertRead(BamAlignment alignment) {
 				//empty the alignmentqueues
 				eventReads[j][i]=queue<BamAlignment>();
 				eventSplitReads[j][i]=vector<BamAlignment>();
-				linksFromWin[j][alignment.MateRefID]=queue<int>();
+				linksFromWin[j][i]=queue<int>();
 			}
 			
 			
@@ -318,7 +312,7 @@ void Window::insertRead(BamAlignment alignment) {
 			//if we have any active set on these pairs of contigs
 			if(eventSplitReads[this -> pairOrientation][contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
 				//if we are close enough
-				if (discordantDistance <= 2*mean_insert/minimumPairs or splitDistance <= this -> readLength){
+				if (discordantDistance <= 12*sqrt(mean_insert) or splitDistance <= this -> readLength){
 					eventSplitReads[this -> pairOrientation][contigNr].push_back(alignment);
 				}else{
 					if(eventReads[this -> pairOrientation][contigNr].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][contigNr].size() > minimumPairs){
@@ -371,7 +365,7 @@ void Window::insertRead(BamAlignment alignment) {
 				int distance= currrentAlignmentPos - pastAlignmentPos;
 
 				//If the distance between the two reads is less than the maximum allowed distace, add it to the other reads of the event
-				if(distance <= 2*mean_insert/minimumPairs){
+				if(distance <= 12*sqrt(mean_insert)){
 					//add the read to the current window
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}else{
@@ -545,7 +539,7 @@ bool Window::computeVariations(int chr2) {
 	}
 	
 	if(discordantPairs){
-		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,2*mean_insert/minimumPairs);
+		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,12*sqrt(mean_insert));
 	
 		for(int i=0;i < chr2regions.size()/3;i++){
 			long startSecondWindow=chr2regions[i*3];
@@ -563,8 +557,8 @@ bool Window::computeVariations(int chr2) {
 
 			int splitsFormingLink=0;
 			for(int j=0;j< splitReadPositions[0].size();j++){
-				if(startSecondWindow <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow){	
-					if(startchrA <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA){
+				if(startSecondWindow-12*sqrt(mean_insert) <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow+12*sqrt(mean_insert)){	
+					if(startchrA-12*sqrt(mean_insert) <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA+12*sqrt(mean_insert)){
 						splitsFormingLink++;
 					}			
 				}			
@@ -679,8 +673,8 @@ bool Window::computeVariations(int chr2) {
 
 			long startchrA=chrALimit[0];
 			long stopchrA=chrALimit[1];
-			//The variant needs to be larger than 250 bp, but small enough not to be detected by discordnt pairs
-			if(stopSecondWindow-startchrA < 200 or stopSecondWindow-startchrA  > this->max_insert) {
+			//The variant needs to be larger than the minimum size bp, but small enough not to be detected by discordnt pairs
+			if(stopSecondWindow-startchrA < this->minimumVariantSize or stopSecondWindow-startchrA  > this->max_insert) {
 				continue;
 			}
 
@@ -693,7 +687,7 @@ bool Window::computeVariations(int chr2) {
 			if(this -> pairOrientation == 0 or this -> pairOrientation == 3){
 				svType = "INV";
 			}else if(coverageRealSecondWindow > 1.25*meanCoverage){
-				svType = "TDUP";
+				svType = "DUP";
 			}else if(coverageRealSecondWindow < 0.75*meanCoverage){
 				svType = "DEL";
 			}
@@ -911,7 +905,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		}
 
 		double RATIO =1;
-		int E_links= splitReadStatistics["coverage_start"]/(double(this -> ploidy));
+		int E_links= (statistics_floats["coverage_start"]+statistics_floats["coverage_end"])/(double(this -> ploidy))*1/2;
 		if(E_links > 0){
 			RATIO=double(splitReadStatistics["split_reads"])/double(E_links);
 		}

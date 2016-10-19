@@ -1,6 +1,7 @@
 #include "ProgramModules.h"
 #include "common.h"
 #include <boost/algorithm/string.hpp>
+#include <math>
 
 //constructor
 VcfBedInput::VcfBedInput() {}
