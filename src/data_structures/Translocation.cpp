@@ -262,7 +262,7 @@ void Window::insertRead(BamAlignment alignment) {
 			int splitDistance = 0;
 
 			long splitPos = atol(SA_elements[1].c_str());
-	  		if(splitPos < currrentAlignmentPos and alignment.RefID < contigNr ){
+	  		if(alignment.RefID < contigNr ){
 	  			//only forward variants
 				continue;
 			}
@@ -528,11 +528,16 @@ bool Window::computeVariations(int chr2) {
 			for(int j=0; j< SA_elements.size(); j+=6) {
 				string contig = SA_elements[j];
 				string chr2name = this -> position2contig[chr2];
+				int mate_contig_id = contig2position[contig];
 				long pos = atol(SA_elements[j+1].c_str());
-				if (contig == chr2name) {
+				if((alnit)-> Position <= pos or mate_contig_id > chr2){
 					splitReadPositions[0].push_back((alnit)-> Position);
 					splitReadPositions[1].push_back(pos);
+				}else{
+					splitReadPositions[1].push_back((alnit)-> Position);
+					splitReadPositions[0].push_back(pos);
 				}
+
 			}
 		}
 		splitReads=true;
@@ -631,7 +636,7 @@ bool Window::computeVariations(int chr2) {
 				discordantPairStatistics["links_window"]=linksFromWindow;
 				discordantPairStatistics["links_chr"]=numLinksToChr2;
 				discordantPairStatistics["links_event"]=pairsFormingLink;
-				discordantPairStatistics["expected_links"]=abs(expectedLinksInWindow);
+				discordantPairStatistics["expected_links"]=abs(expectedLinksInWindow)/this -> ploidy;
 				discordantPairStatistics["expected_links2"]=abs(expectedLinksInWindow2)/this -> ploidy;
 				discordantPairStatistics["qualityB"]=qualityB;
 				discordantPairStatistics["qualityA"]=qualityA;
@@ -659,6 +664,9 @@ bool Window::computeVariations(int chr2) {
 		vector<long> chr2regions= findRegionOnB( splitReadPositions[1] ,minimumPairs,this ->readLength);
 	
 		for(int i=0;i < chr2regions.size()/3;i++){
+
+			
+
 			long startSecondWindow=chr2regions[i*3];
 			long stopSecondWindow=chr2regions[i*3+1];
 			long splitsFormingLink=chr2regions[i*3+2];
@@ -671,12 +679,14 @@ bool Window::computeVariations(int chr2) {
 			//resize region so that it is just large enough to cover the reads that have mates in the present cluster
 			vector<long> chrALimit=newChrALimit(splitReadPositions,startSecondWindow,stopSecondWindow);					
 
+
 			long startchrA=chrALimit[0];
 			long stopchrA=chrALimit[1];
 			//The variant needs to be larger than the minimum size bp, but small enough not to be detected by discordnt pairs
-			if(stopSecondWindow-startchrA < this->minimumVariantSize or stopSecondWindow-startchrA  > this->max_insert) {
+			if( abs( stopSecondWindow-startchrA) < this->minimumVariantSize or abs( startSecondWindow-stopchrA )  > this->max_insert) {
 				continue;
 			}
+
 
 			//compute the coverage on the region of chromosome B
 			double coverageRealSecondWindow=computeCoverageB(chr2, startchrA, stopSecondWindow, (startchrA-startSecondWindow+1) );
