@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 	//MAIN VARIABLE
 
 	bool outtie 				    = true;	 // library orientation
-	uint32_t minimumSupportingPairs = 6;
+	uint32_t minimumSupportingPairs = 4;
 	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 100000;  // max insert size
 	int minimum_mapping_quality		=10;
@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
 	float coverageStd;
 	float meanInsert;
 	float insertStd;
-	int min_variant_size= 250;
+	int min_variant_size= 100;
 	string outputFileHeader ="output";
 	
 	
@@ -74,11 +74,11 @@ int main(int argc, char **argv) {
 	string sv_help ="\nUsage: TIDDIT --sv -b inputfile [-o prefix] \nOther options\n";
 	sv_help +="\t--insert\tpaired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (if not specified default=5std + mean_insert_size)\n";
 	sv_help +="\t--orientation\texpected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset\n";
-	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 6)\n";
+	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 4)\n";
 	sv_help +="\t-q\tMinimum mapping quality to consider an alignment (default 10)\n";
 	sv_help +="\t-c\taverage coverage, (default= computed from the bam file)\n";
 	sv_help +="\t--plody\tthe number of sets of chromosomes,(default = 2)\n";
-	sv_help +="\t-m\tminimum variant size,(default = 250)\n";
+	sv_help +="\t-m\tminimum variant size,(default = 100)\n";
 			
 	//the coverage module
 	vm["--cov"]="store";
