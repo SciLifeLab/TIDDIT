@@ -197,20 +197,20 @@ int main(int argc, char **argv) {
             		int ploidy = convert_str( vm["--plody"],"--plody" );
         	}
 		
-        //now compute library stats
+		//now compute library stats
 		LibraryStatistics library;
 		size_t start = time(NULL);
 		library = computeLibraryStats(alignmentFile, genomeLength, max_insert, 40 , outtie,minimum_mapping_quality,outputFileHeader); // min insert size is fixed to 40
 		printf ("library stats time consumption= %lds\n", time(NULL) - start);
 		
         
-        coverage   = library.C_A;
+		coverage   = library.C_A;
 		if(vm["-c"] != ""){
 			coverage    = convert_str( vm["-c"],"-c" );
 		}
 		
 		if(vm["--orientation"] == ""){
-            outtie=library.mp;
+			outtie=library.mp;
 			if(outtie == true){
 				cout << "auto-config orientation: outtie" << endl;
 			}else{
@@ -221,6 +221,9 @@ int main(int argc, char **argv) {
 		meanInsert = library.insertMean;
 		insertStd  = library.insertStd;
 		max_insert=meanInsert+3*insertStd;
+		if(outtie == true){
+			max_insert=meanInsert+4*insertStd;
+		}
 		if(vm["--insert"] != ""){
 			max_insert  = convert_str( vm["--insert"], "--insert");
 		}else{

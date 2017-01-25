@@ -312,7 +312,7 @@ void Window::insertRead(BamAlignment alignment) {
 			//if we have any active set on these pairs of contigs
 			if(eventSplitReads[this -> pairOrientation][contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
 				//if we are close enough
-				if (discordantDistance <= 12*sqrt(mean_insert) or splitDistance <= this -> readLength){
+				if (discordantDistance <= 12*sqrt(mean_insert*2) or splitDistance <= this -> readLength){
 					eventSplitReads[this -> pairOrientation][contigNr].push_back(alignment);
 				}else{
 					if(eventReads[this -> pairOrientation][contigNr].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][contigNr].size() > minimumPairs){
@@ -365,7 +365,7 @@ void Window::insertRead(BamAlignment alignment) {
 				int distance= currrentAlignmentPos - pastAlignmentPos;
 
 				//If the distance between the two reads is less than the maximum allowed distace, add it to the other reads of the event
-				if(distance <= 12*sqrt(mean_insert)){
+				if(distance <= 12*sqrt(mean_insert*2)){
 					//add the read to the current window
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}else{
@@ -544,7 +544,7 @@ bool Window::computeVariations(int chr2) {
 	}
 	
 	if(discordantPairs){
-		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,12*sqrt(mean_insert));
+		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,12*sqrt(mean_insert*2));
 	
 		for(int i=0;i < chr2regions.size()/3;i++){
 			long startSecondWindow=chr2regions[i*3];
@@ -562,8 +562,8 @@ bool Window::computeVariations(int chr2) {
 
 			int splitsFormingLink=0;
 			for(int j=0;j< splitReadPositions[0].size();j++){
-				if(startSecondWindow-12*sqrt(mean_insert) <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow+12*sqrt(mean_insert)){	
-					if(startchrA-12*sqrt(mean_insert) <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA+12*sqrt(mean_insert)){
+				if(startSecondWindow-12*sqrt(mean_insert*2) <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow+12*sqrt(mean_insert*2)){	
+					if(startchrA-12*sqrt(mean_insert*2) <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA+12*sqrt(mean_insert*2)){
 						splitsFormingLink++;
 					}			
 				}			
@@ -862,9 +862,6 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		}
 		if(discordantPairStatistics["expected_links2"] != 0){
 			ratio2=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links2"];
-			if(ratio2 < stat_ratio){
-				stat_ratio=ratio2;
-			}
 		}
 		
 		
