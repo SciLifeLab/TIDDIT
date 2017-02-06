@@ -36,6 +36,7 @@ public:
 	float mean_insert;
 	float std_insert;
 	int minimumPairs;
+	int minimumSplits;
 	float meanCoverage;
 	int ploidy;
 	int readLength;

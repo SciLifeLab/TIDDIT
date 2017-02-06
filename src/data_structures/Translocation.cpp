@@ -179,6 +179,7 @@ Window::Window(string bamFileName, bool outtie, float meanCoverage,string output
 	this->mean_insert		 = SV_options["meanInsert"];
 	this ->std_insert		 = SV_options["STDInsert"];
 	this->minimumPairs		 = SV_options["pairs"];
+	this->minimumSplits		 = SV_options["splits"];
 	this->minimumVariantSize = SV_options["min_variant_size"];
 	this->meanCoverage		 = meanCoverage;
 	this->bamFileName		 = bamFileName;
@@ -212,7 +213,7 @@ void Window::insertRead(BamAlignment alignment) {
 		for(int i=0;i<eventReads[this -> pairOrientation].size();i++){
 			//check for events
 			for (int j=0; j<4;j++){
-				if( eventReads[j][i].size() >= minimumPairs or eventSplitReads[j][i].size() > minimumPairs){
+				if( eventReads[j][i].size() >= minimumPairs or eventSplitReads[j][i].size() > minimumSplits){
 					this -> pairOrientation = j;
 					computeVariations(i);
 				}
@@ -314,7 +315,7 @@ void Window::insertRead(BamAlignment alignment) {
 				if (discordantDistance <= 12*sqrt(mean_insert*2) or splitDistance <= this -> readLength){
 					eventSplitReads[this -> pairOrientation][contigNr].push_back(alignment);
 				}else{
-					if(eventReads[this -> pairOrientation][contigNr].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][contigNr].size() > minimumPairs){
+					if(eventReads[this -> pairOrientation][contigNr].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][contigNr].size() > this->minimumSplits){
 						computeVariations(contigNr);
 					}
 					//Thereafter the alignments are removed
@@ -368,7 +369,7 @@ void Window::insertRead(BamAlignment alignment) {
 					//add the read to the current window
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}else{
-					if(eventReads[this -> pairOrientation][alignment.MateRefID].size() + eventSplitReads[this -> pairOrientation][alignment.MateRefID].size()>= minimumPairs){
+					if(eventReads[this -> pairOrientation][alignment.MateRefID].size() + eventSplitReads[this -> pairOrientation][alignment.MateRefID].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][alignment.MateRefID].size() >= minimumSplits ){
 						computeVariations(alignment.MateRefID);
 					}
 					//Thereafter the alignments are removed
@@ -663,7 +664,7 @@ bool Window::computeVariations(int chr2) {
 		}
 	//we only check for intrachromosomal variants, oherwise we would detect discrodant pairs aswell
 	}else if(chr2 == this -> chr and splitReads){
-		vector<long> chr2regions= findRegionOnB( splitReadPositions[1] ,minimumPairs,this ->readLength);
+		vector<long> chr2regions= findRegionOnB( splitReadPositions[1] ,this ->minimumSplits ,this ->readLength);
 	
 		for(int i=0;i < chr2regions.size()/3;i++){
 
@@ -674,7 +675,7 @@ bool Window::computeVariations(int chr2) {
 			long splitsFormingLink=chr2regions[i*3+2];
 			
 
-			if(splitsFormingLink < minimumPairs) {
+			if(splitsFormingLink < this->minimumSplits ) {
 				continue;
 			}
 			
