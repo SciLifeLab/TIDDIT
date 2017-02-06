@@ -85,7 +85,7 @@ void Cov::bin(BamAlignment currentRead){
 	
 	//if the quality of the read is high enough, it will be added to the data structure
 	readStatus alignmentStatus = computeReadType(currentRead, 100000,100, true);
-	if(alignmentStatus != unmapped and alignmentStatus != lowQualty) {
+	if(alignmentStatus != lowQualty and alignmentStatus != unmapped) {
 		int element=floor(double(currentRead.Position)/double(binSize));
 
 		//if the entire read is inside the region, add all the bases to sequenced bases
@@ -101,13 +101,14 @@ void Cov::bin(BamAlignment currentRead){
 		
 			//the part of the read hanging out of the bin is added to the bins following the currentbin
 			int remainingRead=currentRead.Length-((element+1)*binSize-currentRead.Position+1);
-			while (remainingRead >= binSize){
+			while (remainingRead >= binSize and  coverageStructure[currentRead.RefID].size() > element+1 ){
+				element++;
 				coverageStructure[currentRead.RefID][element]+=binSize;
 				qualityStructure[0][currentRead.RefID][element] += currentRead.MapQuality;
 				qualityStructure[1][currentRead.RefID][element] += 1;
 				remainingRead=remainingRead-binSize;
 			}
-			if (remainingRead > 0){
+			if (remainingRead > 0 and coverageStructure[currentRead.RefID].size() > element+1){
 				element++;
 				coverageStructure[currentRead.RefID][element]+=remainingRead;
 				qualityStructure[0][currentRead.RefID][element] += currentRead.MapQuality;
@@ -116,6 +117,7 @@ void Cov::bin(BamAlignment currentRead){
 
 		}
 	}
+
 }
 
 //prints the results

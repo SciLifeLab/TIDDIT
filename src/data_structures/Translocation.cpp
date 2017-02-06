@@ -24,7 +24,6 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	int CN=1;
 
 	double coverage= this -> meanCoverage;
-	//the tolerance is dependent on read depth
 	float coverageToleranceFraction = 0.5/double(this -> ploidy);
 	float coverageTolerance=this -> meanCoverage*coverageToleranceFraction;
 
@@ -485,6 +484,7 @@ bool Window::computeVariations(int chr2) {
 	
 	vector< vector< long > > discordantPairPositions;
 	vector< vector< long > > splitReadPositions;
+	vector< long > splitReadEndPositions;
 	discordantPairPositions.resize(2);
 	splitReadPositions.resize(2);
 	bool discordantPairs=false;
@@ -533,9 +533,11 @@ bool Window::computeVariations(int chr2) {
 				if((alnit)-> Position <= pos or mate_contig_id > chr2){
 					splitReadPositions[0].push_back((alnit)-> Position);
 					splitReadPositions[1].push_back(pos);
+					splitReadEndPositions.push_back((alnit) -> GetEndPosition());
 				}else{
 					splitReadPositions[1].push_back((alnit)-> Position);
 					splitReadPositions[0].push_back(pos);
+					splitReadEndPositions.push_back(-1);
 				}
 
 			}
@@ -687,6 +689,18 @@ bool Window::computeVariations(int chr2) {
 				continue;
 			}
 
+			//update the end position of chrA
+			for(int j=0;j< splitReadPositions[0].size();j++){
+				if(startSecondWindow <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow){
+					if(startchrA <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA){
+						if( splitReadEndPositions[j] != -1){
+							stopchrA=splitReadEndPositions[j];
+  							break;
+						}
+					}
+				}
+			}
+
 
 			//compute the coverage on the region of chromosome B
 			double coverageRealSecondWindow=computeCoverageB(chr2, startchrA, stopSecondWindow, (startchrA-startSecondWindow+1) );
@@ -719,10 +733,10 @@ bool Window::computeVariations(int chr2) {
 			splitReadStatistics["chrB"]=chr2;
 			splitReadStatistics["windowA_start"]=startchrA;
 			splitReadStatistics["windowA_end"]=stopchrA;
-			splitReadStatistics["start"]=startchrA;
+			splitReadStatistics["start"]=stopchrA;
 			splitReadStatistics["windowB_start"]=startSecondWindow;
 			splitReadStatistics["windowB_end"]=stopSecondWindow;
-			splitReadStatistics["end"]=stopSecondWindow;
+			splitReadStatistics["end"]=startSecondWindow;
 			splitReadStatistics["split_reads"]=splitsFormingLink;
 			splitReadStatistics["splitOrientation"]= this -> pairOrientation;
 			splitReadStatistics["qualityA"]=computeRegionalQuality(this -> chr, startchrA, stopchrA,300);
@@ -912,11 +926,15 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		}
 
 		double RATIO =1;
-		int E_links= (statistics_floats["coverage_start"]+statistics_floats["coverage_end"])/(double(this -> ploidy))*1/2;
+		int E_links= statistics_floats["coverage_start"]/(double(this -> ploidy));
+		if (statistics_floats["coverage_start"] > statistics_floats["coverage_end"] and statistics_floats["coverage_end"] > 0){
+			E_links= statistics_floats["coverage_end"]/(double(this -> ploidy));
+		}
+
 		if(E_links > 0){
 			RATIO=double(splitReadStatistics["split_reads"])/double(E_links);
 		}
-		filter=filterFunction(RATIO,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
+		filter=filterFunction(RATIO*2,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
 		
 		
 		chrB= splitReadStatistics["chrB"];
