@@ -58,7 +58,7 @@ TIDDIT may be fine tuned by altering these optional parameters:
             
     -p - the minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 3
     
-    -r - the minimum number of supplementary alignments used to call small SV. Default is 2
+    -r - the minimum number of supplementary alignments used to call small SV. Default is 3
             
     -q - the minimum mapping quality of the discordant pairs/supplementary aignments 
             forming a variant. Default value is 10.
