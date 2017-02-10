@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
 	sv_help +="\t--insert\tpaired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (if not specified default=5std + mean_insert_size)\n";
 	sv_help +="\t--orientation\texpected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset\n";
 	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 3)\n";
-	sv_help +="\t-r\tMinimum number of supporting split reads to call a small variant (default 2)\n";
+	sv_help +="\t-r\tMinimum number of supporting split reads to call a small variant (default 3)\n";
 	sv_help +="\t-q\tMinimum mapping quality to consider an alignment (default 10)\n";
 	sv_help +="\t-c\taverage coverage, (default= computed from the bam file)\n";
 	sv_help +="\t--plody\tthe number of sets of chromosomes,(default = 2)\n";
