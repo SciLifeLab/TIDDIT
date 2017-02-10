@@ -56,7 +56,9 @@ TIDDIT may be fine tuned by altering these optional parameters:
                         
     --orientation - the pair orientation, use this setting to override the automatic orientation selection
             
-    -p - the minimum number of discordant pairs/ supplementary alignments used to call a variant. Default is 8
+    -p - the minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 3
+    
+    -r - the minimum number of supplementary alignments used to call small SV. Default is 3
             
     -q - the minimum mapping quality of the discordant pairs/supplementary aignments 
             forming a variant. Default value is 10.

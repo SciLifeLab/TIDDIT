@@ -24,7 +24,6 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	int CN=1;
 
 	double coverage= this -> meanCoverage;
-	//the tolerance is dependent on read depth
 	float coverageToleranceFraction = 0.5/double(this -> ploidy);
 	float coverageTolerance=this -> meanCoverage*coverageToleranceFraction;
 
@@ -180,6 +179,7 @@ Window::Window(string bamFileName, bool outtie, float meanCoverage,string output
 	this->mean_insert		 = SV_options["meanInsert"];
 	this ->std_insert		 = SV_options["STDInsert"];
 	this->minimumPairs		 = SV_options["pairs"];
+	this->minimumSplits		 = SV_options["splits"];
 	this->minimumVariantSize = SV_options["min_variant_size"];
 	this->meanCoverage		 = meanCoverage;
 	this->bamFileName		 = bamFileName;
@@ -213,7 +213,7 @@ void Window::insertRead(BamAlignment alignment) {
 		for(int i=0;i<eventReads[this -> pairOrientation].size();i++){
 			//check for events
 			for (int j=0; j<4;j++){
-				if( eventReads[j][i].size() >= minimumPairs or eventSplitReads[j][i].size() > minimumPairs){
+				if( eventReads[j][i].size() >= minimumPairs or eventSplitReads[j][i].size() > minimumSplits){
 					this -> pairOrientation = j;
 					computeVariations(i);
 				}
@@ -262,7 +262,7 @@ void Window::insertRead(BamAlignment alignment) {
 			int splitDistance = 0;
 
 			long splitPos = atol(SA_elements[1].c_str());
-	  		if(splitPos < currrentAlignmentPos and alignment.RefID < contigNr ){
+	  		if(alignment.RefID < contigNr ){
 	  			//only forward variants
 				continue;
 			}
@@ -312,10 +312,10 @@ void Window::insertRead(BamAlignment alignment) {
 			//if we have any active set on these pairs of contigs
 			if(eventSplitReads[this -> pairOrientation][contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
 				//if we are close enough
-				if (discordantDistance <= 12*sqrt(mean_insert) or splitDistance <= this -> readLength){
+				if (discordantDistance <= 12*sqrt(mean_insert*2) or splitDistance <= this -> readLength){
 					eventSplitReads[this -> pairOrientation][contigNr].push_back(alignment);
 				}else{
-					if(eventReads[this -> pairOrientation][contigNr].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][contigNr].size() > minimumPairs){
+					if(eventReads[this -> pairOrientation][contigNr].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][contigNr].size() > this->minimumSplits){
 						computeVariations(contigNr);
 					}
 					//Thereafter the alignments are removed
@@ -365,11 +365,11 @@ void Window::insertRead(BamAlignment alignment) {
 				int distance= currrentAlignmentPos - pastAlignmentPos;
 
 				//If the distance between the two reads is less than the maximum allowed distace, add it to the other reads of the event
-				if(distance <= 12*sqrt(mean_insert)){
+				if(distance <= 12*sqrt(mean_insert*2)){
 					//add the read to the current window
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}else{
-					if(eventReads[this -> pairOrientation][alignment.MateRefID].size() + eventSplitReads[this -> pairOrientation][alignment.MateRefID].size()>= minimumPairs){
+					if(eventReads[this -> pairOrientation][alignment.MateRefID].size() + eventSplitReads[this -> pairOrientation][alignment.MateRefID].size() >= minimumPairs or eventSplitReads[this -> pairOrientation][alignment.MateRefID].size() >= minimumSplits ){
 						computeVariations(alignment.MateRefID);
 					}
 					//Thereafter the alignments are removed
@@ -485,6 +485,7 @@ bool Window::computeVariations(int chr2) {
 	
 	vector< vector< long > > discordantPairPositions;
 	vector< vector< long > > splitReadPositions;
+	vector< long > splitReadEndPositions;
 	discordantPairPositions.resize(2);
 	splitReadPositions.resize(2);
 	bool discordantPairs=false;
@@ -528,18 +529,25 @@ bool Window::computeVariations(int chr2) {
 			for(int j=0; j< SA_elements.size(); j+=6) {
 				string contig = SA_elements[j];
 				string chr2name = this -> position2contig[chr2];
+				int mate_contig_id = contig2position[contig];
 				long pos = atol(SA_elements[j+1].c_str());
-				if (contig == chr2name) {
+				if((alnit)-> Position <= pos or mate_contig_id > chr2){
 					splitReadPositions[0].push_back((alnit)-> Position);
 					splitReadPositions[1].push_back(pos);
+					splitReadEndPositions.push_back((alnit) -> GetEndPosition());
+				}else{
+					splitReadPositions[1].push_back((alnit)-> Position);
+					splitReadPositions[0].push_back(pos);
+					splitReadEndPositions.push_back(-1);
 				}
+
 			}
 		}
 		splitReads=true;
 	}
 	
 	if(discordantPairs){
-		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,12*sqrt(mean_insert));
+		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,12*sqrt(mean_insert*2));
 	
 		for(int i=0;i < chr2regions.size()/3;i++){
 			long startSecondWindow=chr2regions[i*3];
@@ -557,8 +565,8 @@ bool Window::computeVariations(int chr2) {
 
 			int splitsFormingLink=0;
 			for(int j=0;j< splitReadPositions[0].size();j++){
-				if(startSecondWindow-12*sqrt(mean_insert) <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow+12*sqrt(mean_insert)){	
-					if(startchrA-12*sqrt(mean_insert) <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA+12*sqrt(mean_insert)){
+				if(startSecondWindow-12*sqrt(mean_insert*2) <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow+12*sqrt(mean_insert*2)){	
+					if(startchrA-12*sqrt(mean_insert*2) <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA+12*sqrt(mean_insert*2)){
 						splitsFormingLink++;
 					}			
 				}			
@@ -631,7 +639,7 @@ bool Window::computeVariations(int chr2) {
 				discordantPairStatistics["links_window"]=linksFromWindow;
 				discordantPairStatistics["links_chr"]=numLinksToChr2;
 				discordantPairStatistics["links_event"]=pairsFormingLink;
-				discordantPairStatistics["expected_links"]=abs(expectedLinksInWindow);
+				discordantPairStatistics["expected_links"]=abs(expectedLinksInWindow)/this -> ploidy;
 				discordantPairStatistics["expected_links2"]=abs(expectedLinksInWindow2)/this -> ploidy;
 				discordantPairStatistics["qualityB"]=qualityB;
 				discordantPairStatistics["qualityA"]=qualityA;
@@ -656,27 +664,44 @@ bool Window::computeVariations(int chr2) {
 		}
 	//we only check for intrachromosomal variants, oherwise we would detect discrodant pairs aswell
 	}else if(chr2 == this -> chr and splitReads){
-		vector<long> chr2regions= findRegionOnB( splitReadPositions[1] ,minimumPairs,this ->readLength);
+		vector<long> chr2regions= findRegionOnB( splitReadPositions[1] ,this ->minimumSplits ,this ->readLength);
 	
 		for(int i=0;i < chr2regions.size()/3;i++){
+
+			
+
 			long startSecondWindow=chr2regions[i*3];
 			long stopSecondWindow=chr2regions[i*3+1];
 			long splitsFormingLink=chr2regions[i*3+2];
 			
 
-			if(splitsFormingLink < minimumPairs) {
+			if(splitsFormingLink < this->minimumSplits ) {
 				continue;
 			}
 			
 			//resize region so that it is just large enough to cover the reads that have mates in the present cluster
 			vector<long> chrALimit=newChrALimit(splitReadPositions,startSecondWindow,stopSecondWindow);					
 
+
 			long startchrA=chrALimit[0];
 			long stopchrA=chrALimit[1];
 			//The variant needs to be larger than the minimum size bp, but small enough not to be detected by discordnt pairs
-			if(stopSecondWindow-startchrA < this->minimumVariantSize or stopSecondWindow-startchrA  > this->max_insert) {
+			if( abs( stopSecondWindow-startchrA) < this->minimumVariantSize or abs( startSecondWindow-stopchrA )  > this->max_insert) {
 				continue;
 			}
+
+			//update the end position of chrA
+			for(int j=0;j< splitReadPositions[0].size();j++){
+				if(startSecondWindow <= splitReadPositions[1][j] and splitReadPositions[1][j] <= stopSecondWindow){
+					if(startchrA <= splitReadPositions[0][j] and splitReadPositions[0][j] <= stopchrA){
+						if( splitReadEndPositions[j] != -1){
+							stopchrA=splitReadEndPositions[j];
+  							break;
+						}
+					}
+				}
+			}
+
 
 			//compute the coverage on the region of chromosome B
 			double coverageRealSecondWindow=computeCoverageB(chr2, startchrA, stopSecondWindow, (startchrA-startSecondWindow+1) );
@@ -709,10 +734,10 @@ bool Window::computeVariations(int chr2) {
 			splitReadStatistics["chrB"]=chr2;
 			splitReadStatistics["windowA_start"]=startchrA;
 			splitReadStatistics["windowA_end"]=stopchrA;
-			splitReadStatistics["start"]=startchrA;
+			splitReadStatistics["start"]=stopchrA;
 			splitReadStatistics["windowB_start"]=startSecondWindow;
 			splitReadStatistics["windowB_end"]=stopSecondWindow;
-			splitReadStatistics["end"]=stopSecondWindow;
+			splitReadStatistics["end"]=startSecondWindow;
 			splitReadStatistics["split_reads"]=splitsFormingLink;
 			splitReadStatistics["splitOrientation"]= this -> pairOrientation;
 			splitReadStatistics["qualityA"]=computeRegionalQuality(this -> chr, startchrA, stopchrA,300);
@@ -852,9 +877,6 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		}
 		if(discordantPairStatistics["expected_links2"] != 0){
 			ratio2=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links2"];
-			if(ratio2 < stat_ratio){
-				stat_ratio=ratio2;
-			}
 		}
 		
 		
@@ -905,11 +927,15 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		}
 
 		double RATIO =1;
-		int E_links= (statistics_floats["coverage_start"]+statistics_floats["coverage_end"])/(double(this -> ploidy))*1/2;
+		int E_links= statistics_floats["coverage_start"]/(double(this -> ploidy));
+		if (statistics_floats["coverage_start"] > statistics_floats["coverage_end"] and statistics_floats["coverage_end"] > 0){
+			E_links= statistics_floats["coverage_end"]/(double(this -> ploidy));
+		}
+
 		if(E_links > 0){
 			RATIO=double(splitReadStatistics["split_reads"])/double(E_links);
 		}
-		filter=filterFunction(RATIO,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
+		filter=filterFunction(RATIO*2,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
 		
 		
 		chrB= splitReadStatistics["chrB"];

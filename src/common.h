@@ -200,6 +200,11 @@ static float ExpectedLinks(uint32_t sizeA, uint32_t sizeB, uint32_t gap, float i
 }
 
 static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genomeLength, uint32_t max_insert, uint32_t min_insert,bool is_mp,int quality,string outputFileHeader) {
+	
+	Cov *calculateCoverage;
+	calculateCoverage = new Cov(300,bamFileName,outputFileHeader);
+	
+	
 	BamReader bamFile;
 	bamFile.Open(bamFileName);
 	LibraryStatistics library;
@@ -250,10 +255,8 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	//Keep header for further reference
 	int32_t currentTid = -1;
 	int32_t iSize;
-	
-    //initiate the coverage computation class
-    Cov *calculateCoverage;
-	calculateCoverage = new Cov(300,bamFileName,outputFileHeader);
+
+
 	BamAlignment al;
 	
 
@@ -265,8 +268,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 			mappedReadsLength += al.Length;
 			
 			//calculate the coverage in bins of size 400 bases
-			calculateCoverage -> bin(al);
-			
+			calculateCoverage -> bin(al);	
 		}
 		
 		vector <int > clipSizes;
@@ -331,7 +333,8 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 		}
 
 	}
-
+	bamFile.Close();
+	
 	cout << "LIBRARY STATISTICS\n";
 	cout << "\t total reads number "	<< reads << "\n";
 	cout << "\t total mapped reads " 	<< mappedReads << "\n";
@@ -372,7 +375,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	cout << "\tStd Insert length = " << Qk << endl;
 	cout << "----------\n";
 
-	bamFile.Close();
+	
 	calculateCoverage -> printCoverage();
 	return library;
 }

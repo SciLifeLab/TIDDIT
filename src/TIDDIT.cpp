@@ -34,7 +34,8 @@ int main(int argc, char **argv) {
 	//MAIN VARIABLE
 
 	bool outtie 				    = true;	 // library orientation
-	uint32_t minimumSupportingPairs = 6;
+	uint32_t minimumSupportingPairs = 3;
+	uint32_t minimumSupportingReads = 3;
 	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 100000;  // max insert size
 	int minimum_mapping_quality		=10;
@@ -42,7 +43,7 @@ int main(int argc, char **argv) {
 	float coverageStd;
 	float meanInsert;
 	float insertStd;
-	int min_variant_size= 250;
+	int min_variant_size= 100;
 	string outputFileHeader ="output";
 	
 	
@@ -66,6 +67,7 @@ int main(int argc, char **argv) {
 	vm["--insert"]="";
 	vm["--orientation"]="";
 	vm["-p"]="";
+	vm["-r"]="";
 	vm["-q"]="";
 	vm["-c"]="";
 	vm["--plody"]="";
@@ -74,11 +76,12 @@ int main(int argc, char **argv) {
 	string sv_help ="\nUsage: TIDDIT --sv -b inputfile [-o prefix] \nOther options\n";
 	sv_help +="\t--insert\tpaired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (if not specified default=5std + mean_insert_size)\n";
 	sv_help +="\t--orientation\texpected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset\n";
-	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 6)\n";
+	sv_help +="\t-p\tMinimum number of supporting pairs in order to call a variation event (default 3)\n";
+	sv_help +="\t-r\tMinimum number of supporting split reads to call a small variant (default 3)\n";
 	sv_help +="\t-q\tMinimum mapping quality to consider an alignment (default 10)\n";
 	sv_help +="\t-c\taverage coverage, (default= computed from the bam file)\n";
 	sv_help +="\t--plody\tthe number of sets of chromosomes,(default = 2)\n";
-	sv_help +="\t-m\tminimum variant size,(default = 250)\n";
+	sv_help +="\t-m\tminimum variant size,(default = 100)\n";
 			
 	//the coverage module
 	vm["--cov"]="store";
@@ -179,6 +182,9 @@ int main(int argc, char **argv) {
 		if(vm["-p"] != ""){
 			minimumSupportingPairs=convert_str( vm["-p"] , "-p");
 		}
+		if(vm["-r"] != ""){
+			minimumSupportingReads=convert_str( vm["-r"] , "-r");
+		}
 		if(vm["--insert"] != ""){
 			int insert_test  = convert_str( vm["--insert"], "--insert");
 		}
@@ -197,20 +203,20 @@ int main(int argc, char **argv) {
             		int ploidy = convert_str( vm["--plody"],"--plody" );
         	}
 		
-        //now compute library stats
+		//now compute library stats
 		LibraryStatistics library;
 		size_t start = time(NULL);
 		library = computeLibraryStats(alignmentFile, genomeLength, max_insert, 40 , outtie,minimum_mapping_quality,outputFileHeader); // min insert size is fixed to 40
 		printf ("library stats time consumption= %lds\n", time(NULL) - start);
 		
         
-        coverage   = library.C_A;
+		coverage   = library.C_A;
 		if(vm["-c"] != ""){
 			coverage    = convert_str( vm["-c"],"-c" );
 		}
 		
 		if(vm["--orientation"] == ""){
-            outtie=library.mp;
+			outtie=library.mp;
 			if(outtie == true){
 				cout << "auto-config orientation: outtie" << endl;
 			}else{
@@ -221,6 +227,9 @@ int main(int argc, char **argv) {
 		meanInsert = library.insertMean;
 		insertStd  = library.insertStd;
 		max_insert=meanInsert+3*insertStd;
+		if(outtie == true){
+			max_insert=meanInsert+4*insertStd;
+		}
 		if(vm["--insert"] != ""){
 			max_insert  = convert_str( vm["--insert"], "--insert");
 		}else{
@@ -246,6 +255,7 @@ int main(int argc, char **argv) {
         SV_options["meanInsert"]      = meanInsert;
         SV_options["STDInsert"]       = insertStd;
         SV_options["min_variant_size"]	  = min_variant_size;
+		SV_options["splits"] = minimumSupportingReads;
         
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();		
