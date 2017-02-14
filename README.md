@@ -48,13 +48,13 @@ The main TIDDIT module, detects structural variant using discordant pairs, split
 Where bam is the input bam file. The reads of the input bam file must be sorted on genome position.
 TIDDIT may be fine tuned by altering these optional parameters:
 
-    ploidy - the ploidy of the organism, 2 is default
+    -n - the ploidy of the organism, 2 is default
     -o - the prefix of the output files(default = output)
         
-    --insert - the maximum allowed insert size of a normal pair. Pairs having larger insert 
+    -i - the maximum allowed insert size of a normal pair. Pairs having larger insert 
                     than this is treated as discordant pairs. Default is 3*std+mean insert size
                         
-    --orientation - the pair orientation, use this setting to override the automatic orientation selection
+    -d - the pair orientation, use this setting to override the automatic orientation selection
             
     -p - the minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 3
     
@@ -75,7 +75,7 @@ Computes the coverge of different regions of the bam file
 optional parameters:
 
     -o - the prefix of the output files
-    --bin_size - compute the coverage within bins of a specified size across the entire genome, default bin size is 500
+    -z - compute the coverage within bins of a specified size across the entire genome, default bin size is 500
 
 Filters
 =============

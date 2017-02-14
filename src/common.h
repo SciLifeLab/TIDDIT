@@ -202,7 +202,7 @@ static float ExpectedLinks(uint32_t sizeA, uint32_t sizeB, uint32_t gap, float i
 static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genomeLength, uint32_t max_insert, uint32_t min_insert,bool is_mp,int quality,string outputFileHeader) {
 	
 	Cov *calculateCoverage;
-	calculateCoverage = new Cov(300,bamFileName,outputFileHeader);
+	calculateCoverage = new Cov(100,bamFileName,outputFileHeader);
 	
 	
 	BamReader bamFile;

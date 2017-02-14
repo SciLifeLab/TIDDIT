@@ -98,18 +98,17 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	return(svVector);
 }
 
-string filterFunction(double RATIO,int linksToB, int linksFromWindow,float mean_insert, float std_insert,double coverageA,double coverageB,double coverageAVG,int endA, int startB, int chrA, int chrB){
+string filterFunction(double RATIO,int links, int links_spurr, float mean_insert, float std_insert,double coverageA,double coverageB,double coverageAVG,int endA, int startB, int chrA, int chrB,int ploidy){
 	string filter = "PASS";
-	double linkratio= (double)linksToB/(double)linksFromWindow;
+	double linkratio= (double)links/(double)links_spurr;
 	if(RATIO < 0.4){
 		filter="BelowExpectedLinks";
-	}else if(linkratio < 0.25){
+	}else if(linkratio < 0.5/(double)ploidy){
 		filter="FewLinks";
 	} else if(coverageA > 10*coverageAVG or coverageB > coverageAVG*10){
 		filter="UnexpectedCoverage";
 	} else if(endA > startB and chrB == chrA){
 	    filter = "Smear";
-	
 	}
 
 	return(filter);
@@ -123,7 +122,7 @@ string Window::VCFHeader(){
 	string headerString ="";
 	//Define fileformat and source
 	headerString+="##fileformat=VCFv4.1\n";
-	headerString+="##source=TIDDIT\n";
+	headerString+="##source=TIDDIT-" + this-> version +  "\n";
 	//define the alowed events
 	headerString+="##ALT=<ID=DEL,Description=\"Deletion\">\n";
 	headerString+="##ALT=<ID=DUP,Description=\"Duplication\">\n";
@@ -132,6 +131,14 @@ string Window::VCFHeader(){
 	headerString+="##ALT=<ID=INV,Description=\"Inversion\">\n";
 	headerString+="##ALT=<ID=INS,Description=\"Insertion\">\n";
 	headerString+="##ALT=<ID=BND,Description=\"Break end\">\n";
+
+	for(int i=0;i < this -> contig_ids.size(); i++){
+		headerString+= "##contig=<ID="	+ contig_ids[i] + ",length=" + contig_length[i];
+		if(contig_ids.size() == contig_assembly.size()){
+			headerString+=",assembly=" +contig_assembly[i];
+		}
+		headerString +=">\n";
+	}
 	
 	//Define the info fields
 	headerString+="##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n";
@@ -149,6 +156,7 @@ string Window::VCFHeader(){
 	headerString+="##INFO=<ID=WINA,Number=2,Type=Integer,Description=\"start and stop positon of window A\">\n";
 	headerString+="##INFO=<ID=WINB,Number=2,Type=Integer,Description=\"start and stop position of window B\">\n";
 	headerString+="##INFO=<ID=EL,Number=1,Type=Float,Description=\"Expected links to window B\">\n";
+	headerString+="##INFO=<ID=EL2,Number=1,Type=Float,Description=\"Expected links to window B\">\n";
 	headerString+="##INFO=<ID=ER,Number=1,Type=Float,Description=\"Expected number of split reads\">\n";
 	headerString+="##INFO=<ID=ER2,Number=1,Type=Float,Description=\"Expected number of split reads\">\n";
 	headerString+="##INFO=<ID=RATIO,Number=1,Type=Float,Description=\"The number of links divided by the expected number of links\">\n";
@@ -166,7 +174,7 @@ string Window::VCFHeader(){
 	headerString+="##FORMAT=<ID=PE,Number=1,Type=Integer,Description=\"Number of paired-ends that support the event\">\n";
 	headerString+="##FORMAT=<ID=SR,Number=1,Type=Integer,Description=\"Number of split reads that support the event\">\n";
 	//Header
-	headerString+="#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t"; // now just add the individuals!
+	headerString+="#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
 	return(headerString);
 }
 
@@ -187,13 +195,7 @@ Window::Window(string bamFileName, bool outtie, float meanCoverage,string output
 	this -> readLength       = SV_options["readLength"];
 	this -> pairOrientation				 = 0;          
 	this->outputFileHeader     = outputFileHeader;
-	string inter_chr_eventsVCF = outputFileHeader + "_inter_chr_events.vcf";
-	this->interChrVariationsVCF.open(inter_chr_eventsVCF.c_str());
-	this->interChrVariationsVCF << VCFHeader() << outputFileHeader << "\n";
 
-	string intra_chr_eventsVCF = outputFileHeader + "_intra_chr_events.vcf";
-	this->intraChrVariationsVCF.open(intra_chr_eventsVCF.c_str());
-	this->intraChrVariationsVCF << VCFHeader() << outputFileHeader << "\n";
 
 }
 
@@ -231,8 +233,7 @@ void Window::insertRead(BamAlignment alignment) {
 	bool alignment_split = false;	
 	alignment.BuildCharData();			
 	alignment_split = alignment.HasTag("SA");
-
-	if (alignment_split ) {
+	if (alignment_split) {
 		// parse split read to get the other segment position, akin to a mate.
 		string SA;
 		alignment.GetTag("SA",SA);
@@ -262,7 +263,7 @@ void Window::insertRead(BamAlignment alignment) {
 			int splitDistance = 0;
 
 			long splitPos = atol(SA_elements[1].c_str());
-	  		if(alignment.RefID < contigNr ){
+	  		if(alignment.RefID < contigNr){
 	  			//only forward variants
 				continue;
 			}
@@ -302,12 +303,16 @@ void Window::insertRead(BamAlignment alignment) {
 				}
 			
 			}
-			
+			int split_read_start_pos=alignment.Position;
+			if(alignment.RefID == contigNr and splitPos < alignment.Position){
+				split_read_start_pos = splitPos;
+			}
+
 			if (eventReads[this -> pairOrientation][contigNr].size() > 0){
-				discordantDistance = currrentAlignmentPos- eventReads[this -> pairOrientation][contigNr].back().Position;
+				discordantDistance = abs(split_read_start_pos - eventReads[this -> pairOrientation][contigNr].back().Position);
 			}
 			if( eventSplitReads[this -> pairOrientation][contigNr].size() > 0){
-				splitDistance = currrentAlignmentPos - eventSplitReads[this -> pairOrientation][contigNr].back().Position;
+				splitDistance = abs(split_read_start_pos - eventSplitReads[this -> pairOrientation][contigNr].back().Position);
 			}
 			//if we have any active set on these pairs of contigs
 			if(eventSplitReads[this -> pairOrientation][contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
@@ -395,15 +400,15 @@ float Window::computeCoverageB(int chrB, int start, int end, int32_t secondWindo
 	int bins=0;
 	float coverageB=0;
 	int element=0;
-	unsigned int pos =floor(double(start)/300.0)*300;
+	unsigned int pos =floor(double(start)/100.0)*100;
 	
-	unsigned int nextpos =pos+300;
-	while(nextpos >= start and pos <= end and pos/300 < binnedCoverage[chrB].size() ){
+	unsigned int nextpos =pos+100;
+	while(nextpos >= start and pos <= end and pos/100 < binnedCoverage[chrB].size() ){
 			bins++;
-			element=pos/300;
+			element=pos/100;
 			coverageB+=double(binnedCoverage[chrB][element]-coverageB)/double(bins);
 			pos=nextpos;
-			nextpos += 300;
+			nextpos += 100;
 	}
 	return(coverageB);
 	
@@ -464,13 +469,12 @@ vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int star
 	while ( linksFromA.size() > 0 ) {
 		currentReadPosition=linksFromA.front();
 		linksFromA.pop();
-		if(start <= currentReadPosition and end >= currentReadPosition){
+		if(start-this->mean_insert <= currentReadPosition and end+this->mean_insert >= currentReadPosition){
 				linksFromWindow+=1;
 			}
 	}
 	//calculates the coverage and returns the coverage within the window
 	double coverageA=computeCoverageB(this -> chr,start,end,WindowLength);
-	//todo change the 100 to the read length
 	statisticsVector.push_back(coverageA);statisticsVector.push_back(linksFromWindow);
 	return(statisticsVector);
 	
@@ -547,7 +551,7 @@ bool Window::computeVariations(int chr2) {
 	}
 	
 	if(discordantPairs){
-		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,minimumPairs,12*sqrt(mean_insert*2));
+		vector<long> chr2regions= findRegionOnB( discordantPairPositions[1] ,12*sqrt(mean_insert*2));
 	
 		for(int i=0;i < chr2regions.size()/3;i++){
 			long startSecondWindow=chr2regions[i*3];
@@ -588,8 +592,8 @@ bool Window::computeVariations(int chr2) {
 				if(this -> chr == chr2){
 					coverageMid=computeCoverageB(chr2, startchrA, stopSecondWindow, (startchrA-startSecondWindow+1) );
 				}				
-				double qualityB = computeRegionalQuality(chr2, startSecondWindow, stopSecondWindow,300);
-				double qualityA = computeRegionalQuality(this -> chr, startchrA, stopchrA,300);
+				double qualityB = computeRegionalQuality(chr2, startSecondWindow, stopSecondWindow,100);
+				double qualityA = computeRegionalQuality(this -> chr, startchrA, stopchrA,100);
 				//compute coverage on the region of chromosome A, as well as the number of discordant pairs within this region
 				vector<double> statisticsFirstWindow =computeStatisticsA(bamFileName, chr2, startchrA, stopchrA, (stopchrA-startchrA), indexFile);
 				double coverageRealFirstWindow	= statisticsFirstWindow[0];
@@ -629,12 +633,12 @@ bool Window::computeVariations(int chr2) {
 				map<string,int> discordantPairStatistics;
 				discordantPairStatistics["chrA"]=this -> chr;
 				discordantPairStatistics["chrB"]=chr2;
-				discordantPairStatistics["start"]=stopchrA;
-				discordantPairStatistics["windowA_start"]=startchrA;
-				discordantPairStatistics["windowA_end"]=stopchrA;
-				discordantPairStatistics["end"]=startSecondWindow;
-				discordantPairStatistics["windowB_start"]=startSecondWindow;
-				discordantPairStatistics["windowB_end"]=stopSecondWindow;
+				discordantPairStatistics["start"]=stopchrA+1;
+				discordantPairStatistics["windowA_start"]=startchrA+1;
+				discordantPairStatistics["windowA_end"]=stopchrA+1;
+				discordantPairStatistics["end"]=startSecondWindow+1;
+				discordantPairStatistics["windowB_start"]=startSecondWindow+1;
+				discordantPairStatistics["windowB_end"]=stopSecondWindow+1;
 				discordantPairStatistics["orientation"]=pairOrientation;
 				discordantPairStatistics["links_window"]=linksFromWindow;
 				discordantPairStatistics["links_chr"]=numLinksToChr2;
@@ -664,7 +668,7 @@ bool Window::computeVariations(int chr2) {
 		}
 	//we only check for intrachromosomal variants, oherwise we would detect discrodant pairs aswell
 	}else if(chr2 == this -> chr and splitReads){
-		vector<long> chr2regions= findRegionOnB( splitReadPositions[1] ,this ->minimumSplits ,this ->readLength);
+		vector<long> chr2regions= findRegionOnB( splitReadPositions[1],this ->readLength);
 	
 		for(int i=0;i < chr2regions.size()/3;i++){
 
@@ -732,16 +736,16 @@ bool Window::computeVariations(int chr2) {
 			map<string,int> splitReadStatistics;
 			splitReadStatistics["chrA"]=this -> chr;
 			splitReadStatistics["chrB"]=chr2;
-			splitReadStatistics["windowA_start"]=startchrA;
-			splitReadStatistics["windowA_end"]=stopchrA;
-			splitReadStatistics["start"]=stopchrA;
-			splitReadStatistics["windowB_start"]=startSecondWindow;
-			splitReadStatistics["windowB_end"]=stopSecondWindow;
-			splitReadStatistics["end"]=startSecondWindow;
+			splitReadStatistics["windowA_start"]=startchrA+1;
+			splitReadStatistics["windowA_end"]=stopchrA+1;
+			splitReadStatistics["start"]=stopchrA+1;
+			splitReadStatistics["windowB_start"]=startSecondWindow+1;
+			splitReadStatistics["windowB_end"]=stopSecondWindow+1;
+			splitReadStatistics["end"]=startSecondWindow+1;
 			splitReadStatistics["split_reads"]=splitsFormingLink;
 			splitReadStatistics["splitOrientation"]= this -> pairOrientation;
-			splitReadStatistics["qualityA"]=computeRegionalQuality(this -> chr, startchrA, stopchrA,300);
-			splitReadStatistics["qualityB"]=computeRegionalQuality(this -> chr, startSecondWindow, stopSecondWindow,300);
+			splitReadStatistics["qualityA"]=computeRegionalQuality(this -> chr, startchrA, stopchrA,100);
+			splitReadStatistics["qualityB"]=computeRegionalQuality(this -> chr, startSecondWindow, stopSecondWindow,100);
 			splitReadStatistics["links_window"]=int(statisticsFirstWindow[1]);
 
 			map<string,float> statistics_floats;
@@ -764,14 +768,34 @@ void Window::initTrans(SamHeader head) {
 	for(SamSequenceIterator sequence = sequences.Begin() ; sequence != sequences.End(); ++sequence) {
 		this->contig2position[sequence->Name] = contigsNumber; // keep track of contig name and position in order to avoid problems when processing two libraries
 		this->position2contig[contigsNumber]  = sequence->Name;
+		this-> contig_ids.push_back(sequence->Name);
+		this-> contig_length.push_back(sequence->Length);
+		if(sequence->HasAssemblyID() == true){
+			this-> contig_assembly.push_back(sequence->AssemblyID);
+		}
 		contigsNumber++;
+	}
+	string intra_chr_eventsVCF = outputFileHeader + ".vcf";
+	this->TIDDITVCF.open(intra_chr_eventsVCF.c_str());
+	if(head.HasReadGroups() == false){
+		this->TIDDITVCF << VCFHeader() << outputFileHeader << "\n";
+	}else{
+		SamReadGroupDictionary readGroups = head.ReadGroups;
+		string SM = outputFileHeader;
+		for(SamReadGroupIterator readGroup = readGroups.Begin() ; readGroup != readGroups.End(); ++readGroup) {
+			if( readGroup -> HasSample() == true){
+				SM= readGroup -> Sample;
+				break;
+			}
+		}
+		this->TIDDITVCF << VCFHeader() << SM << "\n";
 	}
 
 }
 
 //this is a function that takes a queue containing reads that are involved in an event and calculates the position of the event on chromosome B(the chromosome of the of the mates). The total number of reads
 //inside the region is reported, aswell as the start and stop position on B
-vector<long> Window::findRegionOnB( vector<long> mate_positions, int minimumPairs,int maxDistance){
+vector<long> Window::findRegionOnB( vector<long> mate_positions,int maxDistance){
 	queue<long> linksToRegionQueue;	
 	vector<long> eventRegionVector;
 	//sort the mate positions
@@ -786,7 +810,7 @@ vector<long> Window::findRegionOnB( vector<long> mate_positions, int minimumPair
 
 		}else{
 			//if there are enough links beetween two regions, the region and the number of pairs are saved, and later on returned
-			if(linksToRegionQueue.size() >= minimumPairs  ) {
+			if(linksToRegionQueue.size() > 0  ) {
 				//the front of the queue is the start position
 				eventRegionVector.push_back(linksToRegionQueue.front());
 				//the back is the end position
@@ -801,7 +825,7 @@ vector<long> Window::findRegionOnB( vector<long> mate_positions, int minimumPair
 		
 	}
 	//if the queue contain any event 
-	if(linksToRegionQueue.size() >= minimumPairs  ) {
+	if(linksToRegionQueue.size() > 0  ) {
 		eventRegionVector.push_back(linksToRegionQueue.front());
 		eventRegionVector.push_back(linksToRegionQueue.back());
 		eventRegionVector.push_back(linksToRegionQueue.size());
@@ -896,7 +920,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 
 		ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  ratio1;
 		ss << ";EL2="  << discordantPairStatistics["expected_links2"] << ";RATIO2=" <<  ratio2;
-		filter=filterFunction(stat_ratio,discordantPairStatistics["links_chr"],discordantPairStatistics["links_event"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"]);	
+		filter=filterFunction(stat_ratio,discordantPairStatistics["links_event"],discordantPairStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"],this -> ploidy );	
 
 		
 		infoField += ss.str();
@@ -935,7 +959,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		if(E_links > 0){
 			RATIO=double(splitReadStatistics["split_reads"])/double(E_links);
 		}
-		filter=filterFunction(RATIO*2,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"]);
+		filter=filterFunction(RATIO*2,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"],this -> ploidy);
 		
 		
 		chrB= splitReadStatistics["chrB"];
@@ -961,49 +985,49 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		
 		//TODO generate the info field as a string, instead of printing the separate variable directly to the file
 		if(svType != "INS" and svType !="BND"){
-			intraChrVariationsVCF << this -> position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
-			intraChrVariationsVCF << "N"       << "\t"	<< "<" << svType << ">";
-			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
-			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			TIDDITVCF << this -> position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
+			TIDDITVCF << "N"       << "\t"	<< "<" << svType << ">";
+			TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
+			TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 		}else{
-			intraChrVariationsVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
-			intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
-			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
-			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			TIDDITVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
+			TIDDITVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+			TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
+			TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 			//print the second breakend
-			intraChrVariationsVCF <<  position2contig[chrB] << "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
-			intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
-			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
-			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			TIDDITVCF <<  position2contig[chrB] << "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
+			TIDDITVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+			TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
+			TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 		}
 		if(svType == "IDUP"){
-			intraChrVariationsVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_2" << "\t";
-			intraChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
-			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
-			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			TIDDITVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_2" << "\t";
+			TIDDITVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+			TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
+			TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 			//print the second breakend
-			intraChrVariationsVCF <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_3" << "\t";
-			intraChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
-			intraChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
-			intraChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			TIDDITVCF <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_3" << "\t";
+			TIDDITVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+			TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
+			TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 		}
 
 
 	} else {
 		//print the first breakend
-		interChrVariationsVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
-		interChrVariationsVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
-		interChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
-		interChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+		TIDDITVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
+		TIDDITVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+		TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
+		TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 		//print the second breakend
-		interChrVariationsVCF <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
-		interChrVariationsVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
-		interChrVariationsVCF << "\t.\t"  << filter  << "\t" << infoField;
-		interChrVariationsVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+		TIDDITVCF <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
+		TIDDITVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+		TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
+		TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 	}
 	return;
 

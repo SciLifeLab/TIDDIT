@@ -9,7 +9,7 @@
 //function used to find translocations
 StructuralVariations::StructuralVariations() { }
 
-void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage, string outputFileHeader, map<string,int> SV_options) {
+void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage, string outputFileHeader, string version, map<string,int> SV_options) {
 	size_t start = time(NULL);
 	//open the bam file
 	BamReader bamFile;
@@ -20,6 +20,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	Window *window;
 
 	window = new Window(bamFileName,outtie,meanCoverage,outputFileHeader,SV_options);
+	window-> version = version;
 	window->initTrans(head);
 	//expands a vector so that it is large enough to hold reads from each contig in separate elements
 	window->eventReads.resize(4);
@@ -90,8 +91,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 		
 	}
 	
-	window->interChrVariationsVCF.close();
-	window->intraChrVariationsVCF.close();
+	window->TIDDITVCF.close();
 	printf ("variant calling time consumption= %lds\n", time(NULL) - start);
 }
 

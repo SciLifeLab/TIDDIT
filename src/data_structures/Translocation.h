@@ -44,27 +44,29 @@ public:
 	//the file name of the bamfile
 	string bamFileName;
 	string indexFile;
-
+	string version;
 
 	//More static parts initialized by init method
 	map<string,unsigned int> contig2position;
 	map<unsigned int,string> position2contig;
+	vector<string> contig_ids;
+	vector<string> contig_length;
+	vector<string> contig_assembly;
 	vector< vector<float> > binnedCoverage;
 	vector< vector<float> > binnedQuality;
 	//Output part
 	string outputFileHeader;
-	ofstream interChrVariationsVCF;
-	ofstream intraChrVariationsVCF;
+	ofstream TIDDITVCF;
 
-        //A counter used to keep track of the number of events
-        long numberOfEvents;
+	//A counter used to keep track of the number of events
+	long numberOfEvents;
 
 
 	Window(string bamFileName, bool outtie, float meanCoverage,string outputFileHeader, map<string,int> SV_options); // constructor
 	void initTrans(SamHeader head);				   // initialise the contig to position array
 	void insertRead(BamAlignment alignment);	   // inserts a new read
 	queue<BamAlignment> queueAppend(queue<BamAlignment> queueOne,queue<BamAlignment> queueTwo); //append queues;
-	vector<long> findRegionOnB( vector<long> mate_positions, int minimumPairs,int maxDistance); //Finds the region of the event on chromosome B
+	vector<long> findRegionOnB( vector<long> mate_positions,int maxDistance); //Finds the region of the event on chromosome B
 	vector<long> newChrALimit(vector< vector< long > > variantPositions,long Bstart,long Bend); //resizes the window on CHRA
 	vector<double> computeStatisticsA(string bamFileName, int chrB, int start, int end, int32_t WindowLength, string indexFile); //compute coverage and number of links from window on the chrA
 	vector<string> classification(int chr, int startA,int endA,double covA,int startB,int endB,double covB,int meanInsert,int STDInsert,bool outtie,float covAB);
