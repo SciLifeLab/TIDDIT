@@ -305,7 +305,7 @@ void Window::insertRead(BamAlignment alignment) {
 			}
 			int split_read_start_pos=alignment.Position;
 			if(alignment.RefID == contigNr and splitPos < alignment.Position){
-				splitPos = split_read_start_pos;
+				split_read_start_pos = splitPos;
 			}
 
 			if (eventReads[this -> pairOrientation][contigNr].size() > 0){
