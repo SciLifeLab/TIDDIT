@@ -233,8 +233,7 @@ void Window::insertRead(BamAlignment alignment) {
 	bool alignment_split = false;	
 	alignment.BuildCharData();			
 	alignment_split = alignment.HasTag("SA");
-
-	if (alignment_split ) {
+	if (alignment_split) {
 		// parse split read to get the other segment position, akin to a mate.
 		string SA;
 		alignment.GetTag("SA",SA);
@@ -264,7 +263,7 @@ void Window::insertRead(BamAlignment alignment) {
 			int splitDistance = 0;
 
 			long splitPos = atol(SA_elements[1].c_str());
-	  		if(alignment.RefID < contigNr ){
+	  		if(alignment.RefID < contigNr or splitPos < alignment.Position){
 	  			//only forward variants
 				continue;
 			}
@@ -304,12 +303,16 @@ void Window::insertRead(BamAlignment alignment) {
 				}
 			
 			}
-			
+			int split_read_start_pos=alignment.Position;
+			if(alignment.RefID == contigNr and splitPos < alignment.Position){
+				splitPos = split_read_start_pos;
+			}
+
 			if (eventReads[this -> pairOrientation][contigNr].size() > 0){
-				discordantDistance = currrentAlignmentPos- eventReads[this -> pairOrientation][contigNr].back().Position;
+				discordantDistance = abs(split_read_start_pos - eventReads[this -> pairOrientation][contigNr].back().Position);
 			}
 			if( eventSplitReads[this -> pairOrientation][contigNr].size() > 0){
-				splitDistance = currrentAlignmentPos - eventSplitReads[this -> pairOrientation][contigNr].back().Position;
+				splitDistance = abs(split_read_start_pos - eventSplitReads[this -> pairOrientation][contigNr].back().Position);
 			}
 			//if we have any active set on these pairs of contigs
 			if(eventSplitReads[this -> pairOrientation][contigNr].size() > 0 or eventReads[this -> pairOrientation][contigNr].size() > 0){
