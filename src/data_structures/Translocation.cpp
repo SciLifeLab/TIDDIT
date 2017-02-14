@@ -263,7 +263,7 @@ void Window::insertRead(BamAlignment alignment) {
 			int splitDistance = 0;
 
 			long splitPos = atol(SA_elements[1].c_str());
-	  		if(alignment.RefID < contigNr or splitPos < alignment.Position){
+	  		if(alignment.RefID < contigNr){
 	  			//only forward variants
 				continue;
 			}
