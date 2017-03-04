@@ -9,6 +9,10 @@
 //function used to find translocations
 StructuralVariations::StructuralVariations() { }
 
+bool zeroth_columnsort(const vector<int>& lhs,const vector<int>& rhs){
+	return(lhs[1] < rhs[1]);
+}
+
 void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage, string outputFileHeader, string version, map<string,int> SV_options) {
 	size_t start = time(NULL);
 	//open the bam file
@@ -43,6 +47,11 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	window-> linksFromWin[1].resize(SV_options["contigsNumber"]);
 	window-> linksFromWin[2].resize(SV_options["contigsNumber"]);
 	window-> linksFromWin[3].resize(SV_options["contigsNumber"]);
+
+	for (int i=0;i< SV_options["contigsNumber"];i++){
+		window -> SV_calls[i] = vector<string>();
+		window -> SV_positions[i]= vector< vector< int> >();
+	}
 	
 	window -> numberOfEvents = 0;
 
@@ -76,7 +85,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	  }
 	}
 	
-	
+	//call any remaining variant
 	for(int i=0;i< SV_options["contigsNumber"];i++){
 		for (int j=0;j<4;j++){
 			if(window -> eventReads[j][i].size() >= window -> minimumPairs){
@@ -90,7 +99,18 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 		
 		
 	}
-	
+	//print calls
+	for(int i=0;i< SV_options["contigsNumber"];i++){
+		if(window->SV_calls[i].size() == 0){
+			continue;
+		}
+		vector<  vector <int> > sorted_SV_positions;
+		sorted_SV_positions = window -> SV_positions[i];
+		sort(sorted_SV_positions.begin(), sorted_SV_positions.end(),zeroth_columnsort );
+		for (int j=0;j < sorted_SV_positions.size();j++){
+			window-> TIDDITVCF <<  window -> SV_calls[i][ sorted_SV_positions[j][0] ];
+		}
+	}
 	window->TIDDITVCF.close();
 	printf ("variant calling time consumption= %lds\n", time(NULL) - start);
 }

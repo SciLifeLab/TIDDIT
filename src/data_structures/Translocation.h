@@ -54,6 +54,9 @@ public:
 	vector<string> contig_assembly;
 	vector< vector<float> > binnedCoverage;
 	vector< vector<float> > binnedQuality;
+	
+	map<unsigned int, vector<string> > SV_calls;
+	map<unsigned int, vector< vector <int> >  >SV_positions;
 	//Output part
 	string outputFileHeader;
 	ofstream TIDDITVCF;

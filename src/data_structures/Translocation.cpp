@@ -985,49 +985,101 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		
 		//TODO generate the info field as a string, instead of printing the separate variable directly to the file
 		if(svType != "INS" and svType !="BND"){
-			TIDDITVCF << this -> position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
-			TIDDITVCF << "N"       << "\t"	<< "<" << svType << ">";
-			TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
-			TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			std::stringstream var;
+			var << this -> position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
+			var << "N"       << "\t"	<< "<" << svType << ">";
+			var << "\t.\t"  << filter  << "\t" << infoField;
+			var << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+
+			SV_calls[chrA].push_back(var.str());
+			vector<int> row;
+			row.push_back(SV_calls[chrA].size()-1);
+			row.push_back(posA);
+			SV_positions[chrA].push_back(row);
+
 		}else{
-			TIDDITVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
-			TIDDITVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
-			TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
-			TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			std::stringstream bnd_st;
+			bnd_st << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
+			bnd_st << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+			bnd_st << "\t.\t"  << filter  << "\t" << infoField;
+			bnd_st << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+
+			SV_calls[chrA].push_back(bnd_st.str());
+			vector<int> row_st;
+			row_st.push_back(SV_calls[chrA].size()-1);
+			row_st.push_back(posA);
+			SV_positions[chrA].push_back(row_st);
+
 
 			//print the second breakend
-			TIDDITVCF <<  position2contig[chrB] << "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
-			TIDDITVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
-			TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
-			TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			std::stringstream bnd_nd;
+			bnd_nd <<  position2contig[chrB] << "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
+			bnd_nd << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+			bnd_nd << "\t.\t"  << filter  << "\t" << infoField;
+			bnd_nd << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+
+			SV_calls[chrB].push_back(bnd_nd.str());
+			vector<int> row_nd;
+			row_nd.push_back(SV_calls[chrB].size()-1);
+			row_nd.push_back(posB);
+			SV_positions[chrB].push_back(row_nd);
 
 		}
 		if(svType == "IDUP"){
-			TIDDITVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_2" << "\t";
-			TIDDITVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
-			TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
-			TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			std::stringstream bnd_st;
+			bnd_st << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_2" << "\t";
+			bnd_st << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+			bnd_st << "\t.\t"  << filter  << "\t" << infoField;
+			bnd_st << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+
+			SV_calls[chrA].push_back(bnd_st.str());
+			vector<int> row_st;
+			row_st.push_back(SV_calls[chrA].size()-1);
+			row_st.push_back(posA);
+			SV_positions[chrA].push_back(row_st);
 
 			//print the second breakend
-			TIDDITVCF <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_3" << "\t";
-			TIDDITVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
-			TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
-			TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			std::stringstream bnd_nd;
+			bnd_nd <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_3" << "\t";
+			bnd_nd << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+			bnd_nd << "\t.\t"  << filter  << "\t" << infoField;
+			bnd_nd << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+
+			SV_calls[chrB].push_back(bnd_nd.str());
+			vector<int> row_nd;
+			row_nd.push_back(SV_calls[chrB].size()-1);
+			row_nd.push_back(posB);
+			SV_positions[chrB].push_back(row_nd);
 		}
 
 
 	} else {
 		//print the first breakend
-		TIDDITVCF << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
-		TIDDITVCF << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
-		TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
-		TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+		std::stringstream bnd_st;
+		bnd_st << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
+		bnd_st << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
+		bnd_st << "\t.\t"  << filter  << "\t" << infoField;
+		bnd_st << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+
+		SV_calls[chrA].push_back(bnd_st.str());
+		vector<int> row_st;
+		row_st.push_back(SV_calls[chrA].size()-1);
+		row_st.push_back(posA);
+		SV_positions[chrA].push_back(row_st);
 
 		//print the second breakend
-		TIDDITVCF <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
-		TIDDITVCF << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
-		TIDDITVCF << "\t.\t"  << filter  << "\t" << infoField;
-		TIDDITVCF << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+		std::stringstream bnd_nd;
+		bnd_nd <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
+		bnd_nd << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
+		bnd_nd << "\t.\t"  << filter  << "\t" << infoField;
+		bnd_nd << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+
+		SV_calls[chrB].push_back(bnd_nd.str());
+		vector<int> row_nd;
+		row_nd.push_back(SV_calls[chrB].size()-1);
+		row_nd.push_back(posB);
+		SV_positions[chrB].push_back(row_nd);
+
 	}
 	return;
 
