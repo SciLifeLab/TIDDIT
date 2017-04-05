@@ -8,6 +8,7 @@ TIDDIT has two modes of analysing bam files. The sv mode, which is used to searc
 
 TIDDIT is mainly designed to run on whole genome sequencing data. However, TIDDIT is also able to perform variant calling on exome data if the coverage is supplied through the -c parameter.
 
+[![DOI](https://zenodo.org/badge/81584907.svg)](https://zenodo.org/badge/latestdoi/81584907)
 
 INSTALLATION
 ==============
