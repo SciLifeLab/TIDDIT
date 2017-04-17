@@ -898,6 +898,11 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		if(discordantPairStatistics["expected_links"] != 0){
 			ratio1=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
 			stat_ratio=ratio1;
+			if(ratio1 > 1.4){
+				GT="1/1";
+			}else{
+				GT="0/1";
+			}
 		}
 		if(discordantPairStatistics["expected_links2"] != 0){
 			ratio2=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links2"];
@@ -958,6 +963,11 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 
 		if(E_links > 0){
 			RATIO=double(splitReadStatistics["split_reads"])/double(E_links);
+			if(RATIO > 1.4){
+				GT="1/1";
+			}else{
+				GT="0/1";
+			}
 		}
 		filter=filterFunction(RATIO*2,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"],this -> ploidy);
 		
