@@ -143,7 +143,8 @@ string Window::VCFHeader(){
 	//Define the info fields
 	headerString+="##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n";
 	headerString+="##INFO=<ID=END,Number=1,Type=String,Description=\"End of an intra-chromosomal variant\">\n";
-	headerString+="##INFO=<ID=LFW,Number=1,Type=Integer,Description=\"Links from window\">\n";
+	headerString+="##INFO=<ID=LFA,Number=1,Type=Integer,Description=\"Links from window A\">\n";
+	headerString+="##INFO=<ID=LFB,Number=1,Type=Integer,Description=\"Links from window B\">\n";
 	headerString+="##INFO=<ID=LCB,Number=1,Type=Integer,Description=\"Links to chromosome B\">\n";
 	headerString+="##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\">\n";
 	headerString+="##INFO=<ID=COVA,Number=1,Type=Float,Description=\"Coverage on window A\">\n";
@@ -223,10 +224,8 @@ void Window::insertRead(BamAlignment alignment) {
 				eventReads[j][i]=queue<BamAlignment>();
 				eventSplitReads[j][i]=vector<BamAlignment>();
 				linksFromWin[j][i]=queue<int>();
-			}
-			
-			
-		}
+			}	
+		}	
 		cout << "working on seqence " << position2contig[alignment.RefID] << "\n";
 	}
 	
@@ -340,10 +339,11 @@ void Window::insertRead(BamAlignment alignment) {
 	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
 		if(alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) {  // insert only "forward" variations
 
-
-			for(int i=0;i< eventReads[this -> pairOrientation].size();i++){
-				for(int j=0;j <4;j++){
-					linksFromWin[j][i].push(alignment.Position);
+			if( alignment.RefID == alignment.MateRefID ){
+				for(int i=0;i<eventReads[this -> pairOrientation].size();i++){
+					for (int j=0; j<4;j++){
+						linksFromWin[j][i].push(alignment.Position);
+					}
 				}
 			}
 			
@@ -381,7 +381,6 @@ void Window::insertRead(BamAlignment alignment) {
 					eventReads[this -> pairOrientation][alignment.MateRefID]=queue<BamAlignment>();
 					linksFromWin[this -> pairOrientation][alignment.MateRefID]=queue<int>();										
 					eventSplitReads[this -> pairOrientation][alignment.MateRefID]=vector<BamAlignment>();
-
 					//the current alignment is inserted
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}
@@ -432,6 +431,24 @@ float Window::computeRegionalQuality(int chrB, int start, int end,int bin_size){
 	
 }
 
+
+
+int Window::computeRegionalLinks(int chrB,int start, int end,int bin_size){
+	float coverageB=0;
+	int element=0;
+	int links=0;
+	unsigned int pos =floor(double(start)/bin_size)*bin_size;
+	
+	unsigned int nextpos =pos+bin_size;
+	while(nextpos >= start and pos <= end and pos/bin_size < binnedDiscordants[chrB].size() ){
+			element=pos/bin_size;
+			links+= binnedDiscordants[chrB][element];
+			pos=nextpos;
+			nextpos += bin_size;
+	}
+	return(links);	
+}
+
 //This function accepts a queue with alignments that links to chrB from chrA, the function returns the number of reads that are positioned inside the region on A and have mates that are linking anywhere on B
 vector<int> Window::findLinksToChr2(queue<BamAlignment> ReadQueue,long startChrA,long stopChrA,long startChrB,long endChrB, int pairsFormingLink){
 	int linkNumber=0;
@@ -473,6 +490,7 @@ vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int star
 				linksFromWindow+=1;
 			}
 	}
+	linksFromWindow += computeRegionalLinks(this -> chr,start, end,100);
 	//calculates the coverage and returns the coverage within the window
 	double coverageA=computeCoverageB(this -> chr,start,end,WindowLength);
 	statisticsVector.push_back(coverageA);statisticsVector.push_back(linksFromWindow);
@@ -614,7 +632,7 @@ bool Window::computeVariations(int chr2) {
 				}
 				
 				float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);
-				float expectedLinksInWindow2 = ExpectedLinks(mean_insert, mean_insert, 0, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);					
+				float expectedLinksInWindow2 = ExpectedLinks(mean_insert+std_insert, mean_insert+std_insert, 0, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);					
 				if (expectedLinksInWindow > 10*pairsFormingLink){
 					//dont print the variant if it is pure garbage
 					continue;
@@ -641,6 +659,7 @@ bool Window::computeVariations(int chr2) {
 				discordantPairStatistics["windowB_end"]=stopSecondWindow+1;
 				discordantPairStatistics["orientation"]=pairOrientation;
 				discordantPairStatistics["links_window"]=linksFromWindow;
+				discordantPairStatistics["links_window_B"]=computeRegionalLinks(chr2,startSecondWindow, stopSecondWindow, 100);
 				discordantPairStatistics["links_chr"]=numLinksToChr2;
 				discordantPairStatistics["links_event"]=pairsFormingLink;
 				discordantPairStatistics["expected_links"]=abs(expectedLinksInWindow)/this -> ploidy;
@@ -898,14 +917,18 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		if(discordantPairStatistics["expected_links"] != 0){
 			ratio1=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
 			stat_ratio=ratio1;
-			if(ratio1 > 1.4){
+
+		}
+		if(discordantPairStatistics["expected_links2"] != 0){
+			ratio2=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links2"];
+			if(ratio1 == -1){
+				stat_ratio=ratio2;
+			}
+			if(ratio2 > 1.4 and GT == "./1"){
 				GT="1/1";
 			}else{
 				GT="0/1";
 			}
-		}
-		if(discordantPairStatistics["expected_links2"] != 0){
-			ratio2=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links2"];
 		}
 		
 		
@@ -917,15 +940,19 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		if(svType !="BND"){
 		ss << ";END=" << discordantPairStatistics["end"];
 		} 
-		ss << ";LFW=" << discordantPairStatistics["links_window"];
-		ss << ";LCB="  << discordantPairStatistics["links_chr"] << ";LTE=" << discordantPairStatistics["links_event"] << ";COVA=" <<  statistics_floats["coverage_start"];
+		ss << ";LFA=" << discordantPairStatistics["links_window"];
+		ss << ";LCB="  << discordantPairStatistics["links_chr"] << ";LTE=" << discordantPairStatistics["links_event"] << ";LFB=" << discordantPairStatistics["links_window_B"] << ";COVA=" <<  statistics_floats["coverage_start"];
 		ss << ";COVM=" << statistics_floats["coverage_mid"];
 		ss << ";COVB=" << statistics_floats["coverage_end"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
 		ss << ";QUALA=" << discordantPairStatistics["qualityA"] << ";QUALB=" << discordantPairStatistics["qualityB"];
 
 		ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  ratio1;
 		ss << ";EL2="  << discordantPairStatistics["expected_links2"] << ";RATIO2=" <<  ratio2;
-		filter=filterFunction(stat_ratio,discordantPairStatistics["links_event"],discordantPairStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"],this -> ploidy );	
+		int stat_links=discordantPairStatistics["links_event"];
+		if(discordantPairStatistics["links_event"] < discordantPairStatistics["links_window_B"]){
+			stat_links=discordantPairStatistics["links_window_B"];
+		}
+		filter=filterFunction(stat_ratio,stat_links,discordantPairStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"],this -> ploidy );	
 
 		
 		infoField += ss.str();
@@ -984,7 +1011,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		ss << ";WINB=" << splitReadStatistics["windowB_start"] << "," << splitReadStatistics["windowB_end"];
 		ss << ";COVA=" << statistics_floats["coverage_start"] << ";COVM=" << statistics_floats["coverage_mid"] << ";COVB=" << statistics_floats["coverage_end"];
 		ss <<  ";QUALA=" << splitReadStatistics["qualityA"] << ";QUALB=" << splitReadStatistics["qualityB"];
-		ss << ";OA=" << read1_orientation << ";OB=" << read2_orientation << ";LFW=" << splitReadStatistics["links_window"] ;
+		ss << ";OA=" << read1_orientation << ";OB=" << read2_orientation << ";LFA=" << splitReadStatistics["links_window"] ;
 		ss << ";ER=" << E_links << ";RATIO=" << RATIO;
 		infoField += ss.str();
 	}

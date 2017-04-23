@@ -64,8 +64,10 @@ public:
     int binStart;
 	int binEnd;
 	int currentChr;
+	bool discordants;
 	vector< vector<unsigned int> > coverageStructure;
-	vector< vector< vector<unsigned int> > >qualityStructure;
+	vector< vector< vector<unsigned int> > > qualityStructure;
+	vector< vector<unsigned int> > discordantsStructure;
 	map<unsigned int,string> position2contig;
 	map<string,unsigned int> contig2position;
 	vector<int> contigLength;
@@ -74,7 +76,7 @@ public:
 	string output;
 
 	//constructor
-	Cov(int binSize,string bamFile,string output);
+	Cov(int binSize,string bamFile,string output,bool discordants);
 	//module used to calculate the coverage of the genome
 	void bin(BamAlignment currentRead);
 	void printCoverage();
@@ -202,7 +204,7 @@ static float ExpectedLinks(uint32_t sizeA, uint32_t sizeB, uint32_t gap, float i
 static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genomeLength, uint32_t max_insert, uint32_t min_insert,bool is_mp,int quality,string outputFileHeader) {
 	
 	Cov *calculateCoverage;
-	calculateCoverage = new Cov(100,bamFileName,outputFileHeader);
+	calculateCoverage = new Cov(100,bamFileName,outputFileHeader,true);
 	
 	
 	BamReader bamFile;

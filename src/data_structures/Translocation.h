@@ -24,7 +24,7 @@ public:
 	vector<long> covOnChrA;
 	vector<long> tmpCovOnChrA;
 
-	vector< vector< queue<int> > > linksFromWin;
+	vector< vector< queue<int> > >linksFromWin;
 
 
 	//More static parts initialized by constructor
@@ -54,6 +54,7 @@ public:
 	vector<string> contig_assembly;
 	vector< vector<float> > binnedCoverage;
 	vector< vector<float> > binnedQuality;
+	vector< vector<int> > binnedDiscordants;
 	
 	map<unsigned int, vector<string> > SV_calls;
 	map<unsigned int, vector< vector <int> >  >SV_positions;
@@ -78,6 +79,7 @@ public:
 	void VCFLine(map<string,float> statistics_floats,map<string,int> discordantPairStatistics, map<string,int> splitReadStatistics,string svType,string GT, string CN);
 	vector<int> findLinksToChr2(queue<BamAlignment> ReadQueue,long startChrA,long stopChrA,long startChrB,long endChrB, int pairsFormingLink);
 	float computeCoverageB(int chrB, int start, int end, int32_t secondWindowLength); //computes the coverage of the window of chromosome B
+	int computeRegionalLinks(int chrB,int start, int end,int bin_size);
 	bool computeVariations(int chr2);
 
 };

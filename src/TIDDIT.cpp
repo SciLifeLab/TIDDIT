@@ -270,8 +270,8 @@ int main(int argc, char **argv) {
 		if(vm["-o"] != ""){
 		    outputFileHeader=vm["-o"];
 		}
-
-		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader);
+		bool discordants = false;
+		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader,discordants);
 		BamReader bam;
 		bam.Open(alignmentFile);
 		BamAlignment currentRead;
