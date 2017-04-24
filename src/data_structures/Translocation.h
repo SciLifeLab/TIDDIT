@@ -67,7 +67,7 @@ public:
 
 
 	Window(string bamFileName, bool outtie, float meanCoverage,string outputFileHeader, map<string,int> SV_options); // constructor
-	void initTrans(SamHeader head);				   // initialise the contig to position array
+	void initTrans(SamHeader head,string libraryData);				   // initialise the contig to position array
 	void insertRead(BamAlignment alignment);	   // inserts a new read
 	queue<BamAlignment> queueAppend(queue<BamAlignment> queueOne,queue<BamAlignment> queueTwo); //append queues;
 	vector<long> findRegionOnB( vector<long> mate_positions,int maxDistance); //Finds the region of the event on chromosome B
@@ -75,7 +75,7 @@ public:
 	vector<double> computeStatisticsA(string bamFileName, int chrB, int start, int end, int32_t WindowLength, string indexFile); //compute coverage and number of links from window on the chrA
 	vector<string> classification(int chr, int startA,int endA,double covA,int startB,int endB,double covB,int meanInsert,int STDInsert,bool outtie,float covAB);
 	float computeRegionalQuality(int chrB, int start, int end,int bin_size);
-	string VCFHeader();
+	string VCFHeader(string libraryData);
 	void VCFLine(map<string,float> statistics_floats,map<string,int> discordantPairStatistics, map<string,int> splitReadStatistics,string svType,string GT, string CN);
 	vector<int> findLinksToChr2(queue<BamAlignment> ReadQueue,long startChrA,long stopChrA,long startChrB,long endChrB, int pairsFormingLink);
 	float computeCoverageB(int chrB, int start, int end, int32_t secondWindowLength); //computes the coverage of the window of chromosome B

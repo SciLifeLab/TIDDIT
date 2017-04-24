@@ -25,7 +25,14 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 
 	window = new Window(bamFileName,outtie,meanCoverage,outputFileHeader,SV_options);
 	window-> version = version;
-	window->initTrans(head);
+	stringstream ss;
+	string orientation_string="innie";
+	if(outtie == true){
+		orientation_string="outtie";
+	}
+	ss << "##LibraryStats Coverage=" << meanCoverage << " ReadLength=" << SV_options["readLength"] << " MeanInsertSize=" << SV_options["meanInsert"] << " STDInsertSize=" << SV_options["STDInsert"] << " Orientation=" << orientation_string; 
+	string libraryData=ss.str();
+	window->initTrans(head,libraryData);
 	//expands a vector so that it is large enough to hold reads from each contig in separate elements
 	window->eventReads.resize(4);
 	window->eventReads[0].resize(SV_options["contigsNumber"]);

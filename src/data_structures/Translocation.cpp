@@ -118,7 +118,7 @@ bool sortMate(long i, long  j) {
 	return (i < j);
 }
 
-string Window::VCFHeader(){
+string Window::VCFHeader(string libraryData){
 	string headerString ="";
 	//Define fileformat and source
 	headerString+="##fileformat=VCFv4.1\n";
@@ -174,6 +174,8 @@ string Window::VCFHeader(){
 	headerString+="##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy number genotype for imprecise events\">\n";
 	headerString+="##FORMAT=<ID=PE,Number=1,Type=Integer,Description=\"Number of paired-ends that support the event\">\n";
 	headerString+="##FORMAT=<ID=SR,Number=1,Type=Integer,Description=\"Number of split reads that support the event\">\n";
+	//this sting contains info such as insert size and mean coverage
+	headerString+=libraryData+"\n";
 	//Header
 	headerString+="#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
 	return(headerString);
@@ -781,7 +783,7 @@ bool Window::computeVariations(int chr2) {
 
 }
 
-void Window::initTrans(SamHeader head) {
+void Window::initTrans(SamHeader head,string libraryData) {
 	uint32_t contigsNumber = 0;
 	SamSequenceDictionary sequences  = head.Sequences;
 	for(SamSequenceIterator sequence = sequences.Begin() ; sequence != sequences.End(); ++sequence) {
@@ -797,7 +799,7 @@ void Window::initTrans(SamHeader head) {
 	string intra_chr_eventsVCF = outputFileHeader + ".vcf";
 	this->TIDDITVCF.open(intra_chr_eventsVCF.c_str());
 	if(head.HasReadGroups() == false){
-		this->TIDDITVCF << VCFHeader() << outputFileHeader << "\n";
+		this->TIDDITVCF << VCFHeader(libraryData) << outputFileHeader << "\n";
 	}else{
 		SamReadGroupDictionary readGroups = head.ReadGroups;
 		string SM = outputFileHeader;
@@ -807,7 +809,7 @@ void Window::initTrans(SamHeader head) {
 				break;
 			}
 		}
-		this->TIDDITVCF << VCFHeader() << SM << "\n";
+		this->TIDDITVCF << VCFHeader(libraryData) << SM << "\n";
 	}
 
 }
