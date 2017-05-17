@@ -30,7 +30,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	if(outtie == true){
 		orientation_string="outtie";
 	}
-	ss << "##LibraryStats Coverage=" << meanCoverage << " ReadLength=" << SV_options["readLength"] << " MeanInsertSize=" << SV_options["meanInsert"] << " STDInsertSize=" << SV_options["STDInsert"] << " Orientation=" << orientation_string; 
+	ss << "##LibraryStats=TIDDIT Coverage=" << meanCoverage << " ReadLength=" << SV_options["readLength"] << " MeanInsertSize=" << SV_options["meanInsert"] << " STDInsertSize=" << SV_options["STDInsert"] << " Orientation=" << orientation_string; 
 	string libraryData=ss.str();
 	window->initTrans(head,libraryData);
 	//expands a vector so that it is large enough to hold reads from each contig in separate elements
