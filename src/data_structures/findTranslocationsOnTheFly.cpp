@@ -13,7 +13,7 @@ bool zeroth_columnsort(const vector<int>& lhs,const vector<int>& rhs){
 	return(lhs[1] < rhs[1]);
 }
 
-void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage, string outputFileHeader, string version, map<string,int> SV_options) {
+void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage, string outputFileHeader, string version,string command, map<string,int> SV_options) {
 	size_t start = time(NULL);
 	//open the bam file
 	BamReader bamFile;
@@ -30,7 +30,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	if(outtie == true){
 		orientation_string="outtie";
 	}
-	ss << "##LibraryStats=TIDDIT Coverage=" << meanCoverage << " ReadLength=" << SV_options["readLength"] << " MeanInsertSize=" << SV_options["meanInsert"] << " STDInsertSize=" << SV_options["STDInsert"] << " Orientation=" << orientation_string; 
+	ss << "##LibraryStats=TIDDIT-" << version <<   " Coverage=" << meanCoverage << " ReadLength=" << SV_options["readLength"] << " MeanInsertSize=" << SV_options["meanInsert"] << " STDInsertSize=" << SV_options["STDInsert"] << " Orientation=" << orientation_string << "\n" << "TIDDITcmd=\"" << command << "\""; 
 	string libraryData=ss.str();
 	window->initTrans(head,libraryData);
 	//expands a vector so that it is large enough to hold reads from each contig in separate elements

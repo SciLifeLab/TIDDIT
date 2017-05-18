@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 	float insertStd;
 	int min_variant_size= 100;
 	string outputFileHeader ="output";
-	string version = "1.1.3";
+	string version = "1.1.4";
 	
 	//collect all options as a vector
 	vector<string> arguments(argv, argv + argc);
@@ -113,7 +113,14 @@ int main(int argc, char **argv) {
 			return(1);
 		}
 	}
-	
+
+	string argString = "";
+
+	//store the options in a map
+	for(int i = 0; i < arguments.size(); i ++){
+		argString += " " + arguments[i];
+	}
+
 	//print help message
 	if(vm["--help"] == "found" or arguments.size() == 0){
 		if( vm["--sv"] == "found"){
@@ -257,7 +264,7 @@ int main(int argc, char **argv) {
         
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();		
-		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, outtie, coverage,outputFileHeader, version ,SV_options);
+		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, outtie, coverage,outputFileHeader, version, "TIDDIT" + argString,SV_options);
 
 
 	//the coverage module

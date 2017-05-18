@@ -27,7 +27,7 @@ public:
 	//constructor
 	StructuralVariations();
 	//main function
-	void findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage,string outputFileHeader,string version, map<string,int> SV_options);
+	void findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage,string outputFileHeader,string version,string commandline, map<string,int> SV_options);
 };
 
 //This class contains functions used to recognize and read vcf and bed files
