@@ -26,6 +26,14 @@ ostream& test(ofstream &coverageOutput,string output){
 //constructor
 Cov::Cov(int binSize,string bamFile,string output,bool discordants){
 	ostream& covout=test(coverageOutput,output);
+	if(output != "stdout"){
+		coverageOutput.open((output+".tab").c_str());
+		static ostream& covout = coverageOutput;
+		
+	}else{
+		static ostream& covout=cout;
+	}
+
 
 
 	//initialize the function
@@ -37,15 +45,8 @@ Cov::Cov(int binSize,string bamFile,string output,bool discordants){
     this -> contigsNumber = 0;
     this -> bamFile = bamFile;
 	this -> discordants=discordants;
+	this -> output = output;
 
-	if(output != "stdout"){
-		coverageOutput.open((output+".tab").c_str());
-		static ostream& covout = coverageOutput;
-		
-	}else{
-		static ostream& covout=cout;
-	}
-	
 	if (this -> discordants == true){
 		covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "quality" << "\t" << "discordants" << endl;
 	}else{
@@ -136,7 +137,11 @@ void Cov::bin(BamAlignment currentRead){
 
 //prints the results
 void Cov::printCoverage(){
-    ostream& covout = test(coverageOutput,output);
+	ostream& covout=test(coverageOutput,this -> output);
+	if ( this -> output == "stdout") {
+		static ostream& covout=cout;
+	}
+
     for(int i=0;i<contigsNumber;i++){
         for(int j=0;j<coverageStructure[i].size();j++){
             int binStart = j*binSize;

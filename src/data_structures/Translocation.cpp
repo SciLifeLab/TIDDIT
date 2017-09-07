@@ -21,23 +21,13 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	string end= int2str(startB);
 	
 	string GT="./1";
-	int CN=1;
 
 	double coverage= this -> meanCoverage;
 	float coverageToleranceFraction = 0.5/double(this -> ploidy);
 	float coverageTolerance=this -> meanCoverage*coverageToleranceFraction;
 
-
-	// for heterozygous events
-	CN = round(covAB / (coverage/double(this->ploidy)) ) - 1; // CN sounds like ratio to coverage per chr, minus 1? at least for het vars with the other allele at count 1.
-	if (CN < 0) { CN = 0; }
-        else if ( (CN+1 < 1.5 + 0.5*coverageToleranceFraction) && (CN+1 > 1 + 0.5*coverageToleranceFraction)) { 
-	  // dup genotype is 0/1
-          GT="0/1";
-	}
-
+	int CN = round( double(this -> ploidy)*(covAB/coverage) );
 	//if the orientation of one of the reads is normal, but the other read is inverted, the variant is an inversion
-	//both reads are pointing to the left
 	if(this -> pairOrientation  == 0 or this -> pairOrientation == 3){
 			svType= "INV";
 	}
@@ -61,36 +51,23 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 				svType= "DEL";
 				if (covAB < coverageTolerance) {
 				  GT = "1/1";
-				  //				  CN = 0; 
 				} else {
 				  GT = "0/1";
-				  // CN = 1;
 				}
-			}//if the coverage of all regions is normal and region A and B are disjunct, the event is an insertion(mobile element)
-			else if( ( covAB < coverage+coverageTolerance and covAB > coverage-coverageTolerance ) and 
-				( covB < coverage+coverageTolerance and covB > coverage-coverageTolerance )	and
-				( covA < coverage+coverageTolerance and covA > coverage-coverageTolerance )){
-				svType = "INS";
-			}
-			//if A and B are disjunct and only one of them have coverage above average, the event is an interspersed duplication
-			else if( (covA > coverage+coverageTolerance and covB < coverage+coverageTolerance ) or (covB > coverage+coverageTolerance and covA < coverage+coverageTolerance ) ){
-				svType = "IDUP";
-				// it would be a good idea to split this into one DUP and one BND, indicating the insertion point
-				//label the region marked as high coverage as the duplications
-				if(covA > coverage+coverageTolerance){
-					start=int2str(startA);
-					end = int2str(endA);
-				}else if(covB > coverage+coverageTolerance){
-					start=int2str(startB);
-					end=int2str(endB);			
-				}
-			}
+		}
 	}
 		
 	//if the event is a duplication, but the exact type cannot be specified
 	if(svType == "BND"){
-		if(covA > coverage+coverageTolerance or covB > coverage+coverageTolerance or covAB > coverage+coverageTolerance){
+		if(covAB > coverage+coverageTolerance){
 			svType = "DUP";
+		}
+	}
+	if (svType == "DUP" or svType == "TDUP"){
+		if(covAB > (double(this -> ploidy)+1)*coverage/double(this -> ploidy)+coverageTolerance){
+				  GT = "1/1";
+		}else{
+				  GT = "0/1";
 		}
 	}
 	vector<string> svVector;
@@ -172,8 +149,8 @@ string Window::VCFHeader(string libraryData){
 	//set format 
 	headerString+="##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n";
 	headerString+="##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy number genotype for imprecise events\">\n";
-	headerString+="##FORMAT=<ID=PE,Number=1,Type=Integer,Description=\"Number of paired-ends that support the event\">\n";
-	headerString+="##FORMAT=<ID=SR,Number=1,Type=Integer,Description=\"Number of split reads that support the event\">\n";
+	headerString+="##FORMAT=<ID=DV,Number=1,Type=Integer,Description=\"Number of paired-ends that support the event\">\n";
+	headerString+="##FORMAT=<ID=RV,Number=1,Type=Integer,Description=\"Number of split reads that support the event\">\n";
 	//this sting contains info such as insert size and mean coverage
 	headerString+=libraryData+"\n";
 	//Header
@@ -1028,7 +1005,11 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 			var << this -> position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
 			var << "N"       << "\t"	<< "<" << svType << ">";
 			var << "\t.\t"  << filter  << "\t" << infoField;
-			var << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			if (CN != int2str(this -> ploidy) ){
+				var << "\tGT:CN:DV:RV\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			}else{
+				var << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			}
 
 			SV_calls[chrA].push_back(var.str());
 			vector<int> row;
@@ -1041,7 +1022,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 			bnd_st << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
 			bnd_st << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
 			bnd_st << "\t.\t"  << filter  << "\t" << infoField;
-			bnd_st << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			bnd_st << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 			SV_calls[chrA].push_back(bnd_st.str());
 			vector<int> row_st;
@@ -1055,7 +1036,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 			bnd_nd <<  position2contig[chrB] << "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
 			bnd_nd << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
 			bnd_nd << "\t.\t"  << filter  << "\t" << infoField;
-			bnd_nd << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			bnd_nd << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 			SV_calls[chrB].push_back(bnd_nd.str());
 			vector<int> row_nd;
@@ -1064,33 +1045,6 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 			SV_positions[chrB].push_back(row_nd);
 
 		}
-		if(svType == "IDUP"){
-			std::stringstream bnd_st;
-			bnd_st << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_2" << "\t";
-			bnd_st << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
-			bnd_st << "\t.\t"  << filter  << "\t" << infoField;
-			bnd_st << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
-
-			SV_calls[chrA].push_back(bnd_st.str());
-			vector<int> row_st;
-			row_st.push_back(SV_calls[chrA].size()-1);
-			row_st.push_back(posA);
-			SV_positions[chrA].push_back(row_st);
-
-			//print the second breakend
-			std::stringstream bnd_nd;
-			bnd_nd <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_3" << "\t";
-			bnd_nd << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
-			bnd_nd << "\t.\t"  << filter  << "\t" << infoField;
-			bnd_nd << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
-
-			SV_calls[chrB].push_back(bnd_nd.str());
-			vector<int> row_nd;
-			row_nd.push_back(SV_calls[chrB].size()-1);
-			row_nd.push_back(posB);
-			SV_positions[chrB].push_back(row_nd);
-		}
-
 
 	} else {
 		//print the first breakend
@@ -1098,7 +1052,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		bnd_st << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
 		bnd_st << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
 		bnd_st << "\t.\t"  << filter  << "\t" << infoField;
-		bnd_st << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+		bnd_st << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 		SV_calls[chrA].push_back(bnd_st.str());
 		vector<int> row_st;
@@ -1111,7 +1065,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		bnd_nd <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
 		bnd_nd << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
 		bnd_nd << "\t.\t"  << filter  << "\t" << infoField;
-		bnd_nd << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+		bnd_nd << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 		SV_calls[chrB].push_back(bnd_nd.str());
 		vector<int> row_nd;

@@ -34,8 +34,8 @@ int main(int argc, char **argv) {
 	//MAIN VARIABLE
 
 	bool outtie 				    = true;	 // library orientation
-	uint32_t minimumSupportingPairs = 3;
-	uint32_t minimumSupportingReads = 3;
+	uint32_t minimumSupportingPairs = 4;
+	uint32_t minimumSupportingReads = 6;
 	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 100000;  // max insert size
 	int minimum_mapping_quality		=10;
@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 	float insertStd;
 	int min_variant_size= 100;
 	string outputFileHeader ="output";
-	string version = "1.1.5";
+	string version = "1.1.6";
 	
 	//collect all options as a vector
 	vector<string> arguments(argv, argv + argc);
