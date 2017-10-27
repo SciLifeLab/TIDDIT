@@ -34,8 +34,8 @@ int main(int argc, char **argv) {
 	//MAIN VARIABLE
 
 	bool outtie 				    = true;	 // library orientation
-	uint32_t minimumSupportingPairs = 3;
-	uint32_t minimumSupportingReads = 3;
+	uint32_t minimumSupportingPairs = 4;
+	uint32_t minimumSupportingReads = 6;
 	int min_insert				    = 100;      // min insert size
 	int max_insert				    = 100000;  // max insert size
 	int minimum_mapping_quality		=10;
@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 	float insertStd;
 	int min_variant_size= 100;
 	string outputFileHeader ="output";
-	string version = "1.0.2";
+	string version = "1.1.6";
 	
 	//collect all options as a vector
 	vector<string> arguments(argv, argv + argc);
@@ -113,7 +113,14 @@ int main(int argc, char **argv) {
 			return(1);
 		}
 	}
-	
+
+	string argString = "";
+
+	//store the options in a map
+	for(int i = 0; i < arguments.size(); i ++){
+		argString += " " + arguments[i];
+	}
+
 	//print help message
 	if(vm["--help"] == "found" or arguments.size() == 0){
 		if( vm["--sv"] == "found"){
@@ -257,7 +264,7 @@ int main(int argc, char **argv) {
         
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();		
-		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, outtie, coverage,outputFileHeader, version ,SV_options);
+		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, outtie, coverage,outputFileHeader, version, "TIDDIT" + argString,SV_options);
 
 
 	//the coverage module
@@ -270,8 +277,8 @@ int main(int argc, char **argv) {
 		if(vm["-o"] != ""){
 		    outputFileHeader=vm["-o"];
 		}
-
-		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader);
+		bool discordants = false;
+		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader,discordants);
 		BamReader bam;
 		bam.Open(alignmentFile);
 		BamAlignment currentRead;

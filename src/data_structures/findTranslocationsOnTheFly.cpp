@@ -13,7 +13,7 @@ bool zeroth_columnsort(const vector<int>& lhs,const vector<int>& rhs){
 	return(lhs[1] < rhs[1]);
 }
 
-void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage, string outputFileHeader, string version, map<string,int> SV_options) {
+void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage, string outputFileHeader, string version,string command, map<string,int> SV_options) {
 	size_t start = time(NULL);
 	//open the bam file
 	BamReader bamFile;
@@ -25,7 +25,14 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 
 	window = new Window(bamFileName,outtie,meanCoverage,outputFileHeader,SV_options);
 	window-> version = version;
-	window->initTrans(head);
+	stringstream ss;
+	string orientation_string="innie";
+	if(outtie == true){
+		orientation_string="outtie";
+	}
+	ss << "##LibraryStats=TIDDIT-" << version <<   " Coverage=" << meanCoverage << " ReadLength=" << SV_options["readLength"] << " MeanInsertSize=" << SV_options["meanInsert"] << " STDInsertSize=" << SV_options["STDInsert"] << " Orientation=" << orientation_string << "\n" << "##TIDDITcmd=\"" << command << "\""; 
+	string libraryData=ss.str();
+	window->initTrans(head,libraryData);
 	//expands a vector so that it is large enough to hold reads from each contig in separate elements
 	window->eventReads.resize(4);
 	window->eventReads[0].resize(SV_options["contigsNumber"]);
@@ -41,12 +48,14 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 
 	window-> binnedCoverage.resize(SV_options["contigsNumber"]);
 	window-> binnedQuality.resize(SV_options["contigsNumber"]);
+	window-> binnedDiscordants.resize(SV_options["contigsNumber"]);
 	
 	window-> linksFromWin.resize(4);
 	window-> linksFromWin[0].resize(SV_options["contigsNumber"]);
 	window-> linksFromWin[1].resize(SV_options["contigsNumber"]);
 	window-> linksFromWin[2].resize(SV_options["contigsNumber"]);
 	window-> linksFromWin[3].resize(SV_options["contigsNumber"]);
+
 
 	for (int i=0;i< SV_options["contigsNumber"];i++){
 		window -> SV_calls[i] = vector<string>();
@@ -69,6 +78,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
     		}
 			window -> binnedCoverage[window -> contig2position[splitline[0]]].push_back(atof(splitline[3].c_str()));
 			window -> binnedQuality[window -> contig2position[splitline[0]]].push_back(atof(splitline[4].c_str()));
+			window-> binnedDiscordants[window -> contig2position[splitline[0]]].push_back(atof(splitline[5].c_str()));
 		}
 		line_number += 1;
 	}
@@ -94,10 +104,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 			}
 			window->eventReads[j][i]=queue<BamAlignment>();
 			window->eventSplitReads[j][i] = vector<BamAlignment>();
-			window->linksFromWin[j][i]=queue<int>();
-		}
-		
-		
+		}	
 	}
 	//print calls
 	for(int i=0;i< SV_options["contigsNumber"];i++){

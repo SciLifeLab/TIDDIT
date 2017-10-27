@@ -8,6 +8,9 @@ TIDDIT has two modes of analysing bam files. The sv mode, which is used to searc
 
 TIDDIT is mainly designed to run on whole genome sequencing data. However, TIDDIT is also able to perform variant calling on exome data if the coverage is supplied through the -c parameter.
 
+A nextflow wrapper for running multiple samples at once is available in the wrappers folder
+
+[![DOI](https://zenodo.org/badge/81584907.svg)](https://zenodo.org/badge/latestdoi/81584907)
 
 INSTALLATION
 ==============
@@ -56,11 +59,11 @@ TIDDIT may be fine tuned by altering these optional parameters:
                         
     -d - the pair orientation, use this setting to override the automatic orientation selection
             
-    -p - the minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 3
+    -p - the minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 4
     
-    -r - the minimum number of supplementary alignments used to call small SV. Default is 3
+    -r - the minimum number of supplementary alignments used to call small SV. Default is 6
             
-    -q - the minimum mapping quality of the discordant pairs/supplementary aignments 
+    -q - the minimum mapping quality of the discordant pairs/supplementary alignments 
             forming a variant. Default value is 10.
                                         
     -c - the library coverage. Default is calculated from average genomic coverage.

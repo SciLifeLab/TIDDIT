@@ -24,7 +24,7 @@ ostream& test(ofstream &coverageOutput,string output){
 
 }
 //constructor
-Cov::Cov(int binSize,string bamFile,string output){
+Cov::Cov(int binSize,string bamFile,string output,bool discordants){
 	ostream& covout=test(coverageOutput,output);
 	if(output != "stdout"){
 		coverageOutput.open((output+".tab").c_str());
@@ -34,7 +34,7 @@ Cov::Cov(int binSize,string bamFile,string output){
 		static ostream& covout=cout;
 	}
 
-	covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "quality" << endl;
+
 
 	//initialize the function
 	this -> binStart =0;
@@ -44,6 +44,14 @@ Cov::Cov(int binSize,string bamFile,string output){
 	
     this -> contigsNumber = 0;
     this -> bamFile = bamFile;
+	this -> discordants=discordants;
+	this -> output = output;
+
+	if (this -> discordants == true){
+		covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "quality" << "\t" << "discordants" << endl;
+	}else{
+		covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "quality" << endl;
+	}
 
     BamReader alignmentFile;
 	//open the bam file
@@ -58,7 +66,9 @@ Cov::Cov(int binSize,string bamFile,string output){
 		contigsNumber++;
 	}
 	this -> coverageStructure.resize(contigsNumber);
+	this -> discordantsStructure.resize(contigsNumber);
 	this -> qualityStructure.resize(2);
+
 	qualityStructure[0].resize(contigsNumber);
 	qualityStructure[1].resize(contigsNumber);
 	for(int i=0;i<contigsNumber;i++){
@@ -67,6 +77,9 @@ Cov::Cov(int binSize,string bamFile,string output){
 		coverageStructure[i].resize(ceil(contigLength[i]/double(binSize)),0);
 		qualityStructure[0][i].resize(ceil(contigLength[i]/double(binSize)),0);
 		qualityStructure[1][i].resize(ceil(contigLength[i]/double(binSize)),0);
+		if (this -> discordants == true){
+			discordantsStructure[i].resize(ceil(contigLength[i]/double(binSize)),0);
+		}
 	}
 	
 	
@@ -87,7 +100,9 @@ void Cov::bin(BamAlignment currentRead){
 	readStatus alignmentStatus = computeReadType(currentRead, 100000,100, true);
 	if(alignmentStatus != lowQualty and alignmentStatus != unmapped) {
 		int element=floor(double(currentRead.Position)/double(binSize));
-
+		if (this -> discordants == true and currentRead.RefID != currentRead.MateRefID){
+			discordantsStructure[currentRead.RefID][element] +=1;
+		}
 		//if the entire read is inside the region, add all the bases to sequenced bases
 		if(currentRead.Position >= element*binSize and currentRead.Position+currentRead.Length-1 <= (element+1)*binSize){
 			coverageStructure[currentRead.RefID][element]+=currentRead.Length;
@@ -122,7 +137,11 @@ void Cov::bin(BamAlignment currentRead){
 
 //prints the results
 void Cov::printCoverage(){
-    ostream& covout = test(coverageOutput,output);
+	ostream& covout=test(coverageOutput,this -> output);
+	if ( this -> output == "stdout") {
+		static ostream& covout=cout;
+	}
+
     for(int i=0;i<contigsNumber;i++){
         for(int j=0;j<coverageStructure[i].size();j++){
             int binStart = j*binSize;
@@ -136,7 +155,11 @@ void Cov::printCoverage(){
             if(double(qualityStructure[1][i][j]) > 0){
             	quality=double(qualityStructure[0][i][j])/double(qualityStructure[1][i][j]);
             }
-            covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << endl;
+			if (this -> discordants == true){
+				covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << "\t" << discordantsStructure[i][j] << endl;
+			}else{
+            	covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << endl;
+			}
         }
 	}
 	

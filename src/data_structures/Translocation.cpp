@@ -21,23 +21,13 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 	string end= int2str(startB);
 	
 	string GT="./1";
-	int CN=1;
 
 	double coverage= this -> meanCoverage;
 	float coverageToleranceFraction = 0.5/double(this -> ploidy);
 	float coverageTolerance=this -> meanCoverage*coverageToleranceFraction;
 
-
-	// for heterozygous events
-	CN = round(covAB / (coverage/double(this->ploidy)) ) - 1; // CN sounds like ratio to coverage per chr, minus 1? at least for het vars with the other allele at count 1.
-	if (CN < 0) { CN = 0; }
-        else if ( (CN+1 < 1.5 + 0.5*coverageToleranceFraction) && (CN+1 > 1 + 0.5*coverageToleranceFraction)) { 
-	  // dup genotype is 0/1
-          GT="0/1";
-	}
-
+	int CN = round( double(this -> ploidy)*(covAB/coverage) );
 	//if the orientation of one of the reads is normal, but the other read is inverted, the variant is an inversion
-	//both reads are pointing to the left
 	if(this -> pairOrientation  == 0 or this -> pairOrientation == 3){
 			svType= "INV";
 	}
@@ -61,36 +51,23 @@ vector<string> Window::classification(int chr, int startA,int endA,double covA,i
 				svType= "DEL";
 				if (covAB < coverageTolerance) {
 				  GT = "1/1";
-				  //				  CN = 0; 
 				} else {
 				  GT = "0/1";
-				  // CN = 1;
 				}
-			}//if the coverage of all regions is normal and region A and B are disjunct, the event is an insertion(mobile element)
-			else if( ( covAB < coverage+coverageTolerance and covAB > coverage-coverageTolerance ) and 
-				( covB < coverage+coverageTolerance and covB > coverage-coverageTolerance )	and
-				( covA < coverage+coverageTolerance and covA > coverage-coverageTolerance )){
-				svType = "INS";
-			}
-			//if A and B are disjunct and only one of them have coverage above average, the event is an interspersed duplication
-			else if( (covA > coverage+coverageTolerance and covB < coverage+coverageTolerance ) or (covB > coverage+coverageTolerance and covA < coverage+coverageTolerance ) ){
-				svType = "IDUP";
-				// it would be a good idea to split this into one DUP and one BND, indicating the insertion point
-				//label the region marked as high coverage as the duplications
-				if(covA > coverage+coverageTolerance){
-					start=int2str(startA);
-					end = int2str(endA);
-				}else if(covB > coverage+coverageTolerance){
-					start=int2str(startB);
-					end=int2str(endB);			
-				}
-			}
+		}
 	}
 		
 	//if the event is a duplication, but the exact type cannot be specified
 	if(svType == "BND"){
-		if(covA > coverage+coverageTolerance or covB > coverage+coverageTolerance or covAB > coverage+coverageTolerance){
+		if(covAB > coverage+coverageTolerance){
 			svType = "DUP";
+		}
+	}
+	if (svType == "DUP" or svType == "TDUP"){
+		if(covAB > (double(this -> ploidy)+1)*coverage/double(this -> ploidy)+coverageTolerance){
+				  GT = "1/1";
+		}else{
+				  GT = "0/1";
 		}
 	}
 	vector<string> svVector;
@@ -118,7 +95,7 @@ bool sortMate(long i, long  j) {
 	return (i < j);
 }
 
-string Window::VCFHeader(){
+string Window::VCFHeader(string libraryData){
 	string headerString ="";
 	//Define fileformat and source
 	headerString+="##fileformat=VCFv4.1\n";
@@ -143,7 +120,8 @@ string Window::VCFHeader(){
 	//Define the info fields
 	headerString+="##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n";
 	headerString+="##INFO=<ID=END,Number=1,Type=String,Description=\"End of an intra-chromosomal variant\">\n";
-	headerString+="##INFO=<ID=LFW,Number=1,Type=Integer,Description=\"Links from window\">\n";
+	headerString+="##INFO=<ID=LFA,Number=1,Type=Integer,Description=\"Links from window A\">\n";
+	headerString+="##INFO=<ID=LFB,Number=1,Type=Integer,Description=\"Links from window B\">\n";
 	headerString+="##INFO=<ID=LCB,Number=1,Type=Integer,Description=\"Links to chromosome B\">\n";
 	headerString+="##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\">\n";
 	headerString+="##INFO=<ID=COVA,Number=1,Type=Float,Description=\"Coverage on window A\">\n";
@@ -171,8 +149,10 @@ string Window::VCFHeader(){
 	//set format 
 	headerString+="##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n";
 	headerString+="##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy number genotype for imprecise events\">\n";
-	headerString+="##FORMAT=<ID=PE,Number=1,Type=Integer,Description=\"Number of paired-ends that support the event\">\n";
-	headerString+="##FORMAT=<ID=SR,Number=1,Type=Integer,Description=\"Number of split reads that support the event\">\n";
+	headerString+="##FORMAT=<ID=DV,Number=1,Type=Integer,Description=\"Number of paired-ends that support the event\">\n";
+	headerString+="##FORMAT=<ID=RV,Number=1,Type=Integer,Description=\"Number of split reads that support the event\">\n";
+	//this sting contains info such as insert size and mean coverage
+	headerString+=libraryData+"\n";
 	//Header
 	headerString+="#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t";
 	return(headerString);
@@ -223,10 +203,8 @@ void Window::insertRead(BamAlignment alignment) {
 				eventReads[j][i]=queue<BamAlignment>();
 				eventSplitReads[j][i]=vector<BamAlignment>();
 				linksFromWin[j][i]=queue<int>();
-			}
-			
-			
-		}
+			}	
+		}	
 		cout << "working on seqence " << position2contig[alignment.RefID] << "\n";
 	}
 	
@@ -340,10 +318,11 @@ void Window::insertRead(BamAlignment alignment) {
 	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
 		if(alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) {  // insert only "forward" variations
 
-
-			for(int i=0;i< eventReads[this -> pairOrientation].size();i++){
-				for(int j=0;j <4;j++){
-					linksFromWin[j][i].push(alignment.Position);
+			if( alignment.RefID == alignment.MateRefID ){
+				for(int i=0;i<eventReads[this -> pairOrientation].size();i++){
+					for (int j=0; j<4;j++){
+						linksFromWin[j][i].push(alignment.Position);
+					}
 				}
 			}
 			
@@ -381,7 +360,6 @@ void Window::insertRead(BamAlignment alignment) {
 					eventReads[this -> pairOrientation][alignment.MateRefID]=queue<BamAlignment>();
 					linksFromWin[this -> pairOrientation][alignment.MateRefID]=queue<int>();										
 					eventSplitReads[this -> pairOrientation][alignment.MateRefID]=vector<BamAlignment>();
-
 					//the current alignment is inserted
 					eventReads[this -> pairOrientation][alignment.MateRefID].push(alignment);
 				}
@@ -432,6 +410,24 @@ float Window::computeRegionalQuality(int chrB, int start, int end,int bin_size){
 	
 }
 
+
+
+int Window::computeRegionalLinks(int chrB,int start, int end,int bin_size){
+	float coverageB=0;
+	int element=0;
+	int links=0;
+	unsigned int pos =floor(double(start)/bin_size)*bin_size;
+	
+	unsigned int nextpos =pos+bin_size;
+	while(nextpos >= start and pos <= end and pos/bin_size < binnedDiscordants[chrB].size() ){
+			element=pos/bin_size;
+			links+= binnedDiscordants[chrB][element];
+			pos=nextpos;
+			nextpos += bin_size;
+	}
+	return(links);	
+}
+
 //This function accepts a queue with alignments that links to chrB from chrA, the function returns the number of reads that are positioned inside the region on A and have mates that are linking anywhere on B
 vector<int> Window::findLinksToChr2(queue<BamAlignment> ReadQueue,long startChrA,long stopChrA,long startChrB,long endChrB, int pairsFormingLink){
 	int linkNumber=0;
@@ -473,6 +469,7 @@ vector<double> Window::computeStatisticsA(string bamFileName, int chrB, int star
 				linksFromWindow+=1;
 			}
 	}
+	linksFromWindow += computeRegionalLinks(this -> chr,start, end,100);
 	//calculates the coverage and returns the coverage within the window
 	double coverageA=computeCoverageB(this -> chr,start,end,WindowLength);
 	statisticsVector.push_back(coverageA);statisticsVector.push_back(linksFromWindow);
@@ -614,7 +611,7 @@ bool Window::computeVariations(int chr2) {
 				}
 				
 				float expectedLinksInWindow = ExpectedLinks(firstWindowLength, secondWindowLength, estimatedDistance, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);
-				float expectedLinksInWindow2 = ExpectedLinks(mean_insert, mean_insert, 0, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);					
+				float expectedLinksInWindow2 = ExpectedLinks(mean_insert+std_insert, mean_insert+std_insert, 0, mean_insert, std_insert, coverageRealFirstWindow, this -> readLength);					
 				if (expectedLinksInWindow > 10*pairsFormingLink){
 					//dont print the variant if it is pure garbage
 					continue;
@@ -641,6 +638,7 @@ bool Window::computeVariations(int chr2) {
 				discordantPairStatistics["windowB_end"]=stopSecondWindow+1;
 				discordantPairStatistics["orientation"]=pairOrientation;
 				discordantPairStatistics["links_window"]=linksFromWindow;
+				discordantPairStatistics["links_window_B"]=computeRegionalLinks(chr2,startSecondWindow, stopSecondWindow, 100);
 				discordantPairStatistics["links_chr"]=numLinksToChr2;
 				discordantPairStatistics["links_event"]=pairsFormingLink;
 				discordantPairStatistics["expected_links"]=abs(expectedLinksInWindow)/this -> ploidy;
@@ -762,7 +760,7 @@ bool Window::computeVariations(int chr2) {
 
 }
 
-void Window::initTrans(SamHeader head) {
+void Window::initTrans(SamHeader head,string libraryData) {
 	uint32_t contigsNumber = 0;
 	SamSequenceDictionary sequences  = head.Sequences;
 	for(SamSequenceIterator sequence = sequences.Begin() ; sequence != sequences.End(); ++sequence) {
@@ -778,7 +776,7 @@ void Window::initTrans(SamHeader head) {
 	string intra_chr_eventsVCF = outputFileHeader + ".vcf";
 	this->TIDDITVCF.open(intra_chr_eventsVCF.c_str());
 	if(head.HasReadGroups() == false){
-		this->TIDDITVCF << VCFHeader() << outputFileHeader << "\n";
+		this->TIDDITVCF << VCFHeader(libraryData) << outputFileHeader << "\n";
 	}else{
 		SamReadGroupDictionary readGroups = head.ReadGroups;
 		string SM = outputFileHeader;
@@ -788,7 +786,7 @@ void Window::initTrans(SamHeader head) {
 				break;
 			}
 		}
-		this->TIDDITVCF << VCFHeader() << SM << "\n";
+		this->TIDDITVCF << VCFHeader(libraryData) << SM << "\n";
 	}
 
 }
@@ -898,9 +896,18 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		if(discordantPairStatistics["expected_links"] != 0){
 			ratio1=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
 			stat_ratio=ratio1;
+
 		}
 		if(discordantPairStatistics["expected_links2"] != 0){
 			ratio2=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links2"];
+			if(ratio1 == -1){
+				stat_ratio=ratio2;
+			}
+			if(ratio2 > 1.4 and GT == "./1"){
+				GT="1/1";
+			}else{
+				GT="0/1";
+			}
 		}
 		
 		
@@ -912,15 +919,19 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		if(svType !="BND"){
 		ss << ";END=" << discordantPairStatistics["end"];
 		} 
-		ss << ";LFW=" << discordantPairStatistics["links_window"];
-		ss << ";LCB="  << discordantPairStatistics["links_chr"] << ";LTE=" << discordantPairStatistics["links_event"] << ";COVA=" <<  statistics_floats["coverage_start"];
+		ss << ";LFA=" << discordantPairStatistics["links_window"];
+		ss << ";LCB="  << discordantPairStatistics["links_chr"] << ";LTE=" << discordantPairStatistics["links_event"] << ";LFB=" << discordantPairStatistics["links_window_B"] << ";COVA=" <<  statistics_floats["coverage_start"];
 		ss << ";COVM=" << statistics_floats["coverage_mid"];
 		ss << ";COVB=" << statistics_floats["coverage_end"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
 		ss << ";QUALA=" << discordantPairStatistics["qualityA"] << ";QUALB=" << discordantPairStatistics["qualityB"];
 
 		ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  ratio1;
 		ss << ";EL2="  << discordantPairStatistics["expected_links2"] << ";RATIO2=" <<  ratio2;
-		filter=filterFunction(stat_ratio,discordantPairStatistics["links_event"],discordantPairStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"],this -> ploidy );	
+		int stat_links=discordantPairStatistics["links_event"];
+		if(discordantPairStatistics["links_event"] < discordantPairStatistics["links_window_B"]){
+			stat_links=discordantPairStatistics["links_window_B"];
+		}
+		filter=filterFunction(stat_ratio,stat_links,discordantPairStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"],this -> ploidy );	
 
 		
 		infoField += ss.str();
@@ -958,6 +969,11 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 
 		if(E_links > 0){
 			RATIO=double(splitReadStatistics["split_reads"])/double(E_links);
+			if(RATIO > 1.4){
+				GT="1/1";
+			}else{
+				GT="0/1";
+			}
 		}
 		filter=filterFunction(RATIO*2,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"],this -> ploidy);
 		
@@ -974,7 +990,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		ss << ";WINB=" << splitReadStatistics["windowB_start"] << "," << splitReadStatistics["windowB_end"];
 		ss << ";COVA=" << statistics_floats["coverage_start"] << ";COVM=" << statistics_floats["coverage_mid"] << ";COVB=" << statistics_floats["coverage_end"];
 		ss <<  ";QUALA=" << splitReadStatistics["qualityA"] << ";QUALB=" << splitReadStatistics["qualityB"];
-		ss << ";OA=" << read1_orientation << ";OB=" << read2_orientation << ";LFW=" << splitReadStatistics["links_window"] ;
+		ss << ";OA=" << read1_orientation << ";OB=" << read2_orientation << ";LFA=" << splitReadStatistics["links_window"] ;
 		ss << ";ER=" << E_links << ";RATIO=" << RATIO;
 		infoField += ss.str();
 	}
@@ -989,7 +1005,11 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 			var << this -> position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
 			var << "N"       << "\t"	<< "<" << svType << ">";
 			var << "\t.\t"  << filter  << "\t" << infoField;
-			var << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			if (CN != int2str(this -> ploidy) ){
+				var << "\tGT:CN:DV:RV\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			}else{
+				var << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			}
 
 			SV_calls[chrA].push_back(var.str());
 			vector<int> row;
@@ -1002,7 +1022,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 			bnd_st << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
 			bnd_st << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
 			bnd_st << "\t.\t"  << filter  << "\t" << infoField;
-			bnd_st << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			bnd_st << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 			SV_calls[chrA].push_back(bnd_st.str());
 			vector<int> row_st;
@@ -1016,7 +1036,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 			bnd_nd <<  position2contig[chrB] << "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
 			bnd_nd << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
 			bnd_nd << "\t.\t"  << filter  << "\t" << infoField;
-			bnd_nd << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+			bnd_nd << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 			SV_calls[chrB].push_back(bnd_nd.str());
 			vector<int> row_nd;
@@ -1025,33 +1045,6 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 			SV_positions[chrB].push_back(row_nd);
 
 		}
-		if(svType == "IDUP"){
-			std::stringstream bnd_st;
-			bnd_st << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_2" << "\t";
-			bnd_st << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
-			bnd_st << "\t.\t"  << filter  << "\t" << infoField;
-			bnd_st << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
-
-			SV_calls[chrA].push_back(bnd_st.str());
-			vector<int> row_st;
-			row_st.push_back(SV_calls[chrA].size()-1);
-			row_st.push_back(posA);
-			SV_positions[chrA].push_back(row_st);
-
-			//print the second breakend
-			std::stringstream bnd_nd;
-			bnd_nd <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_3" << "\t";
-			bnd_nd << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
-			bnd_nd << "\t.\t"  << filter  << "\t" << infoField;
-			bnd_nd << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
-
-			SV_calls[chrB].push_back(bnd_nd.str());
-			vector<int> row_nd;
-			row_nd.push_back(SV_calls[chrB].size()-1);
-			row_nd.push_back(posB);
-			SV_positions[chrB].push_back(row_nd);
-		}
-
 
 	} else {
 		//print the first breakend
@@ -1059,7 +1052,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		bnd_st << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
 		bnd_st << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
 		bnd_st << "\t.\t"  << filter  << "\t" << infoField;
-		bnd_st << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+		bnd_st << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 		SV_calls[chrA].push_back(bnd_st.str());
 		vector<int> row_st;
@@ -1072,7 +1065,7 @@ void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discord
 		bnd_nd <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
 		bnd_nd << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
 		bnd_nd << "\t.\t"  << filter  << "\t" << infoField;
-		bnd_nd << "\tGT:CN:PE:SR\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
+		bnd_nd << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
 
 		SV_calls[chrB].push_back(bnd_nd.str());
 		vector<int> row_nd;
