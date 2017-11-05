@@ -46,7 +46,7 @@ if args.sv:
 	if args.d:
 		command_str += " -d {}".format(args.d)
 
-	#os.system(command_str)
+	os.system(command_str)
 	TIDDIT_clustering.cluster(args)
 
 elif args.cov:
