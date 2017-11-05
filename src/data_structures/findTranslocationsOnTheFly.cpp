@@ -33,29 +33,6 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	ss << "##LibraryStats=TIDDIT-" << version <<   " Coverage=" << meanCoverage << " ReadLength=" << SV_options["readLength"] << " MeanInsertSize=" << SV_options["meanInsert"] << " STDInsertSize=" << SV_options["STDInsert"] << " Orientation=" << orientation_string << "\n" << "##TIDDITcmd=\"" << command << "\""; 
 	string libraryData=ss.str();
 	window->initTrans(head,libraryData);
-	//expands a vector so that it is large enough to hold reads from each contig in separate elements
-	window->eventReads.resize(4);
-	window->eventReads[0].resize(SV_options["contigsNumber"]);
-	window->eventReads[1].resize(SV_options["contigsNumber"]);
-	window->eventReads[2].resize(SV_options["contigsNumber"]);
-	window->eventReads[3].resize(SV_options["contigsNumber"]);
-	
-	window->eventSplitReads.resize(4);
-	window->eventSplitReads[0].resize(SV_options["contigsNumber"]);
-	window->eventSplitReads[1].resize(SV_options["contigsNumber"]);
-	window->eventSplitReads[2].resize(SV_options["contigsNumber"]);
-	window->eventSplitReads[3].resize(SV_options["contigsNumber"]);
-
-	window-> binnedCoverage.resize(SV_options["contigsNumber"]);
-	window-> binnedQuality.resize(SV_options["contigsNumber"]);
-	window-> binnedDiscordants.resize(SV_options["contigsNumber"]);
-	
-	window-> linksFromWin.resize(4);
-	window-> linksFromWin[0].resize(SV_options["contigsNumber"]);
-	window-> linksFromWin[1].resize(SV_options["contigsNumber"]);
-	window-> linksFromWin[2].resize(SV_options["contigsNumber"]);
-	window-> linksFromWin[3].resize(SV_options["contigsNumber"]);
-
 
 	for (int i=0;i< SV_options["contigsNumber"];i++){
 		window -> SV_calls[i] = vector<string>();
@@ -63,28 +40,6 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	}
 	
 	window -> numberOfEvents = 0;
-
-	string line;
-	string coverageFile=outputFileHeader+".tab";
-	ifstream inputFile( coverageFile.c_str() );
-	int line_number=0;
-	while (std::getline( inputFile, line )){
-		if(line_number > 0){
-			vector<string> splitline;
-    		std::stringstream ss(line);
-    		std::string item;
-    		while (std::getline(ss, item, '\t')) {
-        		splitline.push_back(item);
-    		}
-			window -> binnedCoverage[window -> contig2position[splitline[0]]].push_back(atof(splitline[3].c_str()));
-			window -> binnedQuality[window -> contig2position[splitline[0]]].push_back(atof(splitline[4].c_str()));
-			window-> binnedDiscordants[window -> contig2position[splitline[0]]].push_back(atof(splitline[5].c_str()));
-		}
-		line_number += 1;
-	}
-	inputFile.close();
-
-
 	//Initialize bam entity
 	BamAlignment currentRead;
 	//now start to iterate over the bam file
@@ -95,27 +50,10 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	  }
 	}
 	
-	//call any remaining variant
-	for(int i=0;i< SV_options["contigsNumber"];i++){
-		for (int j=0;j<4;j++){
-			if(window -> eventReads[j][i].size() >= window -> minimumPairs){
-				window -> pairOrientation = j;
-				window->computeVariations(i);
-			}
-			window->eventReads[j][i]=queue<BamAlignment>();
-			window->eventSplitReads[j][i] = vector<BamAlignment>();
-		}	
-	}
 	//print calls
 	for(int i=0;i< SV_options["contigsNumber"];i++){
-		if(window->SV_calls[i].size() == 0){
-			continue;
-		}
-		vector<  vector <int> > sorted_SV_positions;
-		sorted_SV_positions = window -> SV_positions[i];
-		sort(sorted_SV_positions.begin(), sorted_SV_positions.end(),zeroth_columnsort );
-		for (int j=0;j < sorted_SV_positions.size();j++){
-			window-> TIDDITVCF <<  window -> SV_calls[i][ sorted_SV_positions[j][0] ];
+		for (int j=0;j < window -> SV_calls[i].size();j++){
+			window-> TIDDITVCF <<  window -> SV_calls[i][j];
 		}
 	}
 	window->TIDDITVCF.close();

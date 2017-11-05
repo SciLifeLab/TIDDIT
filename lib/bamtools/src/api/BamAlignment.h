@@ -50,6 +50,7 @@ struct API_EXPORT BamAlignment {
         bool IsProperPair(void) const;        // returns true if alignment is part of read that satisfied paired-end resolution
         bool IsReverseStrand(void) const;     // returns true if alignment mapped to reverse strand
         bool IsSecondMate(void) const;        // returns true if alignment is second mate on read
+		bool IsSupplementaryAlignment(void) const;
 
     // manipulate alignment flags
     public:        

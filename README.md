@@ -1,52 +1,40 @@
 DESCRIPTION
 ==============
-TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Paired End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications, intersperesed duplications and inversions, using supplementary alignments as well as discordant pairs. 
+TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Paired End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications and inversions, using supplementary alignments as well as discordant pairs. 
 
 TIDDIT is distributed together with a database software called SVDB. SVDB is used to create structural variant databases, merge structural variants and to use the structural variant databases as a frequency filter.
 
 TIDDIT has two modes of analysing bam files. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a bam file and generates a coverage report.
 
-TIDDIT is mainly designed to run on whole genome sequencing data. However, TIDDIT is also able to perform variant calling on exome data if the coverage is supplied through the -c parameter.
-
-A nextflow wrapper for running multiple samples at once is available in the wrappers folder
-
-[![DOI](https://zenodo.org/badge/81584907.svg)](https://zenodo.org/badge/latestdoi/81584907)
 
 INSTALLATION
 ==============
-TIDDIT requires only standard c++/c libraries. To compile TIDDIT, cmake must be installed.
+TIDDIT requires only standard c++/c libraries and python 2.7. To compile TIDDIT, cmake must be installed.
 
-Do a recursive clone of TIDDIT in order to get the database software:
+
 ```
-git clone --recursive https://github.com/SciLifeLab/TIDDIT.git
+git clone https://github.com/SciLifeLab/TIDDIT.git
 ```
 
 To install TIDDIT:
 ```
 cd TIDDIT
-mkdir build
-cd build
-cmake ..
-make
+./INSTALL.sh
 ```
-The executable is located in the bin folder:
+
+TIDDIT is run via the TIDDIT.py script:
 ```
-cd ..
-cd bin
-```
-run the executable file to view the help message or run TIDDIT:
-```
-./TIDDIT
-./TIDDIT --help
-./TIDDIT  --sv --help
-./TIDDIT  --cov --help
+
+python TIDDIT.py --help
+python TIDDIT.py  --sv --help
+python TIDDIT.py  --cov --help
 ```
 
 The SV module
 =============
 The main TIDDIT module, detects structural variant using discordant pairs, split reads and coverage information
 
-    TIDDIT --sv [Options] -b bam 
+    TIDDIT --sv [Options] -b bam --ref reference.fasta
 
 Where bam is the input bam file. The reads of the input bam file must be sorted on genome position.
 TIDDIT may be fine tuned by altering these optional parameters:
@@ -66,8 +54,6 @@ TIDDIT may be fine tuned by altering these optional parameters:
     -q - the minimum mapping quality of the discordant pairs/supplementary alignments 
             forming a variant. Default value is 10.
                                         
-    -c - the library coverage. Default is calculated from average genomic coverage.
-        
 
 The cov module
 ==============
@@ -125,9 +111,9 @@ TIDDIT returns the detected variants into two vcf files, one vcf for intrachromo
         The chromosome of window A
     CHRB
         The chromosome of window B
-    WINA
+    CIPOS
         start and stop positon of window A
-    WINB
+    CIEND
         start and stop position of window B
     EL
         Expected links to window B

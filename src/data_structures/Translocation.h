@@ -52,9 +52,6 @@ public:
 	vector<string> contig_ids;
 	vector<string> contig_length;
 	vector<string> contig_assembly;
-	vector< vector<float> > binnedCoverage;
-	vector< vector<float> > binnedQuality;
-	vector< vector<int> > binnedDiscordants;
 	
 	map<unsigned int, vector<string> > SV_calls;
 	map<unsigned int, vector< vector <int> >  >SV_positions;

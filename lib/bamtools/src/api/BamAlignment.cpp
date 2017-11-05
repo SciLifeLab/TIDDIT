@@ -812,6 +812,14 @@ bool BamAlignment::IsSecondMate(void) const {
     return ( (AlignmentFlag & Constants::BAM_ALIGNMENT_READ_2) != 0 );
 }
 
+/*! \fn bool BamAlignment::IsSecondMate(void) const
+    \return \c true if alignment is second mate on read
+*/
+
+bool BamAlignment::IsSupplementaryAlignment(void) const {
+    return ( (AlignmentFlag & Constants::SUPPLEMENTARY) != 0 );
+}
+
 /*! \fn bool BamAlignment::IsValidSize(const std::string& tag, const std::string& type) const
     \internal
 

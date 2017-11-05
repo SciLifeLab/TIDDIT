@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 	float insertStd;
 	int min_variant_size= 100;
 	string outputFileHeader ="output";
-	string version = "1.1.6";
+	string version = "2.0.0";
 	
 	//collect all options as a vector
 	vector<string> arguments(argv, argv + argc);
