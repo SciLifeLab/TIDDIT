@@ -15,9 +15,9 @@ parser.add_argument('--cov'        , help="generate a coverage bed file", requir
 args, unknown = parser.parse_known_args()
 
 if args.sv:
-	parser = argparse.ArgumentParser("""TIDDIT --sv -b inputfile [-o prefix] --ref ref.fasta""")
+	parser = argparse.ArgumentParser("""TIDDIT --sv --bam inputfile [-o prefix] --ref ref.fasta""")
 	parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
-	parser.add_argument('-b', type=str,required=True, help="coordinate sorted bam file(required)")
+	parser.add_argument('--bam', type=str,required=True, help="coordinate sorted bam file(required)")
 	parser.add_argument('-o', type=str,default="output", help="output prefix(default=output)")
 	parser.add_argument('-i', type=int, help="paired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (default=3std + mean_insert_size)")
 	parser.add_argument('-d', type=str,help="expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset")
@@ -40,7 +40,7 @@ if args.sv:
 		print "error, too low --l value!"
 		quit()
 
-	command_str="{}/bin/TIDDIT --sv -b {} -o {} -p {} -r {} -q {} -n {} -m {}".format(args.wd,args.b,args.o,args.p,args.r,args.q,args.n,args.m)
+	command_str="{}/bin/TIDDIT --sv -b {} -o {} -p {} -r {} -q {} -n {} -m {}".format(args.wd,args.bam,args.o,args.p,args.r,args.q,args.n,args.m)
 	if args.i:
 		command_str += " -i {}".format(args.i)
 	if args.d:
@@ -50,14 +50,14 @@ if args.sv:
 	TIDDIT_clustering.cluster(args)
 
 elif args.cov:
-	parser = argparse.ArgumentParser("""TIDDIT --cov -b inputfile [-o prefix]""")
+	parser = argparse.ArgumentParser("""TIDDIT --cov --bam inputfile [-o prefix]""")
 	parser.add_argument('--cov'        , help="generate a coverage bed file", required=False, action="store_true")
-	parser.add_argument('-b', type=str,required=True, help="coordinate sorted bam file(required)")
+	parser.add_argument('--bam', type=str,required=True, help="coordinate sorted bam file(required)")
 	parser.add_argument('-o', type=str,default="output", help="output prefix(default=output)")
 	parser.add_argument('-z', type=int,default=500, help="use bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout")
 	args= parser.parse_args()
 	args.wd=os.path.dirname(os.path.realpath(__file__))
 
-	os.system("{}/bin/TIDDIT --cov -b {} -o {} -z {}".format(args.wd,args.b,args.o,args.z))
+	os.system("{}/bin/TIDDIT --cov -b {} -o {} -z {}".format(args.wd,args.bam,args.o,args.z))
 else:
 	parser.print_help()

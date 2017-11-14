@@ -147,8 +147,6 @@ void Window::insertRead(BamAlignment alignment) {
 			while (std::getline(SS, SA_data, ',')) {
 				SA_elements.push_back(SA_data);
 			}
-			
-
 
 			int contigNr = contig2position[SA_elements[0]];
 			int currrentAlignmentPos=alignment.Position;
@@ -156,19 +154,32 @@ void Window::insertRead(BamAlignment alignment) {
 			int splitDistance = 0;
 
 			long splitPos = atol(SA_elements[1].c_str());
+			string cigar_SA = SA_elements[3];
+			string cigar ="";
+			// iterate over cigar operations
+			vector<CigarOp>::const_iterator cigarIter = alignment.CigarData.begin();
+ 			vector<CigarOp>::const_iterator cigarEnd  = alignment.CigarData.end();
+			std::stringstream sscigar;
+ 			for ( ; cigarIter != cigarEnd; ++cigarIter) {
+				const CigarOp& op = (*cigarIter);
+				sscigar << op.Length << op.Type;
+			}
+
+			cigar=sscigar.str();
+
 			std::stringstream ss;
 
 			string orientationA="-";
 			if( alignment.IsReverseStrand() == false  ){
 				orientationA="+";
 			}
-
-			if(alignment.RefID == contigNr and splitPos < alignment.Position){
-				ss << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << alignment.MapQuality << "\t" << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t" << SA_elements[4] << "\t" << 1 << "\n";
+			//chrA posA orientation cigar q chrB endB orientation cigar qualB resolution
+			if(alignment.RefID == contigNr and alignment.Position < splitPos){
+				ss << position2contig[alignment.RefID] << "\t" << alignment.Position +1  << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t" << cigar_SA << "\t" << SA_elements[4] <<  "\t" << 1 << "\n";
 			}else if(alignment.RefID < contigNr){
-				ss << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << alignment.MapQuality << "\t" << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t" << SA_elements[4] << "\t" << 1 <<"\n";
+				ss << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t" << cigar_SA << "\t" << SA_elements[4] << "\t" << 1 <<"\n";
 			}else{
-				ss << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t"<< SA_elements[4] << "\t" << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << alignment.MapQuality << "\t" << 1 << "\n";
+				ss << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t"<< cigar_SA << "\t" << SA_elements[4] << "\t" << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << 1 << "\n";
 			}
 
 			SV_calls[alignment.MateRefID].push_back(ss.str());
@@ -188,9 +199,20 @@ void Window::insertRead(BamAlignment alignment) {
 				orientationB="+";
 			}
 
+			string cigar ="";
+			// iterate over cigar operations
+			vector<CigarOp>::const_iterator cigarIter = alignment.CigarData.begin();
+ 			vector<CigarOp>::const_iterator cigarEnd  = alignment.CigarData.end();
+			std::stringstream sscigar;
+ 			for ( ; cigarIter != cigarEnd; ++cigarIter) {
+				const CigarOp& op = (*cigarIter);
+				sscigar << op.Length << op.Type;
+			}
+
+			cigar=sscigar.str();
 
 			std::stringstream ss;
-			ss << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << alignment.MapQuality << "\t" << position2contig[alignment.MateRefID] << "\t" << alignment.MatePosition+1 << "\t"<< orientationB << "\t" << -1 << "\t" << 100 << "\n";
+			ss << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << position2contig[alignment.MateRefID] << "\t" << alignment.MatePosition+1 << "\t"<< orientationB << "\t" << "NA" << "\t" << -1 << "\t" << 100 << "\n";
 			SV_calls[alignment.MateRefID].push_back(ss.str());
 
 		}
@@ -587,284 +609,17 @@ void Window::initTrans(SamHeader head,string libraryData) {
 vector<long> Window::findRegionOnB( vector<long> mate_positions,int maxDistance){
 	queue<long> linksToRegionQueue;	
 	vector<long> eventRegionVector;
-	//sort the mate positions
-	sort(mate_positions.begin(), mate_positions.end(), sortMate);
-	//finds the region of the event
-	linksToRegionQueue.push(mate_positions[0]);
-	for(int i=1; i  < mate_positions.size();i++){
 
-		//if the current mate is close enough to the previous mate
-		if( maxDistance >= (mate_positions[i]-linksToRegionQueue.back()) ){
-			linksToRegionQueue.push(mate_positions[i]);
-
-		}else{
-			//if there are enough links beetween two regions, the region and the number of pairs are saved, and later on returned
-			if(linksToRegionQueue.size() > 0  ) {
-				//the front of the queue is the start position
-				eventRegionVector.push_back(linksToRegionQueue.front());
-				//the back is the end position
-				eventRegionVector.push_back(linksToRegionQueue.back());
-				//the length is the number of links to this event
-				eventRegionVector.push_back(linksToRegionQueue.size());
-			}
-			//the queue is reset so that the next event may be found(if any)
-			linksToRegionQueue=queue<long>();
-			linksToRegionQueue.push(mate_positions[i]);
-		}
-		
-	}
-	//if the queue contain any event 
-	if(linksToRegionQueue.size() > 0  ) {
-		eventRegionVector.push_back(linksToRegionQueue.front());
-		eventRegionVector.push_back(linksToRegionQueue.back());
-		eventRegionVector.push_back(linksToRegionQueue.size());
-	}
-	
 	return(eventRegionVector);
 }
 
 //this function resizes the region of CHRA so that it fits only around reads that are linking to an event on chrB
 vector<long> Window::newChrALimit(vector< vector< long > > variantPositions,long Bstart,long Bend){
 	vector<long> startStopPos;
-	long startA=-1;
-	long endA=-1;
-	for(int i=0; i< variantPositions[0].size() ;i++){
-		//Checks if the alignment if the mate of the current read is located inside the chrB region	
-		if(variantPositions[1][i] >= Bstart and variantPositions[1][i] <= Bend){
-		//resize the chr A region so that it fits around all the reads that have a mate inside region 
-			if(variantPositions[0][i] <= startA or startA ==-1){
-				startA=variantPositions[0][i];
-			}
-			if(variantPositions[0][i] >= endA or endA ==-1){
-				endA=variantPositions[0][i];
-			}
-
-		}
-	}
-	startStopPos.push_back(startA);
-	startStopPos.push_back(endA);
 	return(startStopPos);
 }
 
 //function that prints the statistics to a vcf file
 void Window::VCFLine(map<string,float> statistics_floats,map<string,int> discordantPairStatistics, map<string,int> splitReadStatistics,string svType,string GT, string CN){
-	
-
-
-		
-	string filter = "PASS";
-	string infoField;
-	infoField= "SVTYPE=" + svType;
-	int chrB = -1;
-	int chrA = -1;
-	int posA= -1;
-	int posB= -1;
-	 
-	//if we have detected a variant using discordant pairs
-	if (discordantPairStatistics["chrA"] != -1){
-		string read1_orientation;
-		string read2_orientation;
-		if (discordantPairStatistics["orientation"] == 0){
-			read1_orientation="Forward";
-			read2_orientation="Forward";
-		}else if (discordantPairStatistics["orientation"] == 1){
-			read1_orientation="Forward";
-			read2_orientation="Reverse";
-
-		}else if (discordantPairStatistics["orientation"] == 2){
-			read1_orientation="Reverse";
-			read2_orientation="Forward";
-				
-		}else{
-			read1_orientation="Reverse";
-			read2_orientation="Reverse";
-		}
-
-
-		float ratio1=-1;
-		float ratio2=-1;
-		float stat_ratio=1;
-		if(discordantPairStatistics["expected_links"] != 0){
-			ratio1=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links"];
-			stat_ratio=ratio1;
-
-		}
-		if(discordantPairStatistics["expected_links2"] != 0){
-			ratio2=(float)discordantPairStatistics["links_event"]/(float)discordantPairStatistics["expected_links2"];
-			if(ratio1 == -1){
-				stat_ratio=ratio2;
-			}
-			if(ratio2 > 1.4 and GT == "./1"){
-				GT="1/1";
-			}else{
-				GT="0/1";
-			}
-		}
-		
-		
-		
-		std::stringstream ss;
-		
-		ss << ";CHRA=" << position2contig[discordantPairStatistics["chrA"]] << ";WINA=" << discordantPairStatistics["windowA_start"] << "," << discordantPairStatistics["windowA_end"];
-		ss << ";CHRB=" << position2contig[discordantPairStatistics["chrB"]] << ";WINB=" << discordantPairStatistics["windowB_start"] << "," << discordantPairStatistics["windowB_end"];
-		if(svType !="BND"){
-		ss << ";END=" << discordantPairStatistics["end"];
-		} 
-		ss << ";LFA=" << discordantPairStatistics["links_window"];
-		ss << ";LCB="  << discordantPairStatistics["links_chr"] << ";LTE=" << discordantPairStatistics["links_event"] << ";LFB=" << discordantPairStatistics["links_window_B"] << ";COVA=" <<  statistics_floats["coverage_start"];
-		ss << ";COVM=" << statistics_floats["coverage_mid"];
-		ss << ";COVB=" << statistics_floats["coverage_end"] << ";OA=" << read1_orientation << ";OB=" << read2_orientation;
-		ss << ";QUALA=" << discordantPairStatistics["qualityA"] << ";QUALB=" << discordantPairStatistics["qualityB"];
-
-		ss << ";EL="  << discordantPairStatistics["expected_links"] << ";RATIO=" <<  ratio1;
-		ss << ";EL2="  << discordantPairStatistics["expected_links2"] << ";RATIO2=" <<  ratio2;
-		int stat_links=discordantPairStatistics["links_event"];
-		if(discordantPairStatistics["links_event"] < discordantPairStatistics["links_window_B"]){
-			stat_links=discordantPairStatistics["links_window_B"];
-		}
-		filter=filterFunction(stat_ratio,stat_links,discordantPairStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage, discordantPairStatistics["windowA_end"],discordantPairStatistics["windowB_start"],discordantPairStatistics["chrA"],discordantPairStatistics["chrB"],this -> ploidy );	
-
-		
-		infoField += ss.str();
-		chrB= discordantPairStatistics["chrB"];
-		chrA = discordantPairStatistics["chrA"];
-		posA= discordantPairStatistics["start"];
-		posB= discordantPairStatistics["end"];
-	}
-	
-
-	if (splitReadStatistics["chrA"] != -1){
-		string read1_orientation;
-		string read2_orientation;
-		if (splitReadStatistics["splitOrientation"] == 0){
-			read1_orientation="Forward";
-			read2_orientation="Reverse";
-		}else if (splitReadStatistics["splitOrientation"] == 1){
-			read1_orientation="Forward";
-			read2_orientation="Forward";
-
-		}else if (splitReadStatistics["splitOrientation"] == 2){
-			read1_orientation="Reverse";
-			read2_orientation="Reverse";
-				
-		}else{
-			read1_orientation="Reverse";
-			read2_orientation="Forward";
-		}
-
-		double RATIO =1;
-		int E_links= statistics_floats["coverage_start"]/(double(this -> ploidy));
-		if (statistics_floats["coverage_start"] > statistics_floats["coverage_end"] and statistics_floats["coverage_end"] > 0){
-			E_links= statistics_floats["coverage_end"]/(double(this -> ploidy));
-		}
-
-		if(E_links > 0){
-			RATIO=double(splitReadStatistics["split_reads"])/double(E_links);
-			if(RATIO > 1.4){
-				GT="1/1";
-			}else{
-				GT="0/1";
-			}
-		}
-		filter=filterFunction(RATIO*2,splitReadStatistics["split_reads"],splitReadStatistics["links_window"],mean_insert,std_insert,statistics_floats["coverage_start"],statistics_floats["coverage_end"],meanCoverage,splitReadStatistics["windowA_end"],splitReadStatistics["windowB_start"],splitReadStatistics["chrA"],splitReadStatistics["chrB"],this -> ploidy);
-		
-		
-		chrB= splitReadStatistics["chrB"];
-		chrA = splitReadStatistics["chrA"];
-		posA= splitReadStatistics["start"];
-		posB= splitReadStatistics["end"];
-		std::stringstream ss;
-		if(svType != "BND"){
-			ss << ";END=" << posB;
-		}
-		ss << ";WINA=" << splitReadStatistics["windowA_start"] << "," << splitReadStatistics["windowA_end"];
-		ss << ";WINB=" << splitReadStatistics["windowB_start"] << "," << splitReadStatistics["windowB_end"];
-		ss << ";COVA=" << statistics_floats["coverage_start"] << ";COVM=" << statistics_floats["coverage_mid"] << ";COVB=" << statistics_floats["coverage_end"];
-		ss <<  ";QUALA=" << splitReadStatistics["qualityA"] << ";QUALB=" << splitReadStatistics["qualityB"];
-		ss << ";OA=" << read1_orientation << ";OB=" << read2_orientation << ";LFA=" << splitReadStatistics["links_window"] ;
-		ss << ";ER=" << E_links << ";RATIO=" << RATIO;
-		infoField += ss.str();
-	}
-	
-	//Print the variant
-	this -> numberOfEvents++;
-	if(chrA == chrB) {
-		
-		//TODO generate the info field as a string, instead of printing the separate variable directly to the file
-		if(svType != "INS" and svType !="BND"){
-			std::stringstream var;
-			var << this -> position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" <<  "\t"  ;
-			var << "N"       << "\t"	<< "<" << svType << ">";
-			var << "\t.\t"  << filter  << "\t" << infoField;
-			if (CN != int2str(this -> ploidy) ){
-				var << "\tGT:CN:DV:RV\t" << GT << ":" << CN << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
-			}else{
-				var << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
-			}
-
-			SV_calls[chrA].push_back(var.str());
-			vector<int> row;
-			row.push_back(SV_calls[chrA].size()-1);
-			row.push_back(posA);
-			SV_positions[chrA].push_back(row);
-
-		}else{
-			std::stringstream bnd_st;
-			bnd_st << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
-			bnd_st << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
-			bnd_st << "\t.\t"  << filter  << "\t" << infoField;
-			bnd_st << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
-
-			SV_calls[chrA].push_back(bnd_st.str());
-			vector<int> row_st;
-			row_st.push_back(SV_calls[chrA].size()-1);
-			row_st.push_back(posA);
-			SV_positions[chrA].push_back(row_st);
-
-
-			//print the second breakend
-			std::stringstream bnd_nd;
-			bnd_nd <<  position2contig[chrB] << "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
-			bnd_nd << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
-			bnd_nd << "\t.\t"  << filter  << "\t" << infoField;
-			bnd_nd << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
-
-			SV_calls[chrB].push_back(bnd_nd.str());
-			vector<int> row_nd;
-			row_nd.push_back(SV_calls[chrB].size()-1);
-			row_nd.push_back(posB);
-			SV_positions[chrB].push_back(row_nd);
-
-		}
-
-	} else {
-		//print the first breakend
-		std::stringstream bnd_st;
-		bnd_st << position2contig[chrA]  << "\t" <<     posA   << "\tSV_" << this -> numberOfEvents << "_1" << "\t";
-		bnd_st << "N"       << "\t"	<< "N[" << position2contig[chrB] << ":" << posB << "[";
-		bnd_st << "\t.\t"  << filter  << "\t" << infoField;
-		bnd_st << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
-
-		SV_calls[chrA].push_back(bnd_st.str());
-		vector<int> row_st;
-		row_st.push_back(SV_calls[chrA].size()-1);
-		row_st.push_back(posA);
-		SV_positions[chrA].push_back(row_st);
-
-		//print the second breakend
-		std::stringstream bnd_nd;
-		bnd_nd <<   position2contig[chrB]<< "\t" <<    posB    << "\tSV_" << this -> numberOfEvents <<  "_2" << "\t";
-		bnd_nd << "N"       << "\t"	<< "N]" << position2contig[chrA]  << ":" << posA << "]";
-		bnd_nd << "\t.\t"  << filter  << "\t" << infoField;
-		bnd_nd << "\tGT:DV:RV\t" << GT << ":" << discordantPairStatistics["links_event"] << ":" << splitReadStatistics["split_reads"] << "\n";
-
-
-		vector<int> row_nd;
-		row_nd.push_back(SV_calls[chrB].size()-1);
-		row_nd.push_back(posB);
-		SV_positions[chrB].push_back(row_nd);
-
-	}
-	return;
 
 }

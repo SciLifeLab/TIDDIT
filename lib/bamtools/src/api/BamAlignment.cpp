@@ -153,36 +153,36 @@ bool BamAlignment::BuildCharData(void) {
     const bool hasTagData  = ( tagDataOffset  < dataLength );
 
     // store alignment name (relies on null char in name as terminator)
-    Name.assign(SupportData.AllCharData.data());
+    //Name.assign(SupportData.AllCharData.data());
 
     // save query sequence
-    QueryBases.clear();
-    if ( hasSeqData ) {
-        const char* seqData = SupportData.AllCharData.data() + seqDataOffset;
-        QueryBases.reserve(SupportData.QuerySequenceLength);
-        for ( size_t i = 0; i < SupportData.QuerySequenceLength; ++i ) {
-            const char singleBase = Constants::BAM_DNA_LOOKUP[ ( (seqData[(i/2)] >> (4*(1-(i%2)))) & 0xf ) ];
-            QueryBases.append(1, singleBase);
-        }
-    }
+    //QueryBases.clear();
+    //if ( hasSeqData ) {
+    //    const char* seqData = SupportData.AllCharData.data() + seqDataOffset;
+    //    QueryBases.reserve(SupportData.QuerySequenceLength);
+    //    for ( size_t i = 0; i < SupportData.QuerySequenceLength; ++i ) {
+    //        const char singleBase = Constants::BAM_DNA_LOOKUP[ ( (seqData[(i/2)] >> (4*(1-(i%2)))) & 0xf ) ];
+    //        QueryBases.append(1, singleBase);
+    //    }
+    //}
 
     // save qualities
 
-    Qualities.clear();
-    if ( hasQualData ) {
-        const char* qualData = SupportData.AllCharData.data() + qualDataOffset;
+    //Qualities.clear();
+    //if ( hasQualData ) {
+    //   const char* qualData = SupportData.AllCharData.data() + qualDataOffset;
 
         // if marked as unstored (sequence of 0xFF) - don't do conversion, just fill with 0xFFs
-        if ( qualData[0] == (char)0xFF )
-            Qualities.resize(SupportData.QuerySequenceLength, (char)0xFF);
+    //    if ( qualData[0] == (char)0xFF )
+    //        Qualities.resize(SupportData.QuerySequenceLength, (char)0xFF);
 
         // otherwise convert from numeric QV to 'FASTQ-style' ASCII character
-        else {
-            Qualities.reserve(SupportData.QuerySequenceLength);
-            for ( size_t i = 0; i < SupportData.QuerySequenceLength; ++i )
-                Qualities.append(1, qualData[i]+33);
-        }
-    }
+    //    else {
+    //        Qualities.reserve(SupportData.QuerySequenceLength);
+    //        for ( size_t i = 0; i < SupportData.QuerySequenceLength; ++i )
+    //            Qualities.append(1, qualData[i]+33);
+    //    }
+    //}
 
     // clear previous AlignedBases
     AlignedBases.clear();

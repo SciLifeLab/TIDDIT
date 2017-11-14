@@ -2,11 +2,9 @@ import numpy
 import math
 import copy
 import DBSCAN
+import gzip
 
-#from sklearn.cluster import DBSCAN
-#from sklearn import metrics
-#from sklearn.datasets.samples_generator import make_blobs
-#from sklearn.preprocessing import StandardScaler
+
 from scipy.stats import norm
 
 def coverage(args):
@@ -39,15 +37,17 @@ def signals(args,coverage_data):
 			orientationA=1
 		else:
 			orientationA=0
-		qualA=int(content[3])
+		cigarA=content[3]
+		qualA=int(content[4])
 
-		chrB=content[4]
-		posB=int(content[5])
-		if content[6] == "+":
+		chrB=content[5]
+		posB=int(content[6])
+		if content[7] == "+":
 			orientationB=1
 		else:
 			orientationB=0
-		qualB=int(content[7])
+		cigarB=content[8]
+		qualB=int(content[9])
 
 		resolution=int(content[-1])
 
@@ -179,65 +179,22 @@ def analyse_pos(candidate_signals,discordants,library_stats,args):
 	analysed_signals={"posA":posA,"posB":posB,"min_A":min_a,"max_A":max_a,"min_B":min_b,"max_B":max_b,"QA":avgQa,"QB":avgQb,"FF":FF,"FR":FR,"RF":RF,"RR":RR,"splitsINV":splitsINV,"splits":splits,"discs":discs,"signals":candidate_signals}
 	return(analysed_signals)
 
-def overlap_test(candidate,args):
-	filtered_candidate=[]
-	overlap_matrix={}
-	if abs(candidate[0][0] - candidate[0][1]) > 2*args.e:
-		return(candidate)
-
-	for i in range(0,len(candidate)):
-		overlap_matrix[i]={"size":0,"signals":[]}
-		for j in range(0,len(candidate)):
-			if candidate[i][0] > candidate[j][1] or candidate[i][1] < candidate[j][0]:
-				continue
-			maxA=max([candidate[i][0],candidate[j][0]])
-			minA=min([candidate[i][0],candidate[j][0]])
-
-			maxB=max([candidate[i][1],candidate[j][1]])
-			minB=min([candidate[i][1],candidate[j][1]])
-			union=maxB-minA+1
-
-			intersect=minB-maxA+1
-			o=(union)/(intersect)
-			if o >= args.v:
-				overlap_matrix[i]["size"]+=1
-				overlap_matrix[i]["signals"].append(j)
-
-	max_cluster=-1
-	size_max_cluster=-1
-	for i in range(0,len(candidate)):			
-		if size_max_cluster == -1 or size_max_cluster < overlap_matrix[i]["size"]:
-			size_max_cluster=overlap_matrix[i]["size"]
-			max_cluster=i
-	for signal in overlap_matrix[max_cluster]["signals"]:
-		filtered_candidate.append(candidate[signal,:])
-
-	return(numpy.array(filtered_candidate))
 
 def generate_clusters(chrA,chrB,coordinates,library_stats,args):
 	candidates=[]
-	#db= DBSCAN(eps=args.e, min_samples=args.l).fit(coordinates[:,0:2])
 	coordinates=coordinates[numpy.lexsort((coordinates[:,1],coordinates[:,0]))]
 	db=DBSCAN.main(coordinates[:,0:2],args.e,args.l)
-	#core_samples_mask = numpy.zeros_like(db.labels_, dtype=bool)
-	#core_samples_mask[db.core_sample_indices_] = True
-	#labels = db.labels_
 	unique_labels = set(db)
-	#unique_labels = set(labels)
+
 	for var in unique_labels:
 		if var == -1:
 			continue
-		#class_member_mask = (labels == var)
 		class_member_mask = (db == var)
-		#candidate_signals =coordinates[class_member_mask & core_samples_mask]
 		candidate_signals =coordinates[class_member_mask]
 		resolution=candidate_signals[:,-1]
 		discordants=True
 		if len(set(resolution)) == 1 and max(resolution) == 1:
 			disordants=False
-		#if chrA == chrB:
-		#	candidate_signals=overlap_test(candidate_signals,args)
-
 		if discordants and len(candidate_signals) >= args.p:
 			candidates.append( analyse_pos(candidate_signals,discordants,library_stats,args) )
 		elif not discordants and len(candidate_signals) >= args.r and chrA == chrB:
@@ -299,35 +256,35 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
 				variant_type="SVTYPE=INV"
 				var="<INV>"
 			elif library_stats["Orientation"] == "innie":
-				if candidate["covM"]*library_stats["ploidies"][chrA]/(library_stats["Coverage"]*args.n) > (args.n+0.5)/args.n:
+				if candidate["covM"]/library_stats["chr_cov"][chrA] > (args.n+0.5)/args.n:
 					variant_type="SVTYPE=DUP"
 					var="<DUP>"
 					if candidate["RF"] > candidate["FR"]: 
 						variant_type="SVTYPE=TDUP"
 						var="<TDUP>"
-				elif candidate["covM"]*library_stats["ploidies"][chrA]/(library_stats["Coverage"]*args.n) < (args.n-0.5)/args.n:
+				elif candidate["covM"]/library_stats["chr_cov"][chrA] < (args.n-0.5)/args.n:
 					variant_type="SVTYPE=DEL"
 					var="<DEL>"	
 
 			else:
-				if candidate["covM"]*library_stats["ploidies"][chrA]/(library_stats["Coverage"]*args.n) > (args.n+0.5)/args.n:
+				if candidate["covM"]/library_stats["chr_cov"][chrA] > (args.n+0.5)/args.n:
 					variant_type="SVTYPE=DUP"
 					var="<DUP>"
 					if candidate["RF"] < candidate["FR"]: 
 						variant_type="SVTYPE=TDUP"
 						var="<TDUP>"
 
-				elif candidate["covM"]*library_stats["ploidies"][chrA]/(library_stats["Coverage"]*args.n) < (args.n-0.5)/args.n:
+				elif candidate["covM"]/library_stats["chr_cov"][chrA] < (args.n-0.5)/args.n:
 					variant_type="SVTYPE=DEL"
 					var="<DEL>"
 		else:
 			if candidate["splitsINV"] > candidate["splits"]-candidate["splitsINV"]:
 				variant_type="SVTYPE=INV"
 				var="<INV>"
-			elif candidate["covM"]*library_stats["ploidies"][chrA]/(library_stats["Coverage"]*args.n) > (args.n+0.5)/args.n:
+			elif candidate["covM"]/library_stats["chr_cov"][chrA] > (args.n+0.5)/args.n:
 					variant_type="SVTYPE=DUP"
 					var="<DUP>"
-			elif candidate["covM"]*library_stats["ploidies"][chrA]/(library_stats["Coverage"]*args.n) < (args.n-0.5)/args.n:
+			elif candidate["covM"]/library_stats["chr_cov"][chrA] < (args.n-0.5)/args.n:
 					variant_type="SVTYPE=DEL"
 					var="<DEL>"
 			else:
@@ -346,9 +303,9 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
 			GT="0/1"
 
 	if "DUP" in var or var == "<DEL>":
-		if var == "DEL" and candidate["covM"]/(library_stats["Coverage"]*library_stats["ploidies"][chrA]/args.n) < 0.1:
+		if var == "DEL" and candidate["covM"]/library_stats["chr_cov"][chrA] < 0.1:
 			GT="1/1"
-		elif var == "DUP" and candidate["covM"]/(library_stats["Coverage"]*library_stats["ploidies"][chrA]/args.n) > 1.8: 
+		elif var == "DUP" and candidate["covM"]/library_stats["chr_cov"][chrA] > 1.8: 
 			GT="1/1"
  
 	return(var,variant_type,GT)
@@ -366,8 +323,7 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 			filt = "BelowExpectedLinks"
 	if library_stats["ploidies"][chrA] == 0:
 		return("Ploidy")
-
-	if candidate["MaxcovA"] >= library_stats["Coverage"]*(library_stats["ploidies"][chrA]*2) or candidate["MaxcovB"] >= library_stats["Coverage"]*(library_stats["ploidies"][chrA]*2):
+	if candidate["MaxcovA"] >= library_stats["chr_cov"][chrA]*(library_stats["ploidies"][chrA]+2) or candidate["MaxcovB"] >= library_stats["chr_cov"][chrA]*(library_stats["ploidies"][chrA]+2):
 		filt = "UnexpectedCoverage"
 	elif candidate["discsA"] > (candidate["discs"]+candidate["splits"])*(1+library_stats["ploidies"][chrA]) or candidate["discsB"] > (candidate["discs"]+candidate["splits"])*(1+library_stats["ploidies"][chrA]):
 		filt= "FewLinks"
@@ -435,7 +391,12 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats):
 	vcf_line.append(FORMAT_FORMAT)
 	CN="."
 	if "DEL" in var or "DUP" in var:
-		CN=int(round(candidate["covM"]/library_stats["Coverage"]*library_stats["ploidies"][chrA]))
+		CN=int(round(candidate["covM"]/(library_stats["Coverage"]/args.n)))
+	if "DEL" in var:
+		CN=library_stats["ploidies"][chrA]-CN
+		if CN < 0:
+			CN=library_stats["ploidies"][chrA]
+
 	FORMAT_STR="{}:{}:{}:{}".format(GT,CN,candidate["discs"],candidate["splits"])
 	vcf_line.append(FORMAT_STR)
 	if not "BND" in variant_type and not "INV" in variant_type:
@@ -476,15 +437,23 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats):
 		vcf_line_b[1]=candidate["posB"]
 		return([vcf_line_a,vcf_line_b])
 
-def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length):
+def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,library_stats):
 
+	library_stats["chr_cov"]={}
 
 	normalising_chromosomes={}
 	ploidies={}
 	avg_coverage=[]
-	for chromosome in args.s.split(","):
-		ploidies[chromosome]=args.n
-		avg_coverage.append( numpy.average(coverage_data[chromosome]) )
+	try:
+		for chromosome in args.s.split(","):
+			ploidies[chromosome]=args.n
+			chromosomal_average=numpy.average(coverage_data[chromosome][:,0])
+			avg_coverage.append( chromosomal_average )
+			library_stats["chr_cov"][chromosome]=chromosomal_average
+	except:
+		print "error: reference mismatch!"
+		quit()
+
 	coverage_norm=numpy.average(avg_coverage)
 	chromosomal_average=0
 	print "estimated ploidies:"
@@ -493,15 +462,24 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length):
 			chromosome_length=sequence_length[chromosome]
 			N_count=Ncontent[chromosome]
 			N_percentage=N_count/float(chromosome_length)
-			chromosomal_average=numpy.average(coverage_data[chromosome])
-			ploidies[chromosome]=int(round( (N_percentage*chromosomal_average+chromosomal_average)/coverage_norm*args.n))
+			chromosomal_average=numpy.average(coverage_data[chromosome][:,0])
+			try:
+				ploidies[chromosome]=int(round( (N_percentage*chromosomal_average+chromosomal_average)/coverage_norm*args.n))
+			except:
+				ploidies[chromosome]=args.n
+
+			library_stats["chr_cov"][chromosome]=chromosomal_average+N_percentage*chromosomal_average
 
 		print "{}:{}".format(chromosome,ploidies[chromosome])
-	return(ploidies)
+	return(ploidies,library_stats)
 
 def retrieve_N_content(args):
-	with open(args.ref, 'r+') as f:
-		sequence=f.read().split(">")
+	if not args.ref.endswith(".gz"):
+		with open(args.ref, 'r+') as f:
+			sequence=f.read().split(">")
+	else:
+		with gzip.open(args.ref, 'r+') as f:
+			sequence=f.read().split(">")
 
 	del sequence[0]
 	Ncontent={}
@@ -521,7 +499,7 @@ def cluster(args):
 	signal_data,header=signals(args,coverage_data)
 
 	chromosomes,library_stats=find_contigs(header)
-	ploidies=determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length)
+	ploidies,library_stats=determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,library_stats)
 	library_stats["ploidies"]=ploidies
 
 	if not args.e:
