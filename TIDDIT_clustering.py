@@ -3,7 +3,7 @@ import math
 import copy
 import DBSCAN
 import gzip
-
+import sys
 
 from scipy.stats import norm
 
@@ -568,6 +568,13 @@ def cluster(args):
 				n+=1
 
 	outfile=open(args.o+".vcf", 'w')
+	new_header=[]
+	for line in header.strip().split("\n"):
+		if "##TIDDITcmd" in line:
+			new_header.append("##TIDDITcmd=\"{}\"\n".format(" ".join(sys.argv)))
+			continue
+		new_header.append(line+"\n")
+	header="".join(new_header)
 	outfile.write(header)
 	for chromosome in chromosomes:
 		for call in sorted(calls[chromosome],key=lambda x: x[1]):

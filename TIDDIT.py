@@ -2,12 +2,6 @@ import argparse
 import os
 import TIDDIT_clustering
 
-from sklearn.cluster import DBSCAN
-from sklearn import metrics
-from sklearn.datasets.samples_generator import make_blobs
-from sklearn.preprocessing import StandardScaler
-from scipy.stats import norm
-
 version = "2.0.0"
 parser = argparse.ArgumentParser("""TIDDIT-{}""".format(version),add_help=False)
 parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
@@ -32,7 +26,6 @@ if args.sv:
 	parser.add_argument('-z', type=int,default=100, help="minimum variant size (default=100)")
 	parser.add_argument('-s',default="1,15,14,9,2", type=str, help="a list of chromosomes used to compute the pl,oidy across the chromosomes of the genome(based on coverage), these are asseumed to have -n ploidy default (1,5,14,9,2)")
 	parser.add_argument('--ref',required=True, type=str, help="reference fasta")
-	#parser.add_argument('-v', type=float,default=0.5, help="overlap_limit, signals overlapping less than this value are removed from the cluster")
 
 	args= parser.parse_args()
 	args.wd=os.path.dirname(os.path.realpath(__file__))
