@@ -384,8 +384,8 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats):
 	INFO="{};CIPOS={},{};CIEND={},{}".format(variant_type,candidate["min_A"]-candidate["posA"],candidate["max_A"]-candidate["posA"],candidate["min_B"]-candidate["posB"],candidate["max_B"]-candidate["posB"])
 	if chrA == chrB:
 		if not "BND" in variant_type:
-			INFO += ";END={}".format(candidate["posB"])
-		INFO += ";SVLEN={};COVM={}".format( abs(candidate["posB"]-candidate["posA"]+1) ,candidate["covM"])
+			INFO += ";END={};SVLEN={}".format(candidate["posB"],abs(candidate["posB"]-candidate["posA"]+1))
+		INFO += ";COVM={}".format(candidate["covM"])
 	stats=";COVA={};COVB={};LFA={};LFB={};LTE={};E1={};E2={};OR={},{},{},{};ORSR={},{};QUALA={};QUALB={}".format(candidate["covA"],candidate["covB"],int(round(candidate["discsA"])),int(round(candidate["discsB"])),candidate["discs"]+candidate["splits"],candidate["e1"],candidate["e2"],candidate["FF"],candidate["RR"] ,candidate["RF"],candidate["FR"],candidate["splitsINV"],candidate["splits"]-candidate["splitsINV"],candidate["QRA"],candidate["QRB"])
 
 	INFO+=stats

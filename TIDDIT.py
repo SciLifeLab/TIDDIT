@@ -32,6 +32,12 @@ if args.sv:
 	if args.l < 1:
 		print "error, too low --l value!"
 		quit()
+	if not os.path.isfile(args.ref):
+		print "error,  could not find the reference file"
+		quit()
+	if not os.path.isfile(args.bam):
+		print "error,  could not find the bam file"
+		quit()
 
 	command_str="{}/bin/TIDDIT --sv -b {} -o {} -p {} -r {} -q {} -n {} -m {}".format(args.wd,args.bam,args.o,args.p,args.r,args.q,args.n,args.m)
 	if args.i:
