@@ -369,6 +369,10 @@ def inv_recluster(vcf_line,candidate,library_stats,args):
 
 def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats):
 	vcf_line=[]
+	if chrA == chrB and  candidate["posA"] > candidate["posB"]:
+		candidate["posA"]=candidate["min_A"]
+		candidate["posB"]=candidate["max_B"]
+
 	vcf_line.append(chrA)
 	vcf_line.append(candidate["posA"])
 	vcf_line.append("SV_{}_1".format(n))
@@ -381,7 +385,7 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats):
 	if chrA == chrB:
 		if not "BND" in variant_type:
 			INFO += ";END={}".format(candidate["posB"])
-		INFO += ";SVLEN={};COVM={}".format(candidate["posB"]-candidate["posA"]+1,candidate["covM"])
+		INFO += ";SVLEN={};COVM={}".format( abs(candidate["posB"]-candidate["posA"]+1) ,candidate["covM"])
 	stats=";COVA={};COVB={};LFA={};LFB={};LTE={};E1={};E2={};OR={},{},{},{};ORSR={},{};QUALA={};QUALB={}".format(candidate["covA"],candidate["covB"],int(round(candidate["discsA"])),int(round(candidate["discsB"])),candidate["discs"]+candidate["splits"],candidate["e1"],candidate["e2"],candidate["FF"],candidate["RR"] ,candidate["RF"],candidate["FR"],candidate["splitsINV"],candidate["splits"]-candidate["splitsINV"],candidate["QRA"],candidate["QRB"])
 
 	INFO+=stats
@@ -447,7 +451,7 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 	try:
 		for chromosome in args.s.split(","):
 			ploidies[chromosome]=args.n
-			chromosomal_average=numpy.average(coverage_data[chromosome][:,0])
+			chromosomal_average=numpy.median(coverage_data[chromosome][:,0])
 			avg_coverage.append( chromosomal_average )
 			library_stats["chr_cov"][chromosome]=chromosomal_average
 	except:
@@ -462,7 +466,7 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 			chromosome_length=sequence_length[chromosome]
 			N_count=Ncontent[chromosome]
 			N_percentage=N_count/float(chromosome_length)
-			chromosomal_average=numpy.average(coverage_data[chromosome][:,0])
+			chromosomal_average=numpy.median(coverage_data[chromosome][:,0])
 			try:
 				ploidies[chromosome]=int(round( (N_percentage*chromosomal_average+chromosomal_average)/coverage_norm*args.n))
 			except:
