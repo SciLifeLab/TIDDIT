@@ -32,12 +32,11 @@ The SV module
 =============
 The main TIDDIT module, detects structural variant using discordant pairs, split reads and coverage information
 
-    TIDDIT --sv [Options] --bam bam --ref reference.fasta
+    python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta
 
-Where bam is the input bam file. The reads of the input bam file must be sorted on genome position.
+Where bam is the input bam file. And reference.fasta is the reference fasta used to align the sequencing data: TIDDIT will crash if the reference fasta is different from the one used to align the reds. The reads of the input bam file must be sorted on genome position.
 TIDDIT may be fine tuned by altering these optional parameters:
 
-    -n - the ploidy of the organism, 2 is default
     -o - the prefix of the output files(default = output)
         
     -i - the maximum allowed insert size of a normal pair. Pairs having larger insert 
@@ -52,12 +51,11 @@ TIDDIT may be fine tuned by altering these optional parameters:
     -q - the minimum mapping quality of the discordant pairs/supplementary alignments 
             forming a variant. Default value is 10.
                                         
-
 The cov module
 ==============
 Computes the coverge of different regions of the bam file
 
-    TIDDIT --cov [Options] --bam bam
+    python TIDDIT.py --cov [Options] --bam bam
     
 optional parameters:
 
@@ -124,10 +122,10 @@ Algorithm
 =============
 TIDDIT detects structural variants using supplementary alignments as well as discordant pairs. A discordant pair is defined as any pair of reads having a larger distance than the --insert parameter(which is set to 3*std+average library distance as default). Supplementary aligments are produced by reads where one part of the read aligns to a certain part of the reference, while another part of the same read aligns to a distant region.
 
-TIDDIT performs a linear search for SV signatures within the input Bam file. These signatures are sets, or clusters of Discordant pairs/supplementary alignments, having similar patterns regarding coverage and position within the genome.
+TIDDIT performs a linear search for SV signatures within the input Bam file. These signatures are prited to the signals file. Upon searching the entire bam file, TIDDIT starts to cluster these signals using an algorithm similar to DBSCAN.
 Any set of discordant pairs or supplementary alignments larger or equal to the -p parameter will be analysed and later returned as a structural variant by printing it to the vcf file. TIDDIT will only consider reads that fullfill the -q parameter: reads having lower mapping quality will not be added to a set, and thus will not contribute to the detection of SV.
 
-TIDDIT detects a wide spectra of strutural variants, and is able to classify deletions, duplications, inversions and translocations(intrachromosomal and interchromosomal). Variants are classified based on the pair orientation of the reads defining a structural variant, as well as the coverage across the structural variant and the regions where the read pairs are aligned. If TIDDIT is unnable to classify a variant, it will be returned as a break end event.
+TIDDIT detects a wide spectra of structural variants, and is able to classify deletions, duplications, inversions and translocations(intrachromosomal and interchromosomal). Variants are classified based on the pair orientation of the reads defining a structural variant, as well as the coverage across the structural variant and the regions where the read pairs are aligned. If TIDDIT is unnable to classify a variant, it will be returned as a break end event.
 
 LICENSE
 ==============
