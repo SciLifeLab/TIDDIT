@@ -1,8 +1,9 @@
+#!/usr/bin/env python
 import argparse
 import os
 import TIDDIT_clustering
 
-version = "2.0.1"
+version = "2.0.3"
 parser = argparse.ArgumentParser("""TIDDIT-{}""".format(version),add_help=False)
 parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 parser.add_argument('--cov'        , help="generate a coverage bed file", required=False, action="store_true")
