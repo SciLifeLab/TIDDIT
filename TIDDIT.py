@@ -25,7 +25,7 @@ if args.sv:
 	parser.add_argument('-e', type=int, help="clustering distance  parameter, discordant pairs closer than this distance are considered to belong to the same variant(default = sqrt(insert-size*2)*12)")
 	parser.add_argument('-l', type=int,default=3, help="min-pts parameter (default=3),must be set > 1")
 	parser.add_argument('-z', type=int,default=100, help="minimum variant size (default=100)")
-	parser.add_argument('-s',default="1,15,14,9,2", type=str, help="a list of chromosomes used to compute the pl,oidy across the chromosomes of the genome(based on coverage), these are asseumed to have -n ploidy default (1,5,14,9,2)")
+	parser.add_argument('-s',default="1,15,14,9,2", type=str, help="a list of chromosomes used to compute the ploidy across the chromosomes of the genome(based on coverage), these are asseumed to have -n ploidy default (1,5,14,9,2)")
 	parser.add_argument('--ref',required=True, type=str, help="reference fasta")
 
 	args= parser.parse_args()

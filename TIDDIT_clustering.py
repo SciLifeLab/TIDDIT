@@ -4,6 +4,7 @@ import copy
 import DBSCAN
 import gzip
 import sys
+import sqlite3
 
 from scipy.stats import norm
 
@@ -23,7 +24,7 @@ def coverage(args):
 	return(coverage_data)
 
 def signals(args,coverage_data):
-	signal_data={}
+	signal_data=[]
 	header=""
 	for line in open(args.o+".signals.tab"):
 		if line[0] == "#":
@@ -50,32 +51,25 @@ def signals(args,coverage_data):
 		qualB=int(content[9])
 
 		resolution=int(content[-1])
-
 		
 
-		if chrA > chrB:
-			if not chrB in signal_data:
-				signal_data[chrB]={}
-			if not chrA in signal_data[chrB]:
-				signal_data[chrB][chrA]=[]
-		else:
-			if not chrA in signal_data:
-				signal_data[chrA]={}
-			if not chrB in signal_data[chrA]:
-				signal_data[chrA][chrB]=[]			
-
 		if chrA > chrB or (posB < posA and chrA == chrB):
-			signal_data[chrB][chrA].append([posB,posA,orientationB,qualB,orientationA,qualA,resolution])
+			#signal_data[chrB][chrA].append([posB,posA,orientationB,qualB,orientationA,qualA,resolution])
+			signal_data.append([chrB,chrA,posB,posA,orientationB,orientationA,qualB,qualA,cigarB,cigarA,resolution])
 		else:
-			signal_data[chrA][chrB].append([posA,posB,orientationA,qualA,orientationB,qualB,resolution])
+			#signal_data[chrA][chrB].append([posA,posB,orientationA,qualA,orientationB,qualB,resolution])
+			signal_data.append([chrA,chrB,posA,posB,orientationA,orientationB,qualA,qualB,cigarA,cigarB,resolution])
+		
+
+		if len (signal_data) > 1000000:
+			args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
+			signal_data=[]
 		coverage_data[chrB][int(math.floor(posB/100)),2]+=1
 		coverage_data[chrA][int(math.floor(posA/100)),2]+=1
 
-	for chrA in signal_data:
-		for chrB in signal_data[chrA]:
-			signal_data[chrA][chrB]=numpy.array(signal_data[chrA][chrB])
-
-	return(signal_data,header)
+	if len(signal_data):
+		args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
+	return(header)
 
 def find_contigs(header):
 	chromosomes=[]
@@ -498,9 +492,23 @@ def retrieve_N_content(args):
 	return(Ncontent,sequence_length)
 
 def cluster(args):
+
 	Ncontent,sequence_length=retrieve_N_content(args)
 	coverage_data=coverage(args)
-	signal_data,header=signals(args,coverage_data)
+
+	conn = sqlite3.connect(args.o+".db")
+	args.c = conn.cursor()
+
+	tableListQuery = "SELECT name FROM sqlite_master WHERE type=\'table\'"
+	args.c.execute(tableListQuery)
+	tables = map(lambda t: t[0], args.c.fetchall())
+	if "TIDDITcall" in tables:
+		args.c.execute("DROP TABLE TIDDITcall")
+	A="CREATE TABLE TIDDITcall (chrA TEXT,chrB TEXT,posA INT,posB INT,forwardA INT,forwardB INT,qualA INT, qualB INT,cigarA TEXT,cigarB TEXT, resolution INT)"
+	args.c.execute(A)
+	header=signals(args,coverage_data)
+	A="CREATE INDEX CHR ON TIDDITcall (chrA, chrB)"
+	args.c.execute(A)
 
 	chromosomes,library_stats=find_contigs(header)
 	ploidies,library_stats=determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,library_stats)
@@ -513,14 +521,14 @@ def cluster(args):
 	calls={}
 	for chrA in chromosomes:
 		calls[chrA] =[]
-		if not chrA in signal_data:
-			continue
 		print "{}".format(chrA)
 		for chrB in chromosomes:
-			if not chrB in signal_data[chrA]:
+			signal_data=numpy.array([ [hit[0],hit[1],hit[2],hit[3],hit[4],hit[5],hit[6]] for hit in args.c.execute('SELECT posA,posB,forwardA,qualA,forwardB,qualB,resolution FROM TIDDITcall WHERE chrA == \'{}\' AND chrB == \'{}\''.format(chrA,chrB)).fetchall()])
+
+			if not len(signal_data):
 				continue
 
-			candidates=generate_clusters(chrA,chrB,signal_data[chrA][chrB],library_stats,args)
+			candidates=generate_clusters(chrA,chrB,signal_data,library_stats,args)
 
 			for i in range(0,len(candidates)):
 				candidates[i]["covA"],candidates[i]["MaxcovA"],candidates[i]["QRA"]=retrieve_coverage(chrA,candidates[i]["min_A"],candidates[i]["max_A"],coverage_data)
