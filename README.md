@@ -67,7 +67,7 @@ Examples:
 
         python TIDDIT.py --sv [Options] --bam bam --ref human_g1k_v37.fasta
 
-    Run TIDDIT on a human genome, aligned toa reference with "chr" prefix:
+    Run TIDDIT on a human genome, aligned to a reference with "chr" prefix:
 
         python TIDDIT.py --sv [Options] --bam bam --ref hg19.fa -s chr1,chr2,chr3,chr8,chr22
 
