@@ -467,12 +467,11 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 			chromosomal_average=numpy.median(coverage_data[chromosome][:,0])
 			if not args.force_ploidy:
 				try:
-					ploidies[chromosome]=int(round((N_percentage*chromosomal_average+chromosomal_average)/coverage_norm)*args.n)
+					ploidies[chromosome]=int(round((N_percentage*chromosomal_average+chromosomal_average)/coverage_norm*args.n))
 				except:
 					ploidies[chromosome]=args.n
 			else:
-				ploidies[chromosome]=args.n               
-
+				ploidies[chromosome]=args.n  
 			library_stats["chr_cov"][chromosome]=chromosomal_average+N_percentage*chromosomal_average
 
 		print "{}:{}".format(chromosome,ploidies[chromosome])

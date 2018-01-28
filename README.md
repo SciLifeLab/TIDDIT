@@ -69,7 +69,7 @@ Examples:
 
     Run TIDDIT on a human genome, aligned toa reference with "chr" prefix:
 
-        python TIDDIT.py --sv [Options] --bam bam --ref hg19.fa -s chr1,chr2,chr3
+        python TIDDIT.py --sv [Options] --bam bam --ref hg19.fa -s chr1,chr2,chr3,chr8,chr22
 
     Run TIDDIT on a triploid genome
 
