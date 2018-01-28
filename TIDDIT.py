@@ -27,6 +27,7 @@ if args.sv:
 	parser.add_argument('-z', type=int,default=100, help="minimum variant size (default=100)")
 	parser.add_argument('-s',default="1,15,14,9,2", type=str, help="a list of chromosomes used to compute the ploidy across the chromosomes of the genome (based on coverage), these are assumed to have -n ploidy default (1,5,14,9,2)")
 	parser.add_argument('--force_ploidy',action="store_true", help="force the ploidy to be set to -n across the entire genome (i.e skip normalisation based on the -s list of chromosomes)")
+	parser.add_argument('--n_mask',type=float,default=0.5, help="exclude regions from coverage calculation if they contain more than this fraction of N (default = 0.5)")
 	parser.add_argument('--ref',required=True, type=str, help="reference fasta")
 
 	args= parser.parse_args()
@@ -47,7 +48,7 @@ if args.sv:
 	if args.d:
 		command_str += " -d {}".format(args.d)
 
-	os.system(command_str)
+	#os.system(command_str)
 	TIDDIT_clustering.cluster(args)
 
 elif args.cov:

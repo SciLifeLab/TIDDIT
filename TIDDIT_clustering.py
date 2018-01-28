@@ -444,12 +444,13 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 		try:
 			for chromosome in args.s.split(","):
 				ploidies[chromosome]=args.n
-				chromosomal_average=numpy.median(coverage_data[chromosome][:,0])
+				N_count=Ncontent[chromosome]
+				chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > 0),0])
 				avg_coverage.append( chromosomal_average )
 				library_stats["chr_cov"][chromosome]=chromosomal_average
 		except:
 			print "error: reference mismatch!"
-			print "make sure that the contigs of the bam file and the Sreference match"
+			print "make sure that the contigs of the bam file and the reference match"
 			print "also make sure that the chromosomes suplied through the -s parameter match the reference"
 			print "you may use --force_ploidy to skip the per chromosome ploidy estimation"
 			quit()
@@ -463,16 +464,15 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
    
 			chromosome_length=sequence_length[chromosome]
 			N_count=Ncontent[chromosome]
-			N_percentage=N_count/float(chromosome_length)
-			chromosomal_average=numpy.median(coverage_data[chromosome][:,0])
+			chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > 0),0])
 			if not args.force_ploidy:
 				try:
-					ploidies[chromosome]=int(round((N_percentage*chromosomal_average+chromosomal_average)/coverage_norm*args.n))
+					ploidies[chromosome]=int(round((chromosomal_average)/coverage_norm*args.n))
 				except:
 					ploidies[chromosome]=args.n
 			else:
 				ploidies[chromosome]=args.n  
-			library_stats["chr_cov"][chromosome]=chromosomal_average+N_percentage*chromosomal_average
+			library_stats["chr_cov"][chromosome]=chromosomal_average
 
 		print "{}:{}".format(chromosome,ploidies[chromosome])
 	return(ploidies,library_stats)
@@ -492,8 +492,17 @@ def retrieve_N_content(args):
 		content=chromosome.split("\n",1)
 		sequence=content[1].replace("\n","")
 		contig=content[0].split()[0]
-		sequence_length[contig]=len(sequence)
-		Ncontent[contig]=sequence.upper().count("N")
+		regions=[sequence[i:i+100] for i in range(0, len(sequence), 100)]
+		Ncontent[contig]=[]
+		for region in regions:
+			if region.upper().count("N")/100.0 > args.n_mask:
+				#print region.upper().count("N")/100.0
+				Ncontent[contig].append(0)
+			else:  
+				Ncontent[contig].append(1)
+		sequence_length[contig]=len(sequence)		
+		Ncontent[contig]=numpy.array(Ncontent[contig])
+		
 
 	return(Ncontent,sequence_length)
 
