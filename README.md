@@ -34,22 +34,55 @@ The main TIDDIT module, detects structural variant using discordant pairs, split
 
     python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta
 
-Where bam is the input bam file. And reference.fasta is the reference fasta used to align the sequencing data: TIDDIT will crash if the reference fasta is different from the one used to align the reds. The reads of the input bam file must be sorted on genome position.
+Where bam is the input bam file. And reference.fasta is the reference fasta used to align the sequencing data: TIDDIT will crash if the reference fasta is different from the one used to align the reads. The reads of the input bam file must be sorted on genome position.
 TIDDIT may be fine tuned by altering these optional parameters:
 
-    -o - the prefix of the output files(default = output)
+    -o - The prefix of the output files(default = output)
         
-    -i - the maximum allowed insert size of a normal pair. Pairs having larger insert 
-                    than this is treated as discordant pairs. Default is 3*std+mean insert size
+    -i - The maximum allowed insert size of a normal pair. Pairs having larger insert 
+         than this is treated as discordant pairs. Default is 3*std+mean insert size
                         
-    -d - the pair orientation, use this setting to override the automatic orientation selection
+    -d - The pair orientation, use this setting to override the automatic orientation selection
             
-    -p - the minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 5
+    -p - The minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 5
     
-    -r - the minimum number of supplementary alignments used to call small SV. Default is 5
+    -r - The minimum number of supplementary alignments used to call small SV. Default is 5
             
-    -q - the minimum mapping quality of the discordant pairs/supplementary alignments 
-            forming a variant. Default value is 10.
+    -q - The minimum mapping quality of the discordant pairs/supplementary alignments 
+         forming a variant. Default value is 10.
+
+    -n - The ploidy of the organism ,(default = 2)
+
+    -s - A list of chromosomes used to compute the ploidy across the rest of the chromosomes of the genome (based on coverage). these chromomosomes are assumed to have -n ploidy.  default (1,5,14,9,2).
+         TIDDIT will compjute the median coverage across these contigs, and use that coverage value as a reference for estimating the ploidy of the remaining contigs.			
+         Note: these chromosomes  must be present in the reference.fasta file, otherwise, tiddit will exit with a reference mismatch error
+
+    --force_ploidy - set the ploidy of all chromosomes to -n (including the sex chromosomes), this option will disable the ploidy estimation based on the chromosomes supplied through the -s parameter.
+                     This option is meant to be used for low quality data or for species having equal ploidy across all chromosomes
+
+
+Examples:
+
+    Run TIDDIT on a human genome
+
+        python TIDDIT.py --sv [Options] --bam bam --ref human_g1k_v37.fasta
+
+    Run TIDDIT on a human genome, aligned toa reference with "chr" prefix:
+
+        python TIDDIT.py --sv [Options] --bam bam --ref hg19.fa -s chr1,chr2,chr3
+
+    Run TIDDIT on a triploid genome
+
+        python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta -n 3
+
+
+    Skip ploidy estimation, and set the ploidy of all chromosomes to 8
+
+        python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta -n 8 --force_ploidy   
+
+    Run TIDDIT on a yeast sample
+
+        python TIDDIT.py --sv [Options] --bam bam --ref saccer.fa -s chrI,chrII,chrIII
                                         
 The cov module
 ==============

@@ -280,10 +280,7 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
 					var="<DUP>"
 			elif candidate["covM"]/library_stats["chr_cov"][chrA] < (args.n-0.5)/args.n:
 					variant_type="SVTYPE=DEL"
-					var="<DEL>"
-			else:
-					variant_type="SVTYPE=INS"
-					var="<INS>"			
+					var="<DEL>"		
 
 	if candidate["discs"]:
 		if candidate["e2"]*1.6 <= (candidate["discs"]):
@@ -442,29 +439,39 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 	normalising_chromosomes={}
 	ploidies={}
 	avg_coverage=[]
-	try:
-		for chromosome in args.s.split(","):
-			ploidies[chromosome]=args.n
-			chromosomal_average=numpy.median(coverage_data[chromosome][:,0])
-			avg_coverage.append( chromosomal_average )
-			library_stats["chr_cov"][chromosome]=chromosomal_average
-	except:
-		print "error: reference mismatch!"
-		quit()
+	coverage_norm=0
+	if not args.force_ploidy:
+		try:
+			for chromosome in args.s.split(","):
+				ploidies[chromosome]=args.n
+				chromosomal_average=numpy.median(coverage_data[chromosome][:,0])
+				avg_coverage.append( chromosomal_average )
+				library_stats["chr_cov"][chromosome]=chromosomal_average
+		except:
+			print "error: reference mismatch!"
+			print "make sure that the contigs of the bam file and the Sreference match"
+			print "also make sure that the chromosomes suplied through the -s parameter match the reference"
+			print "you may use --force_ploidy to skip the per chromosome ploidy estimation"
+			quit()
 
-	coverage_norm=numpy.average(avg_coverage)
+		coverage_norm=numpy.median(avg_coverage)
+
 	chromosomal_average=0
 	print "estimated ploidies:"
 	for chromosome in chromosomes:
 		if not chromosome in ploidies:
+   
 			chromosome_length=sequence_length[chromosome]
 			N_count=Ncontent[chromosome]
 			N_percentage=N_count/float(chromosome_length)
 			chromosomal_average=numpy.median(coverage_data[chromosome][:,0])
-			try:
-				ploidies[chromosome]=int(round( (N_percentage*chromosomal_average+chromosomal_average)/coverage_norm*args.n))
-			except:
-				ploidies[chromosome]=args.n
+			if not args.force_ploidy:
+				try:
+					ploidies[chromosome]=int(round((N_percentage*chromosomal_average+chromosomal_average)/coverage_norm)*args.n)
+				except:
+					ploidies[chromosome]=args.n
+			else:
+				ploidies[chromosome]=args.n               
 
 			library_stats["chr_cov"][chromosome]=chromosomal_average+N_percentage*chromosomal_average
 
@@ -487,7 +494,7 @@ def retrieve_N_content(args):
 		sequence=content[1].replace("\n","")
 		contig=content[0].split()[0]
 		sequence_length[contig]=len(sequence)
-		Ncontent[contig]=sequence.count("N")
+		Ncontent[contig]=sequence.upper().count("N")
 
 	return(Ncontent,sequence_length)
 
