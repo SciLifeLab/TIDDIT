@@ -49,6 +49,7 @@ def read_cigar(cigar):
 			current_pos += int( SC[i*2] )
 
 	return deletions,insertions,length,clip_after,aligned_range
+
 def coverage(args):
 	coverage_data={}
 	for line in open(args.o+".tab"):
@@ -67,10 +68,16 @@ def coverage(args):
 def signals(args,coverage_data):
 	signal_data=[]
 	header=""
+	first_signal=True
 	for line in open(args.o+".signals.tab"):
 		if line[0] == "#":
 			header += line
 			continue
+
+		if first_signal:
+			chromosomes,library_stats,chromosome_len=find_contigs(header)
+			first_signal=False
+
 		content=line.strip().split()
 
 		chrA=content[0]
@@ -79,11 +86,27 @@ def signals(args,coverage_data):
 			orientationA=1
 		else:
 			orientationA=0
+
 		cigarA=content[3]
 		if ("S" in cigarA or "H" in cigarA) and not cigarA == "NA":
 			deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarA)
 			if clip_after:
 				posA+=length
+		else:
+			if "M" in cigarA:
+				deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarA)
+			else:
+				length=library_stats["ReadLength"]
+
+			if library_stats["Orientation"] == "innie":			
+				if orientationA:
+					posA+=length-1
+			else:
+				if not orientationA:
+					posA+=length-1
+
+		if posA > chromosome_len[chrA]:
+			posA=chromosome_len[chrA]
 
 		qualA=int(content[4])
 
@@ -100,6 +123,21 @@ def signals(args,coverage_data):
 			deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarB)
 			if clip_after:
 				posB+=length
+		else:
+			if "M" in cigarB:
+				deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarB)
+			else:
+				length=library_stats["ReadLength"]
+
+			if library_stats["Orientation"] == "innie":			
+				if orientationB:
+					posB+=length-1
+			else:
+				if not orientationB:
+					posB+=length-1
+
+		if posB > chromosome_len[chrB]:
+			posB=chromosome_len[chrB]
 
 		resolution=int(content[-1])
 		
@@ -120,18 +158,20 @@ def signals(args,coverage_data):
 
 	if len(signal_data):
 		args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
-	return(header)
+	return(header,chromosomes,library_stats)
 
 def find_contigs(header):
 	chromosomes=[]
 	library_stats={}
+	chromosome_len={}
 	for line in header.split("\n"):
 		if "##contig=<ID=" in line:
 			chromosomes.append(line.split("##contig=<ID=")[-1].split(",")[0])
+			chromosome_len[chromosomes[-1]]=int(line.split("length=")[-1].split(">")[0])
 		if "##LibraryStats=" in line:
 			stats=line.strip().split(" ")
 			library_stats={"Coverage":float(stats[1].split("=")[-1]),"ReadLength":int(stats[2].split("=")[-1]),"MeanInsertSize":int(stats[3].split("=")[-1]),"STDInsertSize":int(stats[4].split("=")[-1]),"Orientation":stats[5].split("=")[-1]}
-	return (chromosomes,library_stats)
+	return (chromosomes,library_stats,chromosome_len)
 
 def analyse_pos(candidate_signals,discordants,library_stats,args):
 	analysed_signals={}
@@ -575,11 +615,10 @@ def cluster(args):
 		args.c.execute("DROP TABLE TIDDITcall")
 	A="CREATE TABLE TIDDITcall (chrA TEXT,chrB TEXT,posA INT,posB INT,forwardA INT,forwardB INT,qualA INT, qualB INT,cigarA TEXT,cigarB TEXT, resolution INT)"
 	args.c.execute(A)
-	header=signals(args,coverage_data)
+	header,chromosomes,library_stats=signals(args,coverage_data)
 	A="CREATE INDEX CHR ON TIDDITcall (chrA, chrB)"
 	args.c.execute(A)
 
-	chromosomes,library_stats=find_contigs(header)
 	ploidies,library_stats=determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,library_stats)
 	library_stats["ploidies"]=ploidies
 
