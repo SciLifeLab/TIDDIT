@@ -5,9 +5,50 @@ import DBSCAN
 import gzip
 import sys
 import sqlite3
+import itertools
 
 from scipy.stats import norm
 
+#analyse the cigar operation of the read
+def read_cigar(cigar):
+	deletions=0
+	insertions=0
+	SC = ["".join(x) for _, x in itertools.groupby(cigar, key=str.isdigit)]
+	length=0
+	first=True
+	clip_after=True
+
+	aligned_range=[]
+	current_pos=1
+	for i in range(0,len(SC)/2):
+		if first and SC[i*2+1] == "M":
+			first = False
+		elif first and SC[i*2+1] == "S":
+			first = False
+			clip_after=False
+		if SC[i*2+1] == "M":
+			length += int( SC[i*2] )
+			bases=range(0,int( SC[i*2] ))
+			for j in range(0,len(bases)):
+				bases[j] += current_pos
+
+			aligned_range += bases
+			current_pos += int( SC[i*2] )
+		elif SC[i*2+1] == "I":
+			insertions+=1
+			length += int( SC[i*2] )
+			bases=range(0,int( SC[i*2] ))
+			for j in range(0,len(bases)):
+				bases[j] += current_pos
+			aligned_range += bases
+
+			current_pos += int( SC[i*2] )
+		elif SC[i*2+1] == "D":
+			deletions +=1
+		else:
+			current_pos += int( SC[i*2] )
+
+	return deletions,insertions,length,clip_after,aligned_range
 def coverage(args):
 	coverage_data={}
 	for line in open(args.o+".tab"):
@@ -39,6 +80,11 @@ def signals(args,coverage_data):
 		else:
 			orientationA=0
 		cigarA=content[3]
+		if ("S" in cigarA or "H" in cigarA) and not cigarA == "NA":
+			deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarA)
+			if clip_after:
+				posA+=length
+
 		qualA=int(content[4])
 
 		chrB=content[5]
@@ -49,6 +95,11 @@ def signals(args,coverage_data):
 			orientationB=0
 		cigarB=content[8]
 		qualB=int(content[9])
+
+		if ("S" in cigarB or "H" in cigarB) and not cigarB == "NA":
+			deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarB)
+			if clip_after:
+				posB+=length
 
 		resolution=int(content[-1])
 		
@@ -458,7 +509,8 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 		coverage_norm=numpy.median(avg_coverage)
 
 	chromosomal_average=0
-	print "estimated ploidies:"
+	outfile=open(args.o+".ploidy.tab", 'w')
+	outfile.write("Contig\tploidy_rounded\tploidy_raw\tmedian_coverage\n")
 	for chromosome in chromosomes:
 		if not chromosome in ploidies:
    
@@ -473,8 +525,10 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 			else:
 				ploidies[chromosome]=args.n  
 			library_stats["chr_cov"][chromosome]=chromosomal_average
+		
+		outfile.write("{}\t{}\t{}\t{}\n".format(chromosome,ploidies[chromosome],round( library_stats["chr_cov"][chromosome]/coverage_norm*args.n,2),library_stats["chr_cov"][chromosome]))
 
-		print "{}:{}".format(chromosome,ploidies[chromosome])
+	outfile.close()
 	return(ploidies,library_stats)
 
 def retrieve_N_content(args):

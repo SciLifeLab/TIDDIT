@@ -1,6 +1,6 @@
 DESCRIPTION
 ==============
-TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Paired End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications and inversions, using supplementary alignments as well as discordant pairs. 
+TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Paired End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications and inversions, using supplementary alignments as well as discordant pairs.
 
 TIDDIT has two modes of analysing bam files. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a bam file and generates a coverage report.
 
@@ -59,6 +59,10 @@ TIDDIT may be fine tuned by altering these optional parameters:
 
     --force_ploidy - set the ploidy of all chromosomes to -n (including the sex chromosomes), this option will disable the ploidy estimation based on the chromosomes supplied through the -s parameter.
                      This option is meant to be used for low quality data or for species having equal ploidy across all chromosomes
+
+output:
+
+TIDDIT SV module produces three output files, a vcf file containing SV calls, a tab file describing the coverage across the genome in bins of size 100 bp, and a tab file dscribing the estimated ploidy and coverage across each contig.
 
 
 Examples:
