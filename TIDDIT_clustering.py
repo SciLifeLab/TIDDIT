@@ -290,12 +290,14 @@ def generate_clusters(chrA,chrB,coordinates,library_stats,args):
 def retrieve_coverage(chromosome,start,end,coverage_data):
 	start_index=int(math.floor(start/100.0))
 	end_index=int(math.floor(end/100.0))+1
-	coverage=numpy.average(coverage_data[chromosome][start_index:end_index,0])
-	max_coverage=max(coverage_data[chromosome][start_index:end_index,0])
+	regional_coverage=coverage_data[chromosome][start_index:end_index,0]
+	coverage=numpy.average(regional_coverage[numpy.where(regional_coverage > -1)])
+	max_coverage=max(regional_coverage[numpy.where(regional_coverage > -1)])
 	quality=numpy.average(coverage_data[chromosome][start_index:end_index,1])
 	return (coverage,max_coverage,int(round(quality)))
 
 
+#Find the number of discordant pairs within a region
 def retrieve_discs(chromosome,start,end,coverage_data):
 	discs=0
 	start_index=int(math.floor(start/100.0))
@@ -327,7 +329,7 @@ def expected_links(coverageA,coverageB,sizeA,sizeB,gap,insert_mean,insert_stddev
 
 	return(e)
 
-
+#determine the variant type
 def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
 	variant_type="SVTYPE=BND"
 	var="N[{}:{}[".format(chrB,candidate["posB"])
@@ -392,6 +394,7 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
  
 	return(var,variant_type,GT)
 
+#compute the filters
 def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	filt="PASS"
 	#fewer links than expected
@@ -419,6 +422,7 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 
 	return(filt)
 
+#split inversions into two separate calls
 def redefine_inv(vcf_line,signals,library_stats,args):
 	analysed_signals=analyse_pos(signals,True,library_stats,args)
 	vcf_line[1]=analysed_signals["posA"]
@@ -523,22 +527,59 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats):
 		vcf_line_b[1]=candidate["posB"]
 		return([vcf_line_a,vcf_line_b])
 
+#normalise the coverage based on GC content
+def gc_norm(args,median_coverage,normalising_chromosomes,coverage_data,Ncontent):
+	gc_vals=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+	gc_dict={}
+
+	for gc in gc_vals:
+		tmp=[]
+		for chromosome in normalising_chromosomes:
+			selected=Ncontent[chromosome] == gc
+			selected_coverage=coverage_data[chromosome][selected]
+			tmp+=list(selected_coverage[:,0])
+
+		gc_dict[gc]=numpy.median(tmp)
+		if 0 == gc_dict[gc]:
+			gc_dict[gc]=median_coverage
+
+	for chromosome in coverage_data:
+		for i in range(0,len(coverage_data[chromosome])):
+			if not Ncontent[chromosome][i] == -1:
+				coverage_data[chromosome][i,0]=median_coverage*coverage_data[chromosome][i,0]/gc_dict[ Ncontent[chromosome][i] ]
+
+	return(coverage_data)
+
+#estimate the ploidy of each chromosome
 def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,library_stats):
 
 	library_stats["chr_cov"]={}
 
-	normalising_chromosomes={}
 	ploidies={}
 	avg_coverage=[]
 	coverage_norm=0
 	if not args.force_ploidy:
+
+		normalising_chromosomes=[]
+		for chromosome in args.s.split(","):
+			if chromosome in Ncontent:
+				normalising_chromosomes.append(chromosome)
+			elif "chr" + chromosome in  Ncontent:
+				normalising_chromosomes.append("chr"+chromosome)
+			elif chromosome.replace("chr","") in Ncontent:
+				normalising_chromosomes.append(chromosome.replace("chr",""))
+			else:
+				print "warning chromosome {} is not present in the reference".format(chromosome)
+				print "also make sure that the chromosomes suplied through the -s parameter match the reference"
+
 		try:
-			for chromosome in args.s.split(","):
-				ploidies[chromosome]=args.n
+			for chromosome in normalising_chromosomes:
+				ploidies[chromosome]=args.n 
 				N_count=Ncontent[chromosome]
 				chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > 0),0])
 				avg_coverage.append( chromosomal_average )
 				library_stats["chr_cov"][chromosome]=chromosomal_average
+
 		except:
 			print "error: reference mismatch!"
 			print "make sure that the contigs of the bam file and the reference match"
@@ -547,6 +588,20 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 			quit()
 
 		coverage_norm=numpy.median(avg_coverage)
+		coverage_data=gc_norm(args,coverage_norm,normalising_chromosomes,coverage_data,Ncontent)
+		print coverage_norm
+	else:
+
+		normalising_chromosomes=chromosomes
+		for chromosome in normalising_chromosomes:
+			ploidies[chromosome]=args.n
+			N_count=Ncontent[chromosome]
+			chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > 0),0])
+			avg_coverage.append( chromosomal_average )
+			library_stats["chr_cov"][chromosome]=chromosomal_average
+
+		coverage_norm=numpy.median(avg_coverage)
+		coverage_data=gc_norm(args,coverage_norm,chromosomes,coverage_data,Ncontent)
 
 	chromosomal_average=0
 	outfile=open(args.o+".ploidy.tab", 'w')
@@ -556,7 +611,7 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
    
 			chromosome_length=sequence_length[chromosome]
 			N_count=Ncontent[chromosome]
-			chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > 0),0])
+			chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > -1),0])
 			if not args.force_ploidy:
 				try:
 					ploidies[chromosome]=int(round((chromosomal_average)/coverage_norm*args.n))
@@ -569,8 +624,9 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 		outfile.write("{}\t{}\t{}\t{}\n".format(chromosome,ploidies[chromosome],round( library_stats["chr_cov"][chromosome]/coverage_norm*args.n,2),library_stats["chr_cov"][chromosome]))
 
 	outfile.close()
-	return(ploidies,library_stats)
+	return(ploidies,library_stats,coverage_data)
 
+#compute the GC content of the bins, and find which bins contain too many N
 def retrieve_N_content(args):
 	if not args.ref.endswith(".gz"):
 		with open(args.ref, 'r+') as f:
@@ -589,17 +645,19 @@ def retrieve_N_content(args):
 		regions=[sequence[i:i+100] for i in range(0, len(sequence), 100)]
 		Ncontent[contig]=[]
 		for region in regions:
-			if region.upper().count("N")/100.0 > args.n_mask:
+			region_upper=region.upper()
+			if region_upper.count("N")/100.0 > args.n_mask:
 				#print region.upper().count("N")/100.0
-				Ncontent[contig].append(0)
+				Ncontent[contig].append(-1)
 			else:  
-				Ncontent[contig].append(1)
+				Ncontent[contig].append( round( (region_upper.count("G")+region_upper.count("C"))/100.0 ,1) )
 		sequence_length[contig]=len(sequence)		
 		Ncontent[contig]=numpy.array(Ncontent[contig])
 		
 
 	return(Ncontent,sequence_length)
 
+#main function
 def cluster(args):
 
 	Ncontent,sequence_length=retrieve_N_content(args)
@@ -619,7 +677,7 @@ def cluster(args):
 	A="CREATE INDEX CHR ON TIDDITcall (chrA, chrB)"
 	args.c.execute(A)
 
-	ploidies,library_stats=determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,library_stats)
+	ploidies,library_stats,coverage_data=determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,library_stats)
 	library_stats["ploidies"]=ploidies
 
 	if not args.e:
