@@ -544,9 +544,6 @@ def gc_norm(args,median_coverage,normalising_chromosomes,coverage_data,Ncontent)
 		if 0 == gc_dict[gc]:
 			gc_dict[gc]=median_coverage
 
-	for gc in gc_dict:
-		print "{} {}".format(gc, gc_dict[gc])
-
 	for chromosome in coverage_data:
 		for i in range(0,len(coverage_data[chromosome])):
 			if not Ncontent[chromosome][i] == -1:
@@ -616,7 +613,6 @@ def retrieve_N_content(args):
 		for region in regions:
 			region_upper=region.upper()
 			if region_upper.count("N")/100.0 > args.n_mask:
-				#print region.upper().count("N")/100.0
 				Ncontent[contig].append(-1)
 			else:  
 				Ncontent[contig].append( round( (region_upper.count("G")+region_upper.count("C"))/100.0 ,2) )
