@@ -529,19 +529,23 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats):
 
 #normalise the coverage based on GC content
 def gc_norm(args,median_coverage,normalising_chromosomes,coverage_data,Ncontent):
-	gc_vals=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+	gc_vals=[0.  , 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1 , 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2 , 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.3 , 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.4 , 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.5 , 0.51, 0.52, 0.53, 0.54, 0.55, 0.56, 0.57, 0.58, 0.59, 0.6 , 0.61, 0.62, 0.63, 0.64, 0.65, 0.66, 0.67, 0.68, 0.69, 0.7 , 0.71, 0.72, 0.73, 0.74, 0.75, 0.76, 0.77, 0.78, 0.79, 0.8 , 0.81, 0.82, 0.83, 0.84, 0.85, 0.86, 0.87, 0.88, 0.89, 0.9 , 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99, 1]
 	gc_dict={}
 
 	for gc in gc_vals:
 		tmp=[]
+		gc_dict[gc]=median_coverage
 		for chromosome in normalising_chromosomes:
-			selected=Ncontent[chromosome] == gc
+			selected= Ncontent[chromosome] == gc
 			selected_coverage=coverage_data[chromosome][selected]
-			tmp+=list(selected_coverage[:,0])
-
-		gc_dict[gc]=numpy.median(tmp)
+			tmp+=list(selected_coverage[ numpy.where( selected_coverage[:,1] > args.q)[0] ,0])
+		if len(tmp):
+			gc_dict[gc]=numpy.median(tmp)
 		if 0 == gc_dict[gc]:
 			gc_dict[gc]=median_coverage
+
+	for gc in gc_dict:
+		print "{} {}".format(gc, gc_dict[gc])
 
 	for chromosome in coverage_data:
 		for i in range(0,len(coverage_data[chromosome])):
@@ -552,74 +556,39 @@ def gc_norm(args,median_coverage,normalising_chromosomes,coverage_data,Ncontent)
 
 #estimate the ploidy of each chromosome
 def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,library_stats):
-
 	library_stats["chr_cov"]={}
-
 	ploidies={}
 	avg_coverage=[]
-	coverage_norm=0
-	if not args.force_ploidy:
-
-		normalising_chromosomes=[]
-		for chromosome in args.s.split(","):
-			if chromosome in Ncontent:
-				normalising_chromosomes.append(chromosome)
-			elif "chr" + chromosome in  Ncontent:
-				normalising_chromosomes.append("chr"+chromosome)
-			elif chromosome.replace("chr","") in Ncontent:
-				normalising_chromosomes.append(chromosome.replace("chr",""))
-			else:
-				print "warning chromosome {} is not present in the reference".format(chromosome)
-				print "also make sure that the chromosomes suplied through the -s parameter match the reference"
-
+	for chromosome in chromosomes:
 		try:
-			for chromosome in normalising_chromosomes:
-				ploidies[chromosome]=args.n 
-				N_count=Ncontent[chromosome]
-				chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > 0),0])
-				avg_coverage.append( chromosomal_average )
-				library_stats["chr_cov"][chromosome]=chromosomal_average
-
-		except:
-			print "error: reference mismatch!"
-			print "make sure that the contigs of the bam file and the reference match"
-			print "also make sure that the chromosomes suplied through the -s parameter match the reference"
-			print "you may use --force_ploidy to skip the per chromosome ploidy estimation"
-			quit()
-
-		coverage_norm=numpy.median(avg_coverage)
-		coverage_data=gc_norm(args,coverage_norm,normalising_chromosomes,coverage_data,Ncontent)
-		print coverage_norm
-	else:
-
-		normalising_chromosomes=chromosomes
-		for chromosome in normalising_chromosomes:
-			ploidies[chromosome]=args.n
 			N_count=Ncontent[chromosome]
 			chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > 0),0])
 			avg_coverage.append( chromosomal_average )
 			library_stats["chr_cov"][chromosome]=chromosomal_average
 
-		coverage_norm=numpy.median(avg_coverage)
-		coverage_data=gc_norm(args,coverage_norm,chromosomes,coverage_data,Ncontent)
+		except:
+			print "error: reference mismatch!"
+			print "make sure that the contigs of the bam file and the reference match"
+			quit()
+
+	coverage_norm=numpy.median(avg_coverage)
+	coverage_data=gc_norm(args,coverage_norm,chromosomes,coverage_data,Ncontent)
 
 	chromosomal_average=0
 	outfile=open(args.o+".ploidy.tab", 'w')
 	outfile.write("Contig\tploidy_rounded\tploidy_raw\tmedian_coverage\n")
 	for chromosome in chromosomes:
-		if not chromosome in ploidies:
-   
-			chromosome_length=sequence_length[chromosome]
-			N_count=Ncontent[chromosome]
-			chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > -1),0])
-			if not args.force_ploidy:
-				try:
-					ploidies[chromosome]=int(round((chromosomal_average)/coverage_norm*args.n))
-				except:
-					ploidies[chromosome]=args.n
-			else:
-				ploidies[chromosome]=args.n  
-			library_stats["chr_cov"][chromosome]=chromosomal_average
+		N_count=Ncontent[chromosome]
+		chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where( (N_count > -1) & ( (coverage_data[chromosome][:,1] > args.q) | (coverage_data[chromosome][:,1] == 0) ) ),0])
+		if not args.force_ploidy:
+			try:
+				ploidies[chromosome]=int(round((chromosomal_average)/coverage_norm*args.n))
+			except:
+				ploidies[chromosome]=args.n
+		else:
+			ploidies[chromosome]=args.n  
+
+		library_stats["chr_cov"][chromosome]=chromosomal_average
 		
 		outfile.write("{}\t{}\t{}\t{}\n".format(chromosome,ploidies[chromosome],round( library_stats["chr_cov"][chromosome]/coverage_norm*args.n,2),library_stats["chr_cov"][chromosome]))
 
@@ -650,7 +619,7 @@ def retrieve_N_content(args):
 				#print region.upper().count("N")/100.0
 				Ncontent[contig].append(-1)
 			else:  
-				Ncontent[contig].append( round( (region_upper.count("G")+region_upper.count("C"))/100.0 ,1) )
+				Ncontent[contig].append( round( (region_upper.count("G")+region_upper.count("C"))/100.0 ,2) )
 		sequence_length[contig]=len(sequence)		
 		Ncontent[contig]=numpy.array(Ncontent[contig])
 		

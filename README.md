@@ -53,40 +53,12 @@ TIDDIT may be fine tuned by altering these optional parameters:
 
     -n - The ploidy of the organism ,(default = 2)
 
-    -s - A list of chromosomes used to compute the ploidy across the rest of the chromosomes of the genome (based on coverage). these chromomosomes are assumed to have -n ploidy.  default (1,5,14,9,2).
-         TIDDIT will compjute the median coverage across these contigs, and use that coverage value as a reference for estimating the ploidy of the remaining contigs.			
-         Note: these chromosomes  must be present in the reference.fasta file, otherwise, tiddit will exit with a reference mismatch error
-
-    --force_ploidy - set the ploidy of all chromosomes to -n (including the sex chromosomes), this option will disable the ploidy estimation based on the chromosomes supplied through the -s parameter.
+    --force_ploidy - set the ploidy of all chromosomes to -n (including the sex chromosomes), this option will disable the ploidy estimation.
                      This option is meant to be used for low quality data or for species having equal ploidy across all chromosomes
 
 output:
 
 TIDDIT SV module produces three output files, a vcf file containing SV calls, a tab file describing the coverage across the genome in bins of size 100 bp, and a tab file dscribing the estimated ploidy and coverage across each contig.
-
-
-Examples:
-
-    Run TIDDIT on a human genome
-
-        python TIDDIT.py --sv [Options] --bam bam --ref human_g1k_v37.fasta
-
-    Run TIDDIT on a human genome, aligned to a reference with "chr" prefix:
-
-        python TIDDIT.py --sv [Options] --bam bam --ref hg19.fa -s chr1,chr2,chr3,chr8,chr22
-
-    Run TIDDIT on a triploid genome
-
-        python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta -n 3
-
-
-    Skip ploidy estimation, and set the ploidy of all chromosomes to 8
-
-        python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta -n 8 --force_ploidy   
-
-    Run TIDDIT on a yeast sample
-
-        python TIDDIT.py --sv [Options] --bam bam --ref saccer.fa -s chrI,chrII,chrIII
                                         
 The cov module
 ==============
