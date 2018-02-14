@@ -28,6 +28,29 @@ python TIDDIT.py  --sv --help
 python TIDDIT.py  --cov --help
 ```
 
+TIDDIT is also distributed with an experimental Singularity environment (http://singularity.lbl.gov/index.html). This environment could be used to solve issues with the c++ libraries. This environment has been tested with Singularity 2.4.1-dist. You may either use the singularity image (TIDDIT.simg), or install it from the Singularity file.
+
+Type the following to enter a session using the TIDDIT.simg container:
+
+    singularity shell TIDDIT.simg
+
+Now you can install and run TIDDIT. type exit to leave the environment:
+
+    exit
+
+If you want, you can build the container yourself, then you type the following command:
+
+    singularity build TIDDIT_env.simg Singularity
+
+you may need sudo permissions
+
+    sudo singularity build TIDDIT_env.simg Singularity
+
+and enter it like this:
+
+    singularity shell TIDDIT_env.simg
+
+
 The SV module
 =============
 The main TIDDIT module, detects structural variant using discordant pairs, split reads and coverage information
