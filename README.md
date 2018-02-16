@@ -1,6 +1,6 @@
 DESCRIPTION
 ==============
-TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Paired End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications and inversions, using supplementary alignments as well as discordant pairs. 
+TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Paired End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications and inversions, using supplementary alignments as well as discordant pairs.
 
 TIDDIT has two modes of analysing bam files. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a bam file and generates a coverage report.
 
@@ -28,6 +28,29 @@ python TIDDIT.py  --sv --help
 python TIDDIT.py  --cov --help
 ```
 
+TIDDIT is also distributed with an experimental Singularity environment (http://singularity.lbl.gov/index.html). This environment could be used to solve issues with the c++ libraries. This environment has been tested with Singularity 2.4.1-dist. You may either use the singularity image (TIDDIT.simg), or install it from the Singularity file.
+
+Type the following to enter a session using the TIDDIT.simg container:
+
+    singularity shell TIDDIT.simg
+
+Now you can install and run TIDDIT. type exit to leave the environment:
+
+    exit
+
+If you want, you can build the container yourself, then you type the following command:
+
+    singularity build TIDDIT_env.simg Singularity
+
+you may need sudo permissions
+
+    sudo singularity build TIDDIT_env.simg Singularity
+
+and enter it like this:
+
+    singularity shell TIDDIT_env.simg
+
+
 The SV module
 =============
 The main TIDDIT module, detects structural variant using discordant pairs, split reads and coverage information
@@ -53,36 +76,12 @@ TIDDIT may be fine tuned by altering these optional parameters:
 
     -n - The ploidy of the organism ,(default = 2)
 
-    -s - A list of chromosomes used to compute the ploidy across the rest of the chromosomes of the genome (based on coverage). these chromomosomes are assumed to have -n ploidy.  default (1,5,14,9,2).
-         TIDDIT will compjute the median coverage across these contigs, and use that coverage value as a reference for estimating the ploidy of the remaining contigs.			
-         Note: these chromosomes  must be present in the reference.fasta file, otherwise, tiddit will exit with a reference mismatch error
-
-    --force_ploidy - set the ploidy of all chromosomes to -n (including the sex chromosomes), this option will disable the ploidy estimation based on the chromosomes supplied through the -s parameter.
+    --force_ploidy - set the ploidy of all chromosomes to -n (including the sex chromosomes), this option will disable the ploidy estimation.
                      This option is meant to be used for low quality data or for species having equal ploidy across all chromosomes
 
+output:
 
-Examples:
-
-    Run TIDDIT on a human genome
-
-        python TIDDIT.py --sv [Options] --bam bam --ref human_g1k_v37.fasta
-
-    Run TIDDIT on a human genome, aligned to a reference with "chr" prefix:
-
-        python TIDDIT.py --sv [Options] --bam bam --ref hg19.fa -s chr1,chr2,chr3,chr8,chr22
-
-    Run TIDDIT on a triploid genome
-
-        python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta -n 3
-
-
-    Skip ploidy estimation, and set the ploidy of all chromosomes to 8
-
-        python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta -n 8 --force_ploidy   
-
-    Run TIDDIT on a yeast sample
-
-        python TIDDIT.py --sv [Options] --bam bam --ref saccer.fa -s chrI,chrII,chrIII
+TIDDIT SV module produces three output files, a vcf file containing SV calls, a tab file describing the coverage across the genome in bins of size 100 bp, and a tab file dscribing the estimated ploidy and coverage across each contig.
                                         
 The cov module
 ==============

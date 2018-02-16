@@ -5,8 +5,50 @@ import DBSCAN
 import gzip
 import sys
 import sqlite3
+import itertools
 
 from scipy.stats import norm
+
+#analyse the cigar operation of the read
+def read_cigar(cigar):
+	deletions=0
+	insertions=0
+	SC = ["".join(x) for _, x in itertools.groupby(cigar, key=str.isdigit)]
+	length=0
+	first=True
+	clip_after=True
+
+	aligned_range=[]
+	current_pos=1
+	for i in range(0,len(SC)/2):
+		if first and SC[i*2+1] == "M":
+			first = False
+		elif first and SC[i*2+1] == "S":
+			first = False
+			clip_after=False
+		if SC[i*2+1] == "M":
+			length += int( SC[i*2] )
+			bases=range(0,int( SC[i*2] ))
+			for j in range(0,len(bases)):
+				bases[j] += current_pos
+
+			aligned_range += bases
+			current_pos += int( SC[i*2] )
+		elif SC[i*2+1] == "I":
+			insertions+=1
+			length += int( SC[i*2] )
+			bases=range(0,int( SC[i*2] ))
+			for j in range(0,len(bases)):
+				bases[j] += current_pos
+			aligned_range += bases
+
+			current_pos += int( SC[i*2] )
+		elif SC[i*2+1] == "D":
+			deletions +=1
+		else:
+			current_pos += int( SC[i*2] )
+
+	return deletions,insertions,length,clip_after,aligned_range
 
 def coverage(args):
 	coverage_data={}
@@ -26,10 +68,16 @@ def coverage(args):
 def signals(args,coverage_data):
 	signal_data=[]
 	header=""
+	first_signal=True
 	for line in open(args.o+".signals.tab"):
 		if line[0] == "#":
 			header += line
 			continue
+
+		if first_signal:
+			chromosomes,library_stats,chromosome_len=find_contigs(header)
+			first_signal=False
+
 		content=line.strip().split()
 
 		chrA=content[0]
@@ -38,7 +86,28 @@ def signals(args,coverage_data):
 			orientationA=1
 		else:
 			orientationA=0
+
 		cigarA=content[3]
+		if ("S" in cigarA or "H" in cigarA) and not cigarA == "NA":
+			deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarA)
+			if clip_after:
+				posA+=length
+		else:
+			if "M" in cigarA:
+				deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarA)
+			else:
+				length=library_stats["ReadLength"]
+
+			if library_stats["Orientation"] == "innie":			
+				if orientationA:
+					posA+=length-1
+			else:
+				if not orientationA:
+					posA+=length-1
+
+		if posA > chromosome_len[chrA]:
+			posA=chromosome_len[chrA]
+
 		qualA=int(content[4])
 
 		chrB=content[5]
@@ -49,6 +118,26 @@ def signals(args,coverage_data):
 			orientationB=0
 		cigarB=content[8]
 		qualB=int(content[9])
+
+		if ("S" in cigarB or "H" in cigarB) and not cigarB == "NA":
+			deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarB)
+			if clip_after:
+				posB+=length
+		else:
+			if "M" in cigarB:
+				deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarB)
+			else:
+				length=library_stats["ReadLength"]
+
+			if library_stats["Orientation"] == "innie":			
+				if orientationB:
+					posB+=length-1
+			else:
+				if not orientationB:
+					posB+=length-1
+
+		if posB > chromosome_len[chrB]:
+			posB=chromosome_len[chrB]
 
 		resolution=int(content[-1])
 		
@@ -69,18 +158,20 @@ def signals(args,coverage_data):
 
 	if len(signal_data):
 		args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
-	return(header)
+	return(header,chromosomes,library_stats)
 
 def find_contigs(header):
 	chromosomes=[]
 	library_stats={}
+	chromosome_len={}
 	for line in header.split("\n"):
 		if "##contig=<ID=" in line:
 			chromosomes.append(line.split("##contig=<ID=")[-1].split(",")[0])
+			chromosome_len[chromosomes[-1]]=int(line.split("length=")[-1].split(">")[0])
 		if "##LibraryStats=" in line:
 			stats=line.strip().split(" ")
 			library_stats={"Coverage":float(stats[1].split("=")[-1]),"ReadLength":int(stats[2].split("=")[-1]),"MeanInsertSize":int(stats[3].split("=")[-1]),"STDInsertSize":int(stats[4].split("=")[-1]),"Orientation":stats[5].split("=")[-1]}
-	return (chromosomes,library_stats)
+	return (chromosomes,library_stats,chromosome_len)
 
 def analyse_pos(candidate_signals,discordants,library_stats,args):
 	analysed_signals={}
@@ -199,12 +290,14 @@ def generate_clusters(chrA,chrB,coordinates,library_stats,args):
 def retrieve_coverage(chromosome,start,end,coverage_data):
 	start_index=int(math.floor(start/100.0))
 	end_index=int(math.floor(end/100.0))+1
-	coverage=numpy.average(coverage_data[chromosome][start_index:end_index,0])
-	max_coverage=max(coverage_data[chromosome][start_index:end_index,0])
+	regional_coverage=coverage_data[chromosome][start_index:end_index,0]
+	coverage=numpy.average(regional_coverage[numpy.where(regional_coverage > -1)])
+	max_coverage=max(regional_coverage[numpy.where(regional_coverage > -1)])
 	quality=numpy.average(coverage_data[chromosome][start_index:end_index,1])
 	return (coverage,max_coverage,int(round(quality)))
 
 
+#Find the number of discordant pairs within a region
 def retrieve_discs(chromosome,start,end,coverage_data):
 	discs=0
 	start_index=int(math.floor(start/100.0))
@@ -236,7 +329,7 @@ def expected_links(coverageA,coverageB,sizeA,sizeB,gap,insert_mean,insert_stddev
 
 	return(e)
 
-
+#determine the variant type
 def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
 	variant_type="SVTYPE=BND"
 	var="N[{}:{}[".format(chrB,candidate["posB"])
@@ -301,6 +394,7 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
  
 	return(var,variant_type,GT)
 
+#compute the filters
 def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	filt="PASS"
 	#fewer links than expected
@@ -328,6 +422,7 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 
 	return(filt)
 
+#split inversions into two separate calls
 def redefine_inv(vcf_line,signals,library_stats,args):
 	analysed_signals=analyse_pos(signals,True,library_stats,args)
 	vcf_line[1]=analysed_signals["posA"]
@@ -432,51 +527,72 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats):
 		vcf_line_b[1]=candidate["posB"]
 		return([vcf_line_a,vcf_line_b])
 
+#normalise the coverage based on GC content
+def gc_norm(args,median_coverage,normalising_chromosomes,coverage_data,Ncontent):
+	gc_vals=[0.  , 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1 , 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2 , 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.3 , 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.4 , 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.5 , 0.51, 0.52, 0.53, 0.54, 0.55, 0.56, 0.57, 0.58, 0.59, 0.6 , 0.61, 0.62, 0.63, 0.64, 0.65, 0.66, 0.67, 0.68, 0.69, 0.7 , 0.71, 0.72, 0.73, 0.74, 0.75, 0.76, 0.77, 0.78, 0.79, 0.8 , 0.81, 0.82, 0.83, 0.84, 0.85, 0.86, 0.87, 0.88, 0.89, 0.9 , 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99, 1]
+	gc_dict={}
+
+	for gc in gc_vals:
+		tmp=[]
+		gc_dict[gc]=median_coverage
+		for chromosome in normalising_chromosomes:
+			selected= Ncontent[chromosome] == gc
+			selected_coverage=coverage_data[chromosome][selected]
+			tmp+=list(selected_coverage[ numpy.where( selected_coverage[:,1] > args.q)[0] ,0])
+		if len(tmp):
+			gc_dict[gc]=numpy.median(tmp)
+		if 0 == gc_dict[gc]:
+			gc_dict[gc]=median_coverage
+
+	for chromosome in coverage_data:
+		for i in range(0,len(coverage_data[chromosome])):
+			if not Ncontent[chromosome][i] == -1:
+				coverage_data[chromosome][i,0]=median_coverage*coverage_data[chromosome][i,0]/gc_dict[ Ncontent[chromosome][i] ]
+
+	return(coverage_data)
+
+#estimate the ploidy of each chromosome
 def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,library_stats):
-
 	library_stats["chr_cov"]={}
-
-	normalising_chromosomes={}
 	ploidies={}
 	avg_coverage=[]
-	coverage_norm=0
-	if not args.force_ploidy:
+	for chromosome in chromosomes:
 		try:
-			for chromosome in args.s.split(","):
-				ploidies[chromosome]=args.n
-				N_count=Ncontent[chromosome]
-				chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > 0),0])
-				avg_coverage.append( chromosomal_average )
-				library_stats["chr_cov"][chromosome]=chromosomal_average
+			N_count=Ncontent[chromosome]
+			chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > 0),0])
+			avg_coverage.append( chromosomal_average )
+			library_stats["chr_cov"][chromosome]=chromosomal_average
+
 		except:
 			print "error: reference mismatch!"
 			print "make sure that the contigs of the bam file and the reference match"
-			print "also make sure that the chromosomes suplied through the -s parameter match the reference"
-			print "you may use --force_ploidy to skip the per chromosome ploidy estimation"
 			quit()
 
-		coverage_norm=numpy.median(avg_coverage)
+	coverage_norm=numpy.median(avg_coverage)
+	coverage_data=gc_norm(args,coverage_norm,chromosomes,coverage_data,Ncontent)
 
 	chromosomal_average=0
-	print "estimated ploidies:"
+	outfile=open(args.o+".ploidy.tab", 'w')
+	outfile.write("Contig\tploidy_rounded\tploidy_raw\tmedian_coverage\n")
 	for chromosome in chromosomes:
-		if not chromosome in ploidies:
-   
-			chromosome_length=sequence_length[chromosome]
-			N_count=Ncontent[chromosome]
-			chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > 0),0])
-			if not args.force_ploidy:
-				try:
-					ploidies[chromosome]=int(round((chromosomal_average)/coverage_norm*args.n))
-				except:
-					ploidies[chromosome]=args.n
-			else:
-				ploidies[chromosome]=args.n  
-			library_stats["chr_cov"][chromosome]=chromosomal_average
+		N_count=Ncontent[chromosome]
+		chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where( (N_count > -1) & ( (coverage_data[chromosome][:,1] > args.q) | (coverage_data[chromosome][:,1] == 0) ) ),0])
+		if not args.force_ploidy:
+			try:
+				ploidies[chromosome]=int(round((chromosomal_average)/coverage_norm*args.n))
+			except:
+				ploidies[chromosome]=args.n
+		else:
+			ploidies[chromosome]=args.n  
 
-		print "{}:{}".format(chromosome,ploidies[chromosome])
-	return(ploidies,library_stats)
+		library_stats["chr_cov"][chromosome]=chromosomal_average
+		
+		outfile.write("{}\t{}\t{}\t{}\n".format(chromosome,ploidies[chromosome],round( library_stats["chr_cov"][chromosome]/coverage_norm*args.n,2),library_stats["chr_cov"][chromosome]))
 
+	outfile.close()
+	return(ploidies,library_stats,coverage_data)
+
+#compute the GC content of the bins, and find which bins contain too many N
 def retrieve_N_content(args):
 	if not args.ref.endswith(".gz"):
 		with open(args.ref, 'r+') as f:
@@ -495,17 +611,18 @@ def retrieve_N_content(args):
 		regions=[sequence[i:i+100] for i in range(0, len(sequence), 100)]
 		Ncontent[contig]=[]
 		for region in regions:
-			if region.upper().count("N")/100.0 > args.n_mask:
-				#print region.upper().count("N")/100.0
-				Ncontent[contig].append(0)
+			region_upper=region.upper()
+			if region_upper.count("N")/100.0 > args.n_mask:
+				Ncontent[contig].append(-1)
 			else:  
-				Ncontent[contig].append(1)
+				Ncontent[contig].append( round( (region_upper.count("G")+region_upper.count("C"))/100.0 ,2) )
 		sequence_length[contig]=len(sequence)		
 		Ncontent[contig]=numpy.array(Ncontent[contig])
 		
 
 	return(Ncontent,sequence_length)
 
+#main function
 def cluster(args):
 
 	Ncontent,sequence_length=retrieve_N_content(args)
@@ -521,12 +638,11 @@ def cluster(args):
 		args.c.execute("DROP TABLE TIDDITcall")
 	A="CREATE TABLE TIDDITcall (chrA TEXT,chrB TEXT,posA INT,posB INT,forwardA INT,forwardB INT,qualA INT, qualB INT,cigarA TEXT,cigarB TEXT, resolution INT)"
 	args.c.execute(A)
-	header=signals(args,coverage_data)
+	header,chromosomes,library_stats=signals(args,coverage_data)
 	A="CREATE INDEX CHR ON TIDDITcall (chrA, chrB)"
 	args.c.execute(A)
 
-	chromosomes,library_stats=find_contigs(header)
-	ploidies,library_stats=determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,library_stats)
+	ploidies,library_stats,coverage_data=determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,library_stats)
 	library_stats["ploidies"]=ploidies
 
 	if not args.e:
