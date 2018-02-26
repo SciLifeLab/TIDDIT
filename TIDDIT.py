@@ -3,7 +3,7 @@ import argparse
 import os
 import TIDDIT_clustering
 
-version = "2.1.1"
+version = "2.2.1"
 parser = argparse.ArgumentParser("""TIDDIT-{}""".format(version),add_help=False)
 parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 parser.add_argument('--cov'        , help="generate a coverage bed file", required=False, action="store_true")
@@ -47,7 +47,7 @@ if args.sv:
 	if args.d:
 		command_str += " -d {}".format(args.d)
 
-	#os.system(command_str)
+	os.system(command_str)
 	TIDDIT_clustering.cluster(args)
 
 elif args.cov:
