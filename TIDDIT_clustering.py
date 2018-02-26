@@ -406,9 +406,9 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	else:
 		if candidate["e1"]*0.4 >= candidate["splits"]:
 			filt = "BelowExpectedLinks"
-	if library_stats["ploidies"][chrA] == 0:
+	if library_stats["ploidies"][chrA] == 0 or library_stats["ploidies"][chrB] == 0:
 		return("Ploidy")
-	if candidate["MaxcovA"] >= library_stats["chr_cov"][chrA]*(library_stats["ploidies"][chrA]+2) or candidate["MaxcovB"] >= library_stats["chr_cov"][chrA]*(library_stats["ploidies"][chrA]+2):
+	if candidate["MaxcovA"] >= library_stats["chr_cov"][chrA]*(library_stats["ploidies"][chrA]+2) or candidate["MaxcovB"] >= library_stats["chr_cov"][chrB]*(library_stats["ploidies"][chrB]+2):
 		filt = "UnexpectedCoverage"
 	elif candidate["discsA"] > (candidate["discs"]+candidate["splits"])*(1+library_stats["ploidies"][chrA]) or candidate["discsB"] > (candidate["discs"]+candidate["splits"])*(1+library_stats["ploidies"][chrA]):
 		filt= "FewLinks"
