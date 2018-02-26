@@ -268,7 +268,7 @@ def analyse_pos(candidate_signals,discordants,library_stats,args):
 def generate_clusters(chrA,chrB,coordinates,library_stats,args):
 	candidates=[]
 	coordinates=coordinates[numpy.lexsort((coordinates[:,1],coordinates[:,0]))]
-	db=DBSCAN.main(coordinates[:,0:2],args.e,args.l)
+	db=DBSCAN.main(coordinates[:,0:2],args.e,int(round(args.l+library_stats["ploidies"][chrA]/(args.n*10))))
 	unique_labels = set(db)
 
 	for var in unique_labels:
@@ -338,40 +338,57 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
 		var="<DUP>"		
 
 	if chrA == chrB and library_stats["ploidies"][chrA]:
-		if candidate["discs"]:
+		ploidy=library_stats["ploidies"][chrA]
+		if ploidy > 10:
+			if candidate["discs"] and abs(candidate["covM"]/library_stats["chr_cov"][chrA]-1) < 0.05:
+				if candidate["FF"] + candidate["RR"] > candidate["RF"] + candidate["FR"]:
+					variant_type="SVTYPE=INV"
+					var="<INV>"
+			elif not candidate["discs"] and abs(candidate["covM"]/library_stats["chr_cov"][chrA]-1) < 0.05:
+				if candidate["splitsINV"] > candidate["splits"]-candidate["splitsINV"]:
+					variant_type="SVTYPE=INV"
+					var="<INV>"
+			elif candidate["covM"]/library_stats["chr_cov"][chrA]-1 > 0.05:
+				variant_type="SVTYPE=DUP"
+				var="<DUP>"
+			elif candidate["covM"]/library_stats["chr_cov"][chrA]-1 < -0.05:
+				variant_type="SVTYPE=DEL"
+				var="<DEL>"		
+
+		elif candidate["discs"]:
 			if candidate["FF"] + candidate["RR"] > candidate["RF"] + candidate["FR"]:
 				variant_type="SVTYPE=INV"
 				var="<INV>"
 			elif library_stats["Orientation"] == "innie":
-				if candidate["covM"]/library_stats["chr_cov"][chrA] > (args.n+0.5)/args.n:
+				if candidate["covM"]/library_stats["chr_cov"][chrA] > (ploidy+0.5)/float(ploidy):
 					variant_type="SVTYPE=DUP"
 					var="<DUP>"
 					if candidate["RF"] > candidate["FR"]: 
 						variant_type="SVTYPE=TDUP"
 						var="<TDUP>"
-				elif candidate["covM"]/library_stats["chr_cov"][chrA] < (args.n-0.5)/args.n:
+				elif candidate["covM"]/library_stats["chr_cov"][chrA] < (ploidy-0.5)/float(ploidy):
 					variant_type="SVTYPE=DEL"
 					var="<DEL>"	
 
 			else:
-				if candidate["covM"]/library_stats["chr_cov"][chrA] > (args.n+0.5)/args.n:
+				if candidate["covM"]/library_stats["chr_cov"][chrA] > (ploidy+0.5)/float(ploidy):
 					variant_type="SVTYPE=DUP"
 					var="<DUP>"
 					if candidate["RF"] < candidate["FR"]: 
 						variant_type="SVTYPE=TDUP"
 						var="<TDUP>"
 
-				elif candidate["covM"]/library_stats["chr_cov"][chrA] < (args.n-0.5)/args.n:
+				elif candidate["covM"]/library_stats["chr_cov"][chrA] < (ploidy-0.5)/float(ploidy):
 					variant_type="SVTYPE=DEL"
 					var="<DEL>"
 		else:
 			if candidate["splitsINV"] > candidate["splits"]-candidate["splitsINV"]:
 				variant_type="SVTYPE=INV"
 				var="<INV>"
-			elif candidate["covM"]/library_stats["chr_cov"][chrA] > (args.n+0.5)/args.n:
+			elif candidate["covM"]/library_stats["chr_cov"][chrA] >(ploidy+0.5)/float(ploidy):
 					variant_type="SVTYPE=DUP"
 					var="<DUP>"
-			elif candidate["covM"]/library_stats["chr_cov"][chrA] < (args.n-0.5)/args.n:
+			elif candidate["covM"]/library_stats["chr_cov"][chrA] < (ploidy-0.5)/float(ploidy):
 					variant_type="SVTYPE=DEL"
 					var="<DEL>"		
 
@@ -556,11 +573,16 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 	library_stats["chr_cov"]={}
 	ploidies={}
 	avg_coverage=[]
-	for chromosome in chromosomes:
+	cov=[]
+	for chromosome in chromosomes:		
 		try:
 			N_count=Ncontent[chromosome]
-			chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where(N_count > 0),0])
-			avg_coverage.append( chromosomal_average )
+			chr_cov=coverage_data[chromosome][numpy.where( (N_count > 0) & (coverage_data[chromosome][:,1] > args.q)  ),0][0]
+			if len(chr_cov):
+				chromosomal_average=numpy.median(chr_cov)
+				cov+= list(chr_cov)
+			else:
+				chromosomal_average=0
 			library_stats["chr_cov"][chromosome]=chromosomal_average
 
 		except:
@@ -568,7 +590,11 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 			print "make sure that the contigs of the bam file and the reference match"
 			quit()
 
-	coverage_norm=numpy.median(avg_coverage)
+	cov=numpy.array(cov)
+	if len(cov):
+		coverage_norm=numpy.median(cov)
+	else:
+		coverage_norm=1
 	coverage_data=gc_norm(args,coverage_norm,chromosomes,coverage_data,Ncontent)
 
 	chromosomal_average=0
@@ -576,7 +602,8 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 	outfile.write("Contig\tploidy_rounded\tploidy_raw\tmedian_coverage\n")
 	for chromosome in chromosomes:
 		N_count=Ncontent[chromosome]
-		chromosomal_average=numpy.median(coverage_data[chromosome][numpy.where( (N_count > -1) & ( (coverage_data[chromosome][:,1] > args.q) | (coverage_data[chromosome][:,1] == 0) ) ),0])
+		cov=coverage_data[chromosome][numpy.where( (N_count > -1) & ( (coverage_data[chromosome][:,1] > args.q) | (coverage_data[chromosome][:,1] == 0) ) ),0]
+		chromosomal_average=numpy.median(cov)
 		if not args.force_ploidy:
 			try:
 				ploidies[chromosome]=int(round((chromosomal_average)/coverage_norm*args.n))
@@ -584,7 +611,6 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 				ploidies[chromosome]=args.n
 		else:
 			ploidies[chromosome]=args.n  
-
 		library_stats["chr_cov"][chromosome]=chromosomal_average
 		
 		outfile.write("{}\t{}\t{}\t{}\n".format(chromosome,ploidies[chromosome],round( library_stats["chr_cov"][chromosome]/coverage_norm*args.n,2),library_stats["chr_cov"][chromosome]))
