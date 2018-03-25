@@ -326,7 +326,6 @@ def expected_links(coverageA,coverageB,sizeA,sizeB,gap,insert_mean,insert_stddev
 	a2 = (gap + 2 * readLength - insert_mean) / insert_stddev
 
 	e = Part(a1, b1, sizeA, sizeB, gap, insert_mean, insert_stddev, coverage, readLength ) - Part(a2, b2, sizeA, sizeB, gap, insert_mean, insert_stddev, coverage, readLength)
-
 	return(e)
 
 #determine the variant type
@@ -706,7 +705,9 @@ def cluster(args):
 				for signal in candidates[i]["signals"]:
 					gap.append(abs(sizeA-(signal[0]-candidates[i]["min_A"])+(signal[1]-candidates[i]["min_B"])))
 				gap=numpy.average(gap)
-				if gap > sizeA:
+				if sizeA > library_stats["MeanInsertSize"] or sizeB > library_stats["MeanInsertSize"]:
+					gap=1
+				elif gap > sizeA:
 					gap = gap - sizeA
 				else:
 					gap=1
