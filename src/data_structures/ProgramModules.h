@@ -10,7 +10,6 @@
 #define PROGRAMMODULES_H_
 
 #include "common.h"
-#include <list>
 
 //The module used to find structural variants
 class StructuralVariations{
