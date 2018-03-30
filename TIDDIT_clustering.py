@@ -69,6 +69,8 @@ def signals(args,coverage_data):
 	signal_data=[]
 	header=""
 	first_signal=True
+	read_list={}
+	n_reads=0
 	for line in open(args.o+".signals.tab"):
 		if line[0] == "#":
 			header += line
@@ -80,14 +82,22 @@ def signals(args,coverage_data):
 
 		content=line.strip().split()
 
-		chrA=content[0]
-		posA=int(content[1])
-		if content[2] == "+":
+		read_name=content[0]
+		if read_name in read_list:
+			name=read_list[read_name]
+		else:
+			name=n_reads
+			read_list[read_name]=n_reads
+			n_reads+=1
+
+		chrA=content[1]
+		posA=int(content[2])
+		if content[3] == "+":
 			orientationA=1
 		else:
 			orientationA=0
 
-		cigarA=content[3]
+		cigarA=content[4]
 		if ("S" in cigarA or "H" in cigarA) and not cigarA == "NA":
 			deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarA)
 			if clip_after:
@@ -108,16 +118,16 @@ def signals(args,coverage_data):
 		if posA > chromosome_len[chrA]:
 			posA=chromosome_len[chrA]
 
-		qualA=int(content[4])
+		qualA=int(content[5])
 
-		chrB=content[5]
-		posB=int(content[6])
-		if content[7] == "+":
+		chrB=content[6]
+		posB=int(content[7])
+		if content[8] == "+":
 			orientationB=1
 		else:
 			orientationB=0
-		cigarB=content[8]
-		qualB=int(content[9])
+		cigarB=content[9]
+		qualB=int(content[10])
 
 		if ("S" in cigarB or "H" in cigarB) and not cigarB == "NA":
 			deletions,insertions,length,clip_after,aligned_range=read_cigar(cigarB)
@@ -143,21 +153,19 @@ def signals(args,coverage_data):
 		
 
 		if chrA > chrB or (posB < posA and chrA == chrB):
-			#signal_data[chrB][chrA].append([posB,posA,orientationB,qualB,orientationA,qualA,resolution])
-			signal_data.append([chrB,chrA,posB,posA,orientationB,orientationA,qualB,qualA,cigarB,cigarA,resolution])
+			signal_data.append([chrB,chrA,posB,posA,orientationB,orientationA,qualB,qualA,cigarB,cigarA,resolution,name])
 		else:
-			#signal_data[chrA][chrB].append([posA,posB,orientationA,qualA,orientationB,qualB,resolution])
-			signal_data.append([chrA,chrB,posA,posB,orientationA,orientationB,qualA,qualB,cigarA,cigarB,resolution])
+			signal_data.append([chrA,chrB,posA,posB,orientationA,orientationB,qualA,qualB,cigarA,cigarB,resolution,name])
 		
 
 		if len (signal_data) > 1000000:
-			args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
+			args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
 			signal_data=[]
 		coverage_data[chrB][int(math.floor(posB/100)),2]+=1
 		coverage_data[chrA][int(math.floor(posA/100)),2]+=1
 
 	if len(signal_data):
-		args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
+		args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
 	return(header,chromosomes,library_stats)
 
 def find_contigs(header):
@@ -197,7 +205,7 @@ def analyse_pos(candidate_signals,discordants,library_stats,args):
 	avgQa=[]
 
 	for i in range(0,len(candidate_signals)):
-		if candidate_signals[i][-1] == 1:
+		if candidate_signals[i][-2] == 1:
 			if(candidate_signals[i][2] != candidate_signals[i][4]):
 				splitsINV +=1
 		else:
@@ -210,7 +218,7 @@ def analyse_pos(candidate_signals,discordants,library_stats,args):
 			else:
 				FF+=1
 
-		if candidate_signals[i][-1] == 1:
+		if candidate_signals[i][-2] == 1:
 			splits +=1
 		else:
 			discs+=1
@@ -276,13 +284,15 @@ def generate_clusters(chrA,chrB,coordinates,library_stats,args):
 			continue
 		class_member_mask = (db == var)
 		candidate_signals =coordinates[class_member_mask]
-		resolution=candidate_signals[:,-1]
+		resolution=candidate_signals[:,-2]
+		support=len(set(candidate_signals[:,-1]))
 		discordants=True
 		if len(set(resolution)) == 1 and max(resolution) == 1:
 			disordants=False
-		if discordants and len(candidate_signals) >= args.p:
+
+		if discordants and support >= args.p:
 			candidates.append( analyse_pos(candidate_signals,discordants,library_stats,args) )
-		elif not discordants and len(candidate_signals) >= args.r and chrA == chrB:
+		elif not discordants and support >= args.r and chrA == chrB:
 			candidates.append( analyse_pos(candidate_signals,discordants,library_stats,args) )
 
 	return(candidates)
@@ -320,10 +330,10 @@ def Part(a, b, sizeA, sizeB, gap, insert_mean, insert_stddev, coverage, readLeng
 def expected_links(coverageA,coverageB,sizeA,sizeB,gap,insert_mean,insert_stddev,readLength):
 	coverage=numpy.average([coverageA,coverageB])
 
-	b1 = (sizeA + sizeB + gap - insert_mean) / insert_stddev
-	a1 = (max([sizeA, sizeB]) + gap + readLength  - insert_mean) / insert_stddev
-	b2 = (min([sizeA, sizeB]) + gap + readLength  - insert_mean) / insert_stddev
-	a2 = (gap + 2 * readLength - insert_mean) / insert_stddev
+	b1 = (sizeA + sizeB + gap - insert_mean) / float(insert_stddev)
+	a1 = (max([sizeA, sizeB]) + gap + readLength  - insert_mean) / float(insert_stddev)
+	b2 = (min([sizeA, sizeB]) + gap + readLength  - insert_mean) / float(insert_stddev)
+	a2 = (gap + 2 * readLength - insert_mean) / float(insert_stddev)
 
 	e = Part(a1, b1, sizeA, sizeB, gap, insert_mean, insert_stddev, coverage, readLength ) - Part(a2, b2, sizeA, sizeB, gap, insert_mean, insert_stddev, coverage, readLength)
 	return(e)
@@ -416,17 +426,22 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	#fewer links than expected
 	if chrA == chrB and (abs(candidate["max_A"]-candidate["min_B"]) < args.z):
 		filt="MinSize"
+
+	#Less than the expected number of signals
 	if candidate["discs"]:
-		if candidate["e1"]*0.4 >= candidate["discs"]:
+		if candidate["e1"]*0.6 >= candidate["discs"]:
 			filt = "BelowExpectedLinks"
 	else:
 		if candidate["e1"]*0.4 >= candidate["splits"]:
 			filt = "BelowExpectedLinks"
+	#The ploidy of this contig is 0, hence there shoud be no variant here
 	if library_stats["ploidies"][chrA] == 0 or library_stats["ploidies"][chrB] == 0:
 		return("Ploidy")
+
+	#coverage is too high
 	if candidate["MaxcovA"] >= library_stats["chr_cov"][chrA]*(library_stats["ploidies"][chrA]+2) or candidate["MaxcovB"] >= library_stats["chr_cov"][chrB]*(library_stats["ploidies"][chrB]+2):
 		filt = "UnexpectedCoverage"
-	elif candidate["discsA"] > (candidate["discs"]+candidate["splits"])*(1+library_stats["ploidies"][chrA]) or candidate["discsB"] > (candidate["discs"]+candidate["splits"])*(1+library_stats["ploidies"][chrA]):
+	elif candidate["discsA"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]) or candidate["discsB"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]):
 		filt= "FewLinks"
 	elif chrA == chrB and candidate["max_A"] > candidate["min_B"]:
 		filt = "Smear"
@@ -661,7 +676,7 @@ def cluster(args):
 	tables = map(lambda t: t[0], args.c.fetchall())
 	if "TIDDITcall" in tables:
 		args.c.execute("DROP TABLE TIDDITcall")
-	A="CREATE TABLE TIDDITcall (chrA TEXT,chrB TEXT,posA INT,posB INT,forwardA INT,forwardB INT,qualA INT, qualB INT,cigarA TEXT,cigarB TEXT, resolution INT)"
+	A="CREATE TABLE TIDDITcall (chrA TEXT,chrB TEXT,posA INT,posB INT,forwardA INT,forwardB INT,qualA INT, qualB INT,cigarA TEXT,cigarB TEXT, resolution INT,name INT)"
 	args.c.execute(A)
 	header,chromosomes,library_stats=signals(args,coverage_data)
 	A="CREATE INDEX CHR ON TIDDITcall (chrA, chrB)"
@@ -679,7 +694,7 @@ def cluster(args):
 		calls[chrA] =[]
 		print "{}".format(chrA)
 		for chrB in chromosomes:
-			signal_data=numpy.array([ [hit[0],hit[1],hit[2],hit[3],hit[4],hit[5],hit[6]] for hit in args.c.execute('SELECT posA,posB,forwardA,qualA,forwardB,qualB,resolution FROM TIDDITcall WHERE chrA == \'{}\' AND chrB == \'{}\''.format(chrA,chrB)).fetchall()])
+			signal_data=numpy.array([ [hit[0],hit[1],hit[2],hit[3],hit[4],hit[5],hit[6],hit[7]] for hit in args.c.execute('SELECT posA,posB,forwardA,qualA,forwardB,qualB,resolution,name FROM TIDDITcall WHERE chrA == \'{}\' AND chrB == \'{}\''.format(chrA,chrB)).fetchall()])
 
 			if not len(signal_data):
 				continue
@@ -724,8 +739,8 @@ def cluster(args):
 					candidates[i]["e1"]=int(round(expected_links(coverageA,coverageB,sizeA,sizeB,gap,library_stats["MeanInsertSize"],library_stats["STDInsertSize"],library_stats["ReadLength"])))
 					candidates[i]["e2"]=int(round(expected_links(coverageA,coverageB,library_stats["MeanInsertSize"],library_stats["MeanInsertSize"],0,library_stats["MeanInsertSize"],library_stats["STDInsertSize"],library_stats["ReadLength"])))
 				else:
-					candidates[i]["e1"]=min([coverageA,coverageB])
-					candidates[i]["e2"]=min([coverageA,coverageB])
+					candidates[i]["e1"]=int(round(min([coverageA,coverageB])))
+					candidates[i]["e2"]=int(round(min([coverageA,coverageB])))
 				vcf_line=generate_vcf_line(chrA,chrB,n,candidates[i],args,library_stats)
 
 				if len(vcf_line) == 1:

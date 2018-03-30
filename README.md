@@ -66,6 +66,8 @@ TIDDIT may be fine tuned by altering these optional parameters:
          than this is treated as discordant pairs. Default is 3*std+mean insert size
                         
     -d - The pair orientation, use this setting to override the automatic orientation selection
+
+    -l - The density parameter, to create a cluster, more than l signals (split reads+ discordant pairs) must be present, signals are added to a cluster if they are neighbouring atleast this  number of signals (defualt 4)
             
     -p - The minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 5
     
@@ -100,12 +102,11 @@ TIDDIT uses four different filters to detect low quality calls. The filter field
 
     Expectedlinks
         The number of discordant pairs/supplementary alignments supporting
-        the variant is less than 40% of the expected number of supporting reads
+        the variant is less than 60% of the expected number of supporting reads
     FewLinks
-        The number of discordant pairs supporting the variant is less than 20% of the 
-        discordant pairs within that genomic region.
+        The number of discordant pairs supporting the variant is too low compared to the number of discordant pairs within that genomic region.
     Unexpectedcoverage
-        The coverage across the variant is more than 10* the mean coverage.
+        High coverage
     Smear
         The two windows that define the regions next to the breakpoints overlap.
 
@@ -149,15 +150,6 @@ TIDDIT returns the detected variants into two vcf files, one vcf for intrachromo
         The average mapping quality of the reads in window B
 
 The content of the INFO field can be used to filter out false positives and to gain more understanding of the structure of the variant. More info is found in the vcf file
-
-Algorithm
-=============
-TIDDIT detects structural variants using supplementary alignments as well as discordant pairs. A discordant pair is defined as any pair of reads having a larger distance than the --insert parameter(which is set to 3*std+average library distance as default). Supplementary aligments are produced by reads where one part of the read aligns to a certain part of the reference, while another part of the same read aligns to a distant region.
-
-TIDDIT performs a linear search for SV signatures within the input Bam file. These signatures are prited to the signals file. Upon searching the entire bam file, TIDDIT starts to cluster these signals using an algorithm similar to DBSCAN.
-Any set of discordant pairs or supplementary alignments larger or equal to the -p parameter will be analysed and later returned as a structural variant by printing it to the vcf file. TIDDIT will only consider reads that fullfill the -q parameter: reads having lower mapping quality will not be added to a set, and thus will not contribute to the detection of SV.
-
-TIDDIT detects a wide spectra of structural variants, and is able to classify deletions, duplications, inversions and translocations(intrachromosomal and interchromosomal). Variants are classified based on the pair orientation of the reads defining a structural variant, as well as the coverage across the structural variant and the regions where the read pairs are aligned. If TIDDIT is unnable to classify a variant, it will be returned as a break end event.
 
 LICENSE
 ==============

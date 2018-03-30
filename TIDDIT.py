@@ -19,13 +19,14 @@ if args.sv:
 	parser.add_argument('-p', type=int,default=5, help="Minimum number of supporting pairs in order to call a variation event (default 5)")
 	parser.add_argument('-r', type=int,default=5, help="Minimum number of supporting split reads to call a small variant (default 5)")
 	parser.add_argument('-q', type=int,default=10, help="Minimum mapping quality to consider an alignment (default 10)")
-	parser.add_argument('-Q', type=int,default=10, help="Minimum regional mapping quality (default 20)")
+	parser.add_argument('-Q', type=int,default=20, help="Minimum regional mapping quality (default 20)")
 	parser.add_argument('-n', type=int,default=2, help="the ploidy of the organism,(default = 2)")
 	parser.add_argument('-m', type=int,default=100, help="minimum variant size,(default = 100)")
 	parser.add_argument('-e', type=int, help="clustering distance  parameter, discordant pairs closer than this distance are considered to belong to the same variant(default = sqrt(insert-size*2)*12)")
-	parser.add_argument('-l', type=int,default=3, help="min-pts parameter (default=3),must be set > 1")
+	parser.add_argument('-l', type=int,default=4, help="min-pts parameter (default=4),must be set > 1")
 	parser.add_argument('-z', type=int,default=100, help="minimum variant size (default=100)")
 	parser.add_argument('--force_ploidy',action="store_true", help="force the ploidy to be set to -n across the entire genome (i.e skip normalisation based on the -s list of chromosomes)")
+	parser.add_argument('--debug',action="store_true", help="rerun the tiddit clustering procedure")
 	parser.add_argument('--n_mask',type=float,default=0.5, help="exclude regions from coverage calculation if they contain more than this fraction of N (default = 0.5)")
 	parser.add_argument('--ref',required=True, type=str, help="reference fasta")
 
@@ -47,7 +48,9 @@ if args.sv:
 	if args.d:
 		command_str += " -d {}".format(args.d)
 
-	os.system(command_str)
+	if not args.debug:
+		os.system(command_str)
+	
 	TIDDIT_clustering.cluster(args)
 
 elif args.cov:

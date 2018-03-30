@@ -106,11 +106,11 @@ void Window::insertRead(BamAlignment alignment) {
 			}
 			//chrA posA orientation cigar q chrB endB orientation cigar qualB resolution
 			if(alignment.RefID == contigNr and alignment.Position < splitPos){
-				ss << position2contig[alignment.RefID] << "\t" << alignment.Position +1  << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t" << cigar_SA << "\t" << SA_elements[4] <<  "\t" << 1 << "\n";
+				ss << alignment.Name << "\t"  << position2contig[alignment.RefID] << "\t" << alignment.Position +1  << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t" << cigar_SA << "\t" << SA_elements[4] <<  "\t" << 1 << "\n";
 			}else if(alignment.RefID < contigNr){
-				ss << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t" << cigar_SA << "\t" << SA_elements[4] << "\t" << 1 <<"\n";
+				ss << alignment.Name << "\t" << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t" << cigar_SA << "\t" << SA_elements[4] << "\t" << 1 <<"\n";
 			}else{
-				ss << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t"<< cigar_SA << "\t" << SA_elements[4] << "\t" << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << 1 << "\n";
+				ss << alignment.Name << "\t" << SA_elements[0] << "\t" << splitPos+1 << "\t"<< SA_elements[2] << "\t"<< cigar_SA << "\t" << SA_elements[4] << "\t" << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << 1 << "\n";
 			}
 
 			SV_calls[alignment.MateRefID].push_back(ss.str());
@@ -143,7 +143,7 @@ void Window::insertRead(BamAlignment alignment) {
 			cigar=sscigar.str();
 
 			std::stringstream ss;
-			ss << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << position2contig[alignment.MateRefID] << "\t" << alignment.MatePosition+1 << "\t"<< orientationB << "\t" << "NA" << "\t" << -1 << "\t" << 100 << "\n";
+			ss << alignment.Name << "\t" << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << position2contig[alignment.MateRefID] << "\t" << alignment.MatePosition+1 << "\t"<< orientationB << "\t" << "NA" << "\t" << -1 << "\t" << 100 << "\n";
 			SV_calls[alignment.MateRefID].push_back(ss.str());
 		}
 	}
