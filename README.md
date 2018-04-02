@@ -38,7 +38,7 @@ Now you can install and run TIDDIT. type exit to leave the environment:
 
     exit
 
-If you want, you can build the container yourself, then you type the following command:
+ The Singlularity environment is build typing the following command:
 
     singularity build TIDDIT_env.simg Singularity
 
@@ -46,9 +46,6 @@ you may need sudo permissions
 
     sudo singularity build TIDDIT_env.simg Singularity
 
-and enter it like this:
-
-    singularity shell TIDDIT_env.simg
 
 
 The SV module
