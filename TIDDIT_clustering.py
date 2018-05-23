@@ -635,10 +635,10 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,sequence_length,lib
 #compute the GC content of the bins, and find which bins contain too many N
 def retrieve_N_content(args):
 	if not args.ref.endswith(".gz"):
-		with open(args.ref, 'r+') as f:
+		with open(args.ref, 'r') as f:
 			sequence=f.read().split(">")
 	else:
-		with gzip.open(args.ref, 'r+') as f:
+		with gzip.open(args.ref, 'r') as f:
 			sequence=f.read().split(">")
 
 	del sequence[0]
