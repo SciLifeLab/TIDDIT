@@ -161,46 +161,6 @@ static readStatus computeReadType(BamAlignment al, uint32_t max_insert, uint32_t
 	}
 }
 
-
-
-
-static float normcdf(float x,float mu,float sigma) {
-	float t = x - mu;
-	float y = 0.5 * erfc(float(-t / (sigma * sqrt(2.0))));
-	if (y > 1.0) {
-		y = 1.0;
-	}
-	return y;
-}
-
-static float normpdf(float x,float mu,float sigma) {
-    float u = (x - mu) / abs(sigma);
-    float y = (1 /(sqrt(2 * M_PI) * abs(sigma))) * exp((-u * u)/2) ;
-    return y;
-}
-
-
-static float Part(float a, float b,  uint32_t sizeA, uint32_t sizeB, uint32_t gap, float insert_mean, float insert_stddev, float coverage, uint32_t readLength ) {
-	float readfrequency = 2 * readLength / coverage;
-	float expr1 = (min(sizeA, sizeB) - (readLength - 0)) / readfrequency * normcdf(a, 0, 1);
-	float expr2 = -(- 0 ) / readfrequency * normcdf(b, 0, 1);
-	float expr3 = (b * insert_stddev) / readfrequency * (normcdf(b, 0, 1) - normcdf(a, 0, 1));
-	float expr4 = (insert_stddev / readfrequency) * (normpdf(b, 0, 1) - normpdf(a, 0, 1));
-	float value = expr1 + expr2 + expr3 + expr4;
-	return value;
-}
-
-
-static float ExpectedLinks(uint32_t sizeA, uint32_t sizeB, uint32_t gap, float insert_mean, float insert_stddev, float coverage, uint32_t readLength) {
-	float b1 = (sizeA + sizeB + gap - insert_mean) / insert_stddev;
-	float a1 = (max(sizeA, sizeB) + gap + readLength  - insert_mean) / insert_stddev;
-	float b2 = (min(sizeA, sizeB) + gap + readLength  - insert_mean) / insert_stddev;
-	float a2 = (gap + 2 * readLength - insert_mean) / insert_stddev;
-
-	float E_links = Part(a1, b1, sizeA, sizeB, gap, insert_mean, insert_stddev, coverage, readLength ) - Part(a2, b2, sizeA, sizeB, gap, insert_mean, insert_stddev, coverage, readLength);
-	return E_links;
-}
-
 static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genomeLength, uint32_t max_insert, uint32_t min_insert,bool is_mp,int quality,string outputFileHeader) {
 	
 	Cov *calculateCoverage;

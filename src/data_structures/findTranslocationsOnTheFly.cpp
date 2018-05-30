@@ -9,10 +9,6 @@
 //function used to find translocations
 StructuralVariations::StructuralVariations() { }
 
-bool zeroth_columnsort(const vector<int>& lhs,const vector<int>& rhs){
-	return(lhs[1] < rhs[1]);
-}
-
 void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage, string outputFileHeader, string version,string command, map<string,int> SV_options) {
 	size_t start = time(NULL);
 	//open the bam file
@@ -20,30 +16,27 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	bamFile.Open(bamFileName);
 	//Information from the header is needed to initialize the data structure
 	SamHeader head = bamFile.GetHeader();
-	// now create Translocation on the fly
-	Window *window;
 
+	Window *window;
 	window = new Window(bamFileName,outtie,meanCoverage,outputFileHeader,SV_options);
 	window-> version = version;
 	stringstream ss;
+
 	string orientation_string="innie";
 	if(outtie == true){
 		orientation_string="outtie";
 	}
+
 	ss << "##LibraryStats=TIDDIT-" << version <<   " Coverage=" << meanCoverage << " ReadLength=" << SV_options["readLength"] << " MeanInsertSize=" << SV_options["meanInsert"] << " STDInsertSize=" << SV_options["STDInsert"] << " Orientation=" << orientation_string << "\n" << "##TIDDITcmd=\"" << command << "\""; 
 	string libraryData=ss.str();
 	window->initTrans(head,libraryData);
 
-	for (int i=0;i< SV_options["contigsNumber"];i++){
-		window -> SV_calls[i] = vector<string>();
-		window -> SV_positions[i]= vector< vector< int> >();
-	}
-	
-	window -> numberOfEvents = 0;
+	for (int i=0;i< SV_options["contigsNumber"];i++){window -> SV_calls[i] = vector<string>();}
+
 	//Initialize bam entity
 	BamAlignment currentRead;
+
 	//now start to iterate over the bam file
-	int counter = 0;
 	while ( bamFile.GetNextAlignmentCore(currentRead) ) {
 	  if(currentRead.IsMapped()) {
 	    window->insertRead(currentRead);
@@ -56,6 +49,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 			window-> TIDDITVCF <<  window -> SV_calls[i][j];
 		}
 	}
+
 	window->TIDDITVCF.close();
 	printf ("variant calling time consumption= %lds\n", time(NULL) - start);
 }

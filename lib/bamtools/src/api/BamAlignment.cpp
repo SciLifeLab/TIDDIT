@@ -152,8 +152,8 @@ bool BamAlignment::BuildCharData(void) {
     const bool hasQualData = ( qualDataOffset < tagDataOffset );
     const bool hasTagData  = ( tagDataOffset  < dataLength );
 
-    // store alignment name (relies on null char in name as terminator)
-    //Name.assign(SupportData.AllCharData.data());
+    //store alignment name (relies on null char in name as terminator)
+    Name.assign(SupportData.AllCharData.data());
 
     // save query sequence
     //QueryBases.clear();
