@@ -166,9 +166,6 @@ string Window::VCFHeader(string libraryData){
 
 	for(int i=0;i < this -> contig_ids.size(); i++){
 		headerString+= "##contig=<ID="	+ contig_ids[i] + ",length=" + contig_length[i];
-		if(contig_ids.size() == contig_assembly.size()){
-			headerString+=",assembly=" +contig_assembly[i];
-		}
 		headerString +=">\n";
 	}
 	
