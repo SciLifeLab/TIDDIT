@@ -26,6 +26,7 @@ def read_cigar(cigar):
 		elif first and SC[i*2+1] == "S":
 			first = False
 			clip_after=False
+
 		if SC[i*2+1] == "M":
 			length += int( SC[i*2] )
 			bases=range(0,int( SC[i*2] ))
@@ -36,7 +37,6 @@ def read_cigar(cigar):
 			current_pos += int( SC[i*2] )
 		elif SC[i*2+1] == "I":
 			insertions+=1
-			length += int( SC[i*2] )
 			bases=range(0,int( SC[i*2] ))
 			for j in range(0,len(bases)):
 				bases[j] += current_pos
@@ -44,6 +44,7 @@ def read_cigar(cigar):
 
 			current_pos += int( SC[i*2] )
 		elif SC[i*2+1] == "D":
+			length += int( SC[i*2] )
 			deletions +=1
 		else:
 			current_pos += int( SC[i*2] )
@@ -115,8 +116,8 @@ def signals(args,coverage_data):
 				if not orientationA:
 					posA+=length-1
 
-		if posA > chromosome_len[chrA]:
-			posA=chromosome_len[chrA]
+		if posA >= chromosome_len[chrA]:
+			posA=chromosome_len[chrA]-1
 
 		qualA=int(content[5])
 
@@ -146,8 +147,8 @@ def signals(args,coverage_data):
 				if not orientationB:
 					posB+=length-1
 
-		if posB > chromosome_len[chrB]:
-			posB=chromosome_len[chrB]
+		if posB >= chromosome_len[chrB]:
+			posB=chromosome_len[chrB]-1
 
 		resolution=int(content[-1])
 		
@@ -161,8 +162,16 @@ def signals(args,coverage_data):
 		if len (signal_data) > 1000000:
 			args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
 			signal_data=[]
-		coverage_data[chrB][int(math.floor(posB/100)),2]+=1
-		coverage_data[chrA][int(math.floor(posA/100)),2]+=1
+
+		idx_b=int(math.floor(posB/100.0))
+		if idx_b >= len(coverage_data[chrB]):
+			idx_b =len(coverage_data[chrB])-1
+		coverage_data[chrB][idx_b,2]+=1
+                
+		idx_a=int(math.floor(posA/100.0))
+		if idx_a >= len(coverage_data[chrA]):
+			idx_a=len(coverage_data[chrA])-1
+		coverage_data[chrA][idx_a,2]+=1
 
 	if len(signal_data):
 		args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
