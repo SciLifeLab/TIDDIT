@@ -32,7 +32,7 @@ if args.sv:
 
 	args= parser.parse_args()
 	args.wd=os.path.dirname(os.path.realpath(__file__))
-	if args.l < 1:
+	if args.l < 2:
 		print "error, too low --l value!"
 		quit()
 	if not os.path.isfile(args.ref):

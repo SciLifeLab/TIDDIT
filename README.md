@@ -64,7 +64,7 @@ TIDDIT may be fine tuned by altering these optional parameters:
                         
     -d - The pair orientation, use this setting to override the automatic orientation selection
 
-    -l - The density parameter, to create a cluster, more than l signals (split reads+ discordant pairs) must be present, signals are added to a cluster if they are neighbouring atleast this  number of signals (defualt 4)
+    -l - The density parameter, to create a cluster, more than l signals (split reads+ discordant pairs) must be present, signals are added to a cluster if they are neighbouring atleast this  number of signals (defualt 4, minimum 2)
             
     -p - The minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 5
     
@@ -81,6 +81,8 @@ TIDDIT may be fine tuned by altering these optional parameters:
 output:
 
 TIDDIT SV module produces three output files, a vcf file containing SV calls, a tab file describing the coverage across the genome in bins of size 100 bp, and a tab file dscribing the estimated ploidy and coverage across each contig.
+
+
                                         
 The cov module
 ==============
