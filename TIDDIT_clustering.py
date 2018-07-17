@@ -450,7 +450,7 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	#coverage is too high
 	if candidate["MaxcovA"] >= library_stats["chr_cov"][chrA]*(library_stats["ploidies"][chrA]+2) or candidate["MaxcovB"] >= library_stats["chr_cov"][chrB]*(library_stats["ploidies"][chrB]+2):
 		filt = "UnexpectedCoverage"
-	elif candidate["discsA"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]) or candidate["discsB"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]):
+	elif candidate["discsA"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]+1) or candidate["discsB"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]+1):
 		filt= "FewLinks"
 	elif chrA == chrB and candidate["max_A"] > candidate["min_B"]:
 		filt = "Smear"
@@ -774,6 +774,9 @@ def cluster(args):
 		for call in sorted(calls[chromosome],key=lambda x: x[1]):
 			output=call
 			output[1]=str(output[1])
+			if "MinSize" == output[6]:
+				continue
+ 
 			output="\t".join(output)+"\n"
 			outfile.write(output)
 
