@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 import argparse
 import os
+import sys
+
+wd=os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, '{}/src/'.format(wd))
 import TIDDIT_clustering
 
 version = "2.2.4"

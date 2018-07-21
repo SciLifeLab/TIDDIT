@@ -19,5 +19,6 @@ MirrorURL: http://us.archive.ubuntu.com/ubuntu/
     git clone https://github.com/SciLifeLab/TIDDIT.git
     mv TIDDIT/* /bin/
     cd /bin/ && ./INSTALL.sh
+    chmod +x /bin/TIDDIT.py
 
 
