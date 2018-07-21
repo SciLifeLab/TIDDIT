@@ -29,6 +29,8 @@ python TIDDIT.py  --cov --help
 
 TIDDIT is also distributed with a Singularity environment (http://singularity.lbl.gov/index.html). Type the following command to download the container:
 
+    singularity pull --name TIDDIT.simg shub://J35P312/TIDDIT
+
 Type the following to run tiddit:
 
     singularity exec TIDDIT.simg TIDDIT.py
