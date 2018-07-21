@@ -437,11 +437,13 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 		filt="MinSize"
 
 	#Less than the expected number of signals
-	if candidate["discs"]:
-		if candidate["e1"]*0.6 >= candidate["discs"]:
+	if candidate["discs"] and not ( candidate["splits"] and abs(candidate["posA"]-candidate["posB"]) < 3*library_stats["STDInsertSize"] and chrA == chrB ):
+		if candidate["e1"]*0.6 >= candidate["discs"]+candidate["splits"]:
+			filt = "BelowExpectedLinks"
+		elif candidate["e2"]*0.3 >= candidate["discs"]+candidate["splits"]:
 			filt = "BelowExpectedLinks"
 	else:
-		if candidate["e1"]*0.4 >= candidate["splits"]:
+		if candidate["e1"]*0.4 >= (candidate["splits"]+candidate["discs"]):
 			filt = "BelowExpectedLinks"
 	#The ploidy of this contig is 0, hence there shoud be no variant here
 	if library_stats["ploidies"][chrA] == 0 or library_stats["ploidies"][chrB] == 0:
@@ -738,18 +740,18 @@ def cluster(args):
 				if ploidies[chrA]:
 					coverageA=candidates[i]["covA"]/ploidies[chrA]
 				else:
-					coverageA=candidates[i]["covA"]
+					coverageA=candidates[i]["covA"]/float(args.n)
 				if ploidies[chrB]:
 					coverageB=candidates[i]["covB"]/ploidies[chrB]
 				else:
-					coverageB=candidates[i]["covB"]
+					coverageB=candidates[i]["covB"]/float(args.n)
 
-				if candidates[i]["discs"]:
+				if candidates[i]["discs"] and not ( candidates[i]["splits"] and abs(candidates[i]["posA"]-candidates[i]["posB"]) < 3*library_stats["STDInsertSize"] and chrA == chrB ):
 					candidates[i]["e1"]=int(round(expected_links(coverageA,coverageB,sizeA,sizeB,gap,library_stats["MeanInsertSize"],library_stats["STDInsertSize"],library_stats["ReadLength"])))
-					candidates[i]["e2"]=int(round(expected_links(coverageA,coverageB,library_stats["MeanInsertSize"],library_stats["MeanInsertSize"],0,library_stats["MeanInsertSize"],library_stats["STDInsertSize"],library_stats["ReadLength"])))
+					candidates[i]["e2"]= int( round( (min([coverageA,coverageB])*(library_stats["MeanInsertSize"]-library_stats["ReadLength"]/3)) / (float(library_stats["ReadLength"]))/2.0 ) )
 				else:
-					candidates[i]["e1"]=int(round(min([coverageA,coverageB])))
-					candidates[i]["e2"]=int(round(min([coverageA,coverageB])))
+					candidates[i]["e1"]=int(round( min([coverageA,coverageB])*0.75 ))
+					candidates[i]["e2"]=int(round( min([coverageA,coverageB])*0.75 ))
 				vcf_line=generate_vcf_line(chrA,chrB,n,candidates[i],args,library_stats)
 
 				if len(vcf_line) == 1:
@@ -780,5 +782,6 @@ def cluster(args):
 			output="\t".join(output)+"\n"
 			outfile.write(output)
 
+	print "Work complete!"
 	return()
 

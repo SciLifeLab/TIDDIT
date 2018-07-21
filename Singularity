@@ -13,7 +13,11 @@ MirrorURL: http://us.archive.ubuntu.com/ubuntu/
     apt-get update
     apt-get upgrade
     apt-get -y --force-yes install build-essential cmake make zlib1g-dev python python-dev python-setuptools git
-	easy_install pip
-	pip install numpy scipy cython
-    
+    easy_install pip
+    pip install numpy scipy cython
+
+    git clone https://github.com/SciLifeLab/TIDDIT.git
+    mv TIDDIT/* /bin/
+    cd /bin/ && ./INSTALL.sh
+
 
