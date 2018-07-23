@@ -440,7 +440,7 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	if candidate["discs"] and not ( candidate["splits"] and abs(candidate["posA"]-candidate["posB"]) < 3*library_stats["STDInsertSize"] and chrA == chrB ):
 		if candidate["e1"]*0.6 >= candidate["discs"]+candidate["splits"]:
 			filt = "BelowExpectedLinks"
-		elif candidate["e2"]*0.3 >= candidate["discs"]+candidate["splits"]:
+		elif candidate["e2"]*0.2 >= candidate["discs"]+candidate["splits"]:
 			filt = "BelowExpectedLinks"
 	else:
 		if candidate["e1"]*0.4 >= (candidate["splits"]+candidate["discs"]):
