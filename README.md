@@ -37,7 +37,7 @@ Type the following to run tiddit:
 
 You may also build it yourself (if you have sudo permisions)
 
-    singularity build TIDDIT.simg Singularity
+    sudo singularity build TIDDIT.simg Singularity
 
 The singularity container will download and install the latest commit on the scilifelab branch of TIDDIT.
 
@@ -59,11 +59,11 @@ TIDDIT may be fine tuned by altering these optional parameters:
                         
     -d - The pair orientation, use this setting to override the automatic orientation selection
 
-    -l - The density parameter, to create a cluster, more than l signals (split reads+ discordant pairs) must be present, signals are added to a cluster if they are neighbouring atleast this  number of signals (defualt 4, minimum 2)
+    -l - The density parameter, to create a cluster, more than l signals (split reads+ discordant pairs) must be present, signals are added to a cluster if they are neighbouring atleast this  number of signals (defualt 3, minimum 2)
             
-    -p - The minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 4
+    -p - The minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 3
     
-    -r - The minimum number of supplementary alignments used to call small SV. Default is 4
+    -r - The minimum number of supplementary alignments used to call small SV. Default is 3
             
     -q - The minimum mapping quality of the discordant pairs/supplementary alignments 
          forming a variant. Default value is 10.
@@ -82,9 +82,7 @@ Useful settings:
 It may be useful to increase the precision of TIDDIT, especially when searching the entire genome for disease causing variants.
 on 30X bam files, I usually set -p 7 and -r 5.
 
-On low coverage matepair data, it may be usedul to lower the -l parameter to 2.
-
-In noisy datasets you may get too many small variants. If this is the case, then you may increase the -l parameter, or set the -i parameter to a high value (such as 2000).
+In noisy datasets you may get too many small variants. If this is the case, then you may increase the -l parameter, or set the -i parameter to a high value (such as 2000) (on 10X linked read data, I usually set l to 5).
                                         
 The cov module
 ==============
