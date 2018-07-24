@@ -7,7 +7,7 @@ wd=os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, '{}/src/'.format(wd))
 import TIDDIT_clustering
 
-version = "2.2.4"
+version = "2.2.5"
 parser = argparse.ArgumentParser("""TIDDIT-{}""".format(version),add_help=False)
 parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 parser.add_argument('--cov'        , help="generate a coverage bed file", required=False, action="store_true")
@@ -20,8 +20,8 @@ if args.sv:
 	parser.add_argument('-o', type=str,default="output", help="output prefix(default=output)")
 	parser.add_argument('-i', type=int, help="paired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (default=3std + mean_insert_size)")
 	parser.add_argument('-d', type=str,help="expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset")
-	parser.add_argument('-p', type=int,default=4, help="Minimum number of supporting pairs in order to call a variation event (default 4)")
-	parser.add_argument('-r', type=int,default=4, help="Minimum number of supporting split reads to call a small variant (default 4)")
+	parser.add_argument('-p', type=int,default=3, help="Minimum number of supporting pairs in order to call a variation event (default 3)")
+	parser.add_argument('-r', type=int,default=3, help="Minimum number of supporting split reads to call a small variant (default 3)")
 	parser.add_argument('-q', type=int,default=10, help="Minimum mapping quality to consider an alignment (default 10)")
 	parser.add_argument('-Q', type=int,default=20, help="Minimum regional mapping quality (default 20)")
 	parser.add_argument('-n', type=int,default=2, help="the ploidy of the organism,(default = 2)")
