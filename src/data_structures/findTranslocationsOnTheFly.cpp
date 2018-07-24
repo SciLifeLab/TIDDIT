@@ -51,6 +51,6 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	}
 
 	window->TIDDITVCF.close();
-	printf ("variant calling time consumption= %lds\n", time(NULL) - start);
+	printf ("signal extraction time consumption= %lds\n", time(NULL) - start);
 }
 
