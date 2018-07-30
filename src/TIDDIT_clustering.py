@@ -432,9 +432,6 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
 #compute the filters
 def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	filt="PASS"
-	#fewer links than expected
-	if chrA == chrB and (abs(candidate["max_A"]-candidate["min_B"]) < args.z):
-		filt="MinSize"
 
 	#Less than the expected number of signals
 	if candidate["discs"] and not ( candidate["splits"] and abs(candidate["posA"]-candidate["posB"]) < 3*library_stats["STDInsertSize"] and chrA == chrB ):
@@ -461,6 +458,10 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 			filt= "SplitsVSDiscs"
 	elif candidate["QRA"] < args.Q or candidate["QRB"] < args.Q:
 		filt = "RegionalQ"
+
+	#fewer links than expected
+	if chrA == chrB and (abs(candidate["max_A"]-candidate["min_B"]) < args.z):
+		filt="MinSize"
 
 	return(filt)
 
