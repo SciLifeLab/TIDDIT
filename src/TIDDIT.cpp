@@ -16,7 +16,6 @@
 #include <fstream>
 
 #include "data_structures/ProgramModules.h"
-
 //converts a string to int
 int convert_str(string to_be_converted,string option){
 	int converted;
@@ -31,21 +30,22 @@ int convert_str(string to_be_converted,string option){
 }
 
 int main(int argc, char **argv) {
-	//MAIN VARIABLE
+	//MAIN VARIABLES
 
-	bool outtie 				    = true;	 // library orientation
+	bool outtie = true;	 // library orientation
 	uint32_t minimumSupportingPairs = 4;
 	uint32_t minimumSupportingReads = 6;
-	int min_insert				    = 100;      // min insert size
-	int max_insert				    = 100000;  // max insert size
-	int minimum_mapping_quality		=10;
+	int min_insert = 100;      // min insert size
+	int max_insert = 80000;  // max insert size
+	int minimum_mapping_quality = 10;
 	float coverage;
 	float coverageStd;
 	float meanInsert;
 	float insertStd;
 	int min_variant_size= 100;
+	int sample = 100000000;
 	string outputFileHeader ="output";
-	string version = "2.2.6";
+	string version = "2.3.0";
 	
 	//collect all options as a vector
 	vector<string> arguments(argv, argv + argc);
@@ -59,8 +59,9 @@ int main(int argc, char **argv) {
 	
 	string general_help="TIDDIT-" + version  +  " - a structural variant caller\nUsage: TIDDIT <module> [options] \n";
 	general_help+="modules\n\t--help\tproduce help message\n";
-	general_help+="\t--sv\tselect the sv module to find structural variations\n";
+	general_help+="\t--sv\tcollect SV signals\n";
 	general_help+="\t--cov\tselect the cov module to analyse the coverage of the genome using bins of a specified size\n";
+        general_help+="\t--gc\tselect the gc module to compute the gc content across the genome using bins of a specified size(accepts a fasta through stdin)\n";
 	
 	//the sv module
 	vm["--sv"]="store";
@@ -70,6 +71,7 @@ int main(int argc, char **argv) {
 	vm["-r"]="";
 	vm["-q"]="";
 	vm["-c"]="";
+	vm["-s"]="";
 	vm["-n"]="";
 	vm["-m"] = "";
 	
@@ -81,18 +83,26 @@ int main(int argc, char **argv) {
 	sv_help +="\t-r\tMinimum number of supporting split reads to call a small variant (default 3)\n";
 	sv_help +="\t-q\tMinimum mapping quality to consider an alignment (default 10)\n";
 	sv_help +="\t-c\taverage coverage, (default= computed from the bam file)\n";
+	sv_help +="\t-s\tNumber of reads to sample when computing library statistics, (default= 100000000)\n";
 	sv_help +="\t-n\tthe number of sets of chromosomes,(default = 2)\n";
 	sv_help +="\t-m\tminimum variant size,(default = 100)\n";
 			
 	//the coverage module
 	vm["--cov"]="store";
 	vm["-z"]="";
+
+	//the gc module
+        vm["--gc"]="store";
 	
 	string coverage_help="\nUsage: TIDDIT --cov [Mode] -b inputfile [-o prefix]\n";
 	coverage_help +="\t-b\tcoordinate sorted bam file(required)\n";
 	coverage_help +="\n\t-z\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
 	
-	
+	string gc_help="\nUsage: cat in.fa | TIDDIT --gc [Mode] [-o prefix]\n";
+	coverage_help +="\t-r\treference fasta file(required)\n";
+	coverage_help +="\n\t-z\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
+
+
 	//store the options in a map
 	for(int i = 0; i < arguments.size(); i += 2){
 		if(vm.count( arguments[i] ) ){
@@ -127,6 +137,8 @@ int main(int argc, char **argv) {
 			cout << sv_help;
 		}else if(vm["--cov"] == "found"){
 			cout << coverage_help;
+		}else if(vm["--cov"] == "found"){
+			cout << gc_help;
 		}else{
 			cout << general_help;
 		}
@@ -134,16 +146,152 @@ int main(int argc, char **argv) {
 	}
 	
 	//if no module is chosen
-	if(vm["--sv"] == "store" and vm["--cov"] == "store"){
+	if(vm["--sv"] == "store" and vm["--cov"] == "store" and vm["--gc"] == "store" ){
 		cout << general_help;
 		cout << "ERROR: select a module" << endl;
 		return(0);
-	}else if(vm["--sv"] == "found" and vm["--cov"] == "found"){
+	}else if( (vm["--sv"] == "found" and vm["--cov"] == "found") or (vm["--sv"] == "found" and vm["--gc"] == "found") or (vm["--cov"] == "found" and vm["--gc"] == "found")  ){
 		cout << general_help;
 		cout << "ERROR: only one module may be selected" << endl;
 		return(0);
 	
 	}
+
+	if (vm["--gc"] == "found"){
+		int binSize=500;
+		if(vm["-z"] != ""){
+			binSize =convert_str( vm["-z"], "-z");
+		}
+
+		string fasta = vm["-r"];
+		string outputfile="output";
+		if(vm["-o"] != ""){
+		    outputfile=vm["-o"];
+		}
+	
+		ifstream in(fasta.c_str());
+
+		string chromosome="";
+		bool first = true;
+		long pos = 0;
+		long element =0;
+		vector <string> chromosomes;
+		map<string, vector< vector<int> > > bins;
+
+		int A =0;
+		int G =0;
+		int other=0;
+		for (string line; getline(cin, line);) {
+			if (line[0] == '>'){
+
+				if (A > 0 or G > 0 or other > 0 ){
+					vector<int> bin;
+					bin.push_back(A);
+					bin.push_back(G);
+					bin.push_back(other);
+					bins[chromosome].push_back(bin);
+				}
+
+				chromosome="";
+				for (int i=1;i < line.size();i++){
+					if (line[i] == ' '){
+						break;
+					}
+					chromosome += line[i];
+				}
+				chromosomes.push_back(chromosome);
+				vector< vector<int> > row;
+				bins[chromosome]=row;
+				pos=0;
+				element=0;
+				A=0;
+				G=0;
+				other=0;
+			}else{
+				for(int i=0; i< line.size();i++){
+					pos+=1;
+					if (line[i] == 'A' or line[i] =='a'){
+						A+=1;
+					}else if (line[i] == 'C' or line[i] =='c'){
+						G+=1;
+					}else if (line[i] == 'g' or line[i] == 'G'){
+						G+=1;
+					}else if (line[i] == 't' or line[i] == 'T'){
+						A+=1;
+					}else{
+						other+=1;
+					}
+			
+					if (pos >= (element+1)*binSize){
+						vector<int> bin;
+						bin.push_back(A);
+						bin.push_back(G);
+						bin.push_back(other);
+						bins[chromosome].push_back(bin);
+						element+=1;
+						A=0;G=0;other=0;
+					}
+				}
+			}
+
+		}
+
+		if (A > 0 or G > 0 or other > 0 ){
+			vector<int> bin;
+			bin.push_back(A);
+			bin.push_back(G);
+			bin.push_back(other);
+			bins[chromosome].push_back(bin);
+		}
+
+
+		if (outputfile == "stdout"){
+			cout << "#chromosome\tstart\tend\tGC\tN" << endl;
+			for(int i=0;i< chromosomes.size();i++){
+				for (int j=0;j<bins[chromosomes[i]].size();j++){
+					float gc =0;
+					if (bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0] > 0){
+						gc=(float)bins[chromosomes[i]][j][1]/(bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0]);
+					}
+
+					float n = 0;
+					if (bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1] > 0){
+						n=(float)bins[chromosomes[i]][j][2]/( bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][2] );
+					}else{
+						n=1;
+					}
+
+						cout << chromosomes[i] << "\t" << j*binSize << "\t" << (j+1)*binSize << "\t" << gc << "\t" << n << endl;
+					
+				}
+			}
+		}else{
+			ofstream gcOutput;
+			gcOutput.open((outputfile+".gc.tab").c_str());
+			ostream& gcout=gcOutput;
+			gcout << "#chromosome\tstart\tend\tGC\tN" << endl;
+			for(int i=0;i< chromosomes.size();i++){
+				for (int j=0;j<bins[chromosomes[i]].size();j++){
+					float gc =0;
+					if (bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0] > 0){
+						gc=(float)bins[chromosomes[i]][j][1]/(bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0]);
+					}
+
+					float n = 0;
+					if (bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1] > 0){
+						n=(float)bins[chromosomes[i]][j][2]/( bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][2] );
+					}else{
+						n=1;
+					}
+
+						gcout << chromosomes[i] << "\t" << j*binSize << "\t" << (j+1)*binSize << "\t" << gc << "\t" << n << endl;
+					
+				}
+			}
+		}
+		return(0);
+	}
+
 	
 	//the bam file is required by all modules
 	if(vm["-b"] == ""){
@@ -178,6 +326,7 @@ int main(int argc, char **argv) {
 	}	
 	bamFile.Close();
 
+
 	//if the find structural variations module is chosen collect the options
 	if(vm["--sv"] == "found"){
 		if(vm["-o"] != ""){
@@ -193,6 +342,9 @@ int main(int argc, char **argv) {
 		}
 		if(vm["-r"] != ""){
 			minimumSupportingReads=convert_str( vm["-r"] , "-r");
+		}
+		if(vm["-s"] != ""){
+			sample=convert_str( vm["-s"] , "-s");
 		}
 
 		if(vm["-d"] != ""){
@@ -214,7 +366,7 @@ int main(int argc, char **argv) {
 		//now compute library stats
 		LibraryStatistics library;
 		size_t start = time(NULL);
-		library = computeLibraryStats(alignmentFile, genomeLength, max_insert, 50 , outtie,minimum_mapping_quality,outputFileHeader);
+		library = computeLibraryStats(alignmentFile, genomeLength, max_insert, 50 , outtie,minimum_mapping_quality,outputFileHeader,sample);
 		printf ("library stats time consumption= %lds\n", time(NULL) - start);
 		
         
@@ -234,7 +386,7 @@ int main(int argc, char **argv) {
 		
 		meanInsert = library.insertMean;
 		insertStd  = library.insertStd;
-		max_insert=meanInsert+3*insertStd;
+		max_insert=meanInsert+2.1*insertStd;
 		if(outtie == true){
 			max_insert=meanInsert+4*insertStd;
 		}
@@ -246,26 +398,25 @@ int main(int argc, char **argv) {
 
 
         
-        if (vm["-m"] != ""){
-        	min_variant_size = convert_str( vm["-m"],"-m" );
-        }
+		if (vm["-m"] != ""){
+			min_variant_size = convert_str( vm["-m"],"-m" );
+		}
         
-        map<string,int> SV_options;
+		map<string,int> SV_options;
 		SV_options["max_insert"]      = max_insert;
 		SV_options["pairs"]           = minimumSupportingPairs;
 		SV_options["mapping_quality"] = minimum_mapping_quality;
 		SV_options["readLength"]      = library.readLength;
 		SV_options["ploidy"]          = ploidy;
 		SV_options["contigsNumber"]   = contigsNumber;
-        SV_options["meanInsert"]      = meanInsert;
-        SV_options["STDInsert"]       = insertStd;
-        SV_options["min_variant_size"]	  = min_variant_size;
+		SV_options["meanInsert"]      = meanInsert;
+		SV_options["STDInsert"]       = insertStd;
+		SV_options["min_variant_size"]	  = min_variant_size;
 		SV_options["splits"] = minimumSupportingReads;
         
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();		
-		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, outtie, coverage,outputFileHeader, version, "TIDDIT" + argString,SV_options);
-
+		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, outtie, coverage,outputFileHeader, version, "TIDDIT" + argString,SV_options, genomeLength);
 
 	//the coverage module
 	}else if(vm["--cov"] == "found"){
@@ -274,16 +425,18 @@ int main(int argc, char **argv) {
 		if(vm["-z"] != ""){
 			binSize =convert_str( vm["-z"], "-z");
 		}
+
 		if(vm["-o"] != ""){
 		    outputFileHeader=vm["-o"];
 		}
-		bool discordants = false;
-		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader,discordants);
+
+		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader);
 		BamReader bam;
 		bam.Open(alignmentFile);
 		BamAlignment currentRead;
-    	while ( bam.GetNextAlignmentCore(currentRead) ) {
-	    	calculateCoverage -> bin(currentRead);
+		while ( bam.GetNextAlignmentCore(currentRead) ) {
+			readStatus alignmentStatus = computeReadType(currentRead, 100000,100, true);
+			calculateCoverage -> bin(currentRead, alignmentStatus);
 		}
 		bam.Close();
 		calculateCoverage -> printCoverage();

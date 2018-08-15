@@ -5,9 +5,9 @@ import sys
 
 wd=os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, '{}/src/'.format(wd))
-import TIDDIT_clustering
+import TIDDIT_calling
 
-version = "2.2.6"
+version = "2.3.0"
 parser = argparse.ArgumentParser("""TIDDIT-{}""".format(version),add_help=False)
 parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 parser.add_argument('--cov'        , help="generate a coverage bed file", required=False, action="store_true")
@@ -27,25 +27,27 @@ if args.sv:
 	parser.add_argument('-n', type=int,default=2, help="the ploidy of the organism,(default = 2)")
 	parser.add_argument('-e', type=int, help="clustering distance  parameter, discordant pairs closer than this distance are considered to belong to the same variant(default = sqrt(insert-size*2)*12)")
 	parser.add_argument('-l', type=int,default=3, help="min-pts parameter (default=3),must be set > 2")
+	parser.add_argument('-s', type=int,default=50000000, help="Number of reads to sample when computing library statistics(default=50000000)")
 	parser.add_argument('-z', type=int,default=100, help="minimum variant size (default=100), variants smaller than this will not be printed( z < 10 is not recomended)")
 	parser.add_argument('--force_ploidy',action="store_true", help="force the ploidy to be set to -n across the entire genome (i.e skip coverage normalisation of chromosomes)")
 	parser.add_argument('--debug',action="store_true", help="rerun the tiddit clustering procedure")
 	parser.add_argument('--n_mask',type=float,default=0.5, help="exclude regions from coverage calculation if they contain more than this fraction of N (default = 0.5)")
-	parser.add_argument('--ref',required=True, type=str, help="reference fasta")
+	parser.add_argument('--ref', type=str, help="reference fasta, used for GC correction")
 
 	args= parser.parse_args()
 	args.wd=os.path.dirname(os.path.realpath(__file__))
 	if args.l < 2:
 		print "error, too low --l value!"
 		quit()
-	if not os.path.isfile(args.ref):
-		print "error,  could not find the reference file"
-		quit()
+	if args.ref:
+		if not os.path.isfile(args.ref):
+			print "error,  could not find the reference file"
+			quit()
 	if not os.path.isfile(args.bam):
 		print "error,  could not find the bam file"
 		quit()
 
-	command_str="{}/bin/TIDDIT --sv -b {} -o {} -p {} -r {} -q {} -n {}".format(args.wd,args.bam,args.o,args.p,args.r,args.q,args.n)
+	command_str="{}/bin/TIDDIT --sv -b {} -o {} -p {} -r {} -q {} -n {} -s {}".format(args.wd,args.bam,args.o,args.p,args.r,args.q,args.n,args.s)
 	if args.i:
 		command_str += " -i {}".format(args.i)
 	if args.d:
@@ -53,8 +55,14 @@ if args.sv:
 
 	if not args.debug:
 		os.system(command_str)
-	
-	TIDDIT_clustering.cluster(args)
+
+	if args.ref:
+		if args.ref.endswith(".gz"):
+			os.system("zcat {} | {}/bin/TIDDIT --gc -z 100 -o {}".format(args.ref,args.wd,args.o))
+		else:
+			os.system("cat {} | {}/bin/TIDDIT --gc -z 100 -o {}".format(args.ref,args.wd,args.o))
+
+	TIDDIT_calling.cluster(args)
 
 elif args.cov:
 	parser = argparse.ArgumentParser("""TIDDIT --cov --bam inputfile [-o prefix]""")

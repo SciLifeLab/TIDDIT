@@ -45,7 +45,12 @@ The SV module
 =============
 The main TIDDIT module, detects structural variant using discordant pairs, split reads and coverage information
 
+    python TIDDIT.py --sv [Options] --bam bam
+
+Optionally, TIDDIT acccepts a reference fasta for GC cocrrection:
+
     python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta
+
 
 NOTE: It is important that you use the TIDDIT.py wrapper for SV detection. The TIDDIT binary in the TIDDIT/bin folder does not perform any clustering, it simply extract SV signatures into a tab file.
 
