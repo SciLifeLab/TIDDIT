@@ -14,7 +14,7 @@ string int2str(int to_be_converted){
 	return(converted);
 }
 
-void Window::initTrans(SamHeader head,string libraryData) {
+void Window::initTrans(SamHeader head) {
 	uint32_t contigsNumber = 0;
 	SamSequenceDictionary sequences  = head.Sequences;
 	for(SamSequenceIterator sequence = sequences.Begin() ; sequence != sequences.End(); ++sequence) {
@@ -27,6 +27,11 @@ void Window::initTrans(SamHeader head,string libraryData) {
 		}
 		contigsNumber++;
 	}
+
+}
+
+void Window::printHeader(SamHeader head,string libraryData) {
+
 	string intra_chr_eventsVCF = outputFileHeader + ".signals.tab";
 	this->TIDDITVCF.open(intra_chr_eventsVCF.c_str());
 	if(head.HasReadGroups() == false){
@@ -45,8 +50,7 @@ void Window::initTrans(SamHeader head,string libraryData) {
 
 }
 
-void Window::insertRead(BamAlignment alignment) {
-	readStatus alignmentStatus = computeReadType(alignment, this->max_insert,this->min_insert, this->outtie);
+void Window::insertRead(BamAlignment alignment,readStatus alignmentStatus) {
 
 	if( not alignment.IsMateMapped()  or alignment.MapQuality < minimum_mapping_quality or alignmentStatus == lowQualty) {
 		return; // in case the alignment is of no use discard it

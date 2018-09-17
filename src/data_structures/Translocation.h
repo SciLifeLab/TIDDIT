@@ -45,8 +45,9 @@ public:
 
 	Window(string bamFileName, bool outtie, float meanCoverage,string outputFileHeader, map<string,int> SV_options); // constructor
 
-	void initTrans(SamHeader head,string libraryData);	// initialise the contig to position array
-	void insertRead(BamAlignment alignment);			// inserts a new read
+	void initTrans(SamHeader head);	// initialise the contig to position array
+	void printHeader(SamHeader head,string libraryData); //print header
+	void insertRead(BamAlignment alignment, readStatus alignmentStatus);			// inserts a new read
 	string VCFHeader(string libraryData);				//print the vcf header
 
 };

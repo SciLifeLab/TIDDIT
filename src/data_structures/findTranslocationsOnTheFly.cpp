@@ -9,7 +9,7 @@
 //function used to find translocations
 StructuralVariations::StructuralVariations() { }
 
-void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage, string outputFileHeader, string version,string command, map<string,int> SV_options) {
+void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage, string outputFileHeader, string version,string command, map<string,int> SV_options,uint64_t genomeLength) {
 	size_t start = time(NULL);
 	//open the bam file
 	BamReader bamFile;
@@ -20,28 +20,41 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	Window *window;
 	window = new Window(bamFileName,outtie,meanCoverage,outputFileHeader,SV_options);
 	window-> version = version;
-	stringstream ss;
+	window->initTrans(head);
 
 	string orientation_string="innie";
 	if(outtie == true){
 		orientation_string="outtie";
 	}
 
-	ss << "##LibraryStats=TIDDIT-" << version <<   " Coverage=" << meanCoverage << " ReadLength=" << SV_options["readLength"] << " MeanInsertSize=" << SV_options["meanInsert"] << " STDInsertSize=" << SV_options["STDInsert"] << " Orientation=" << orientation_string << "\n" << "##TIDDITcmd=\"" << command << "\""; 
-	string libraryData=ss.str();
-	window->initTrans(head,libraryData);
 
 	for (int i=0;i< SV_options["contigsNumber"];i++){window -> SV_calls[i] = vector<string>();}
 
 	//Initialize bam entity
 	BamAlignment currentRead;
 
+        Cov *calculateCoverage;
+        calculateCoverage = new Cov(100,bamFileName,outputFileHeader);
+
+	uint64_t mappedReadsLength= 0;
+
 	//now start to iterate over the bam file
 	while ( bamFile.GetNextAlignmentCore(currentRead) ) {
-	  if(currentRead.IsMapped()) {
-	    window->insertRead(currentRead);
-	  }
+		if(currentRead.IsMapped()){
+			readStatus alignmentStatus = computeReadType(currentRead, window->max_insert,window-> min_insert, window-> outtie);
+			window->insertRead(currentRead, alignmentStatus);
+
+			calculateCoverage -> bin(currentRead, alignmentStatus);
+
+			if (alignmentStatus != lowQualty){mappedReadsLength+= currentRead.Length;}
+		}
 	}
+
+	//print header
+	stringstream ss;
+	ss << "##LibraryStats=TIDDIT-" << version <<   " Coverage=" << float(mappedReadsLength)/genomeLength << " ReadLength=" << SV_options["readLength"] << " MeanInsertSize=" << SV_options["meanInsert"] << " STDInsertSize=" << SV_options["STDInsert"] << " Orientation=" << orientation_string << "\n" << "##TIDDITcmd=\"" << command << "\""; 
+	string libraryData=ss.str();
+	window->printHeader(head,libraryData);
 	
 	//print calls
 	for(int i=0;i< SV_options["contigsNumber"];i++){
@@ -52,5 +65,8 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 
 	window->TIDDITVCF.close();
 	printf ("signal extraction time consumption= %lds\n", time(NULL) - start);
+
+	calculateCoverage -> printCoverage();
+
 }
 

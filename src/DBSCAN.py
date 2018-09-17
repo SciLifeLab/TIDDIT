@@ -1,5 +1,123 @@
 import numpy
-#supports up to 4D data
+
+#The functions of this script perform DBSCAN and returns the variatn clusters
+
+#Analyse the reads of the cluster, and colelct statistics such as position and orientation
+def analyse_pos(candidate_signals,discordants,library_stats,args):
+	analysed_signals={}
+
+	max_a=max(candidate_signals[:,0:1])[0]
+	min_a=min(candidate_signals[:,0:1])[0]
+
+	max_b=max(candidate_signals[:,1:2])[0]
+	min_b=min(candidate_signals[:,1:2])[0]
+
+	
+	FF=0
+	FR=0
+	RF=0
+	RR=0
+
+	splitsINV=0
+	splits=0
+
+	discs=0
+
+	avgQb=[]
+	avgQa=[]
+
+	for i in range(0,len(candidate_signals)):
+		if candidate_signals[i][-2] == 1:
+			if(candidate_signals[i][2] != candidate_signals[i][4]):
+				splitsINV +=1
+		else:
+			if(candidate_signals[i][2] and not candidate_signals[i][4]):
+				FR+=1
+			elif( not candidate_signals[i][2] and candidate_signals[i][4]):
+				RF+=1
+			elif( not candidate_signals[i][2] and not candidate_signals[i][4]):
+				RR+=1
+			else:
+				FF+=1
+
+		if candidate_signals[i][-2] == 1:
+			splits +=1
+		else:
+			discs+=1
+
+		if candidate_signals[i][3] != -1:
+			avgQa.append(candidate_signals[i][3])
+		if candidate_signals[i][5] != -1:
+			avgQb.append(candidate_signals[i][5])
+
+	if avgQa:
+		avgQa=numpy.mean(avgQa)
+	else:
+		avgQa=-1
+
+	if avgQb:
+		avgQb=numpy.mean(avgQb)
+	else:
+		avgQb=-1
+
+	major_orientation=max([FF,FR,RF,RR])
+	if not discs:
+				posA=max_a
+				posB=min_b		
+	else:
+		if library_stats["Orientation"] == "innie":
+			if major_orientation == FF:
+				posA=max_a
+				posB=max_b
+			elif major_orientation == FR:
+				posA=max_a
+				posB=min_b
+			elif major_orientation == RF:
+				posA=min_a
+				posB=max_b
+			else:
+				posA=min_a
+				posB=min_b
+		else:
+			if major_orientation == FF:
+				posA=min_a
+				posB=min_b
+			elif major_orientation == FR:
+				posA=min_a
+				posB=max_b
+			elif major_orientation == RF:
+				posA=max_a
+				posB=min_b
+			else:
+				posA=max_a
+				posB=max_b
+	analysed_signals={"posA":posA,"posB":posB,"min_A":min_a,"max_A":max_a,"min_B":min_b,"max_B":max_b,"QA":avgQa,"QB":avgQb,"FF":FF,"FR":FR,"RF":RF,"RR":RR,"splitsINV":splitsINV,"splits":splits,"discs":discs,"signals":candidate_signals}
+	return(analysed_signals)
+
+#Call the cluser algorithm, the statistics function, and returns the final cluster
+def generate_clusters(chrA,chrB,coordinates,library_stats,args):
+	candidates=[]
+	coordinates=coordinates[numpy.lexsort((coordinates[:,1],coordinates[:,0]))]
+	db=main(coordinates[:,0:2],args.e,int(round(args.l+library_stats["ploidies"][chrA]/(args.n*10))))
+	unique_labels = set(db)
+
+	for var in unique_labels:
+		if var == -1:
+			continue
+		class_member_mask = (db == var)
+		candidate_signals =coordinates[class_member_mask]
+		resolution=candidate_signals[:,-2]
+		support=len(set(candidate_signals[:,-1]))
+		discordants=True
+		if len(set(resolution)) == 1 and max(resolution) == 1:
+			disordants=False
+
+		if discordants and support >= args.p:
+			candidates.append( analyse_pos(candidate_signals,discordants,library_stats,args) )
+		elif not discordants and support >= args.r and chrA == chrB:
+			candidates.append( analyse_pos(candidate_signals,discordants,library_stats,args) )
+
+	return(candidates)
 
 def x_coordinate_clustering(data,epsilon,m):
 	clusters=numpy.zeros(len(data))
@@ -97,13 +215,3 @@ def main(data,epsilon,m):
 	clusters,cluster_id=y_coordinate_clustering(data,epsilon,m,cluster_id,clusters)
 
 	return(clusters)
-
-
-data=numpy.array([[1,1],[10481823,10483880],[10481947,10483785],[10481947,1],[10481947,1],[10481947,1],[10482033,10483984],[10482079,10483801],[10482111,10483972],[10482121,10483788],[10482125,10483769],[10482126,10484204],[10482163,10483811],[10482177,10483909],[10482186,10483906],[10482191,10483836],[10482202,10484150],[10482262,10483947],[10482285,10483797],[10482342,10483968],[10483770,10482390],[10482390,10483814],[10483770,10482405],[10483769,10482428],[10483770,10482405],[10483770,10482405],[10483770,1],[10483770,1],[10483770,1],[10483770,1]])
-
-
-#data=data[numpy.lexsort((data[:,1],data[:,0]))]
-#print data
-#data=numpy.array([[1,2],[1,3],[1,4],[1,5],[5,100],[5,100],[10,2],[10,3],[10,4],[10,5],[20,100]])
-#print main(data,398,3)
-
