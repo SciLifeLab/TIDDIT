@@ -113,22 +113,22 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
 					var="<DEL>"		
 
 	if candidate["discs"]:
-		if candidate["e2"]*1.6 <= (candidate["discs"]):
+		if candidate["e2"]*1.5 <= (candidate["discs"]):
 			GT="1/1"
 		else:
 			GT="0/1"
 	else:
-		if candidate["e2"]*1.6 <= (candidate["splits"]):
+		if candidate["e2"]*1.5 <= (candidate["splits"]):
 			GT="1/1"
 		else:
 			GT="0/1"
 
-	if "DUP" in var or var == "<DEL>":
-		if var == "DEL" and candidate["covM"]/library_stats["chr_cov"][chrA] < 0.1:
+	if ("DUP" in var or var == "<DEL>") and library_stats["chr_cov"][chrA] != 0:
+		if var == "<DEL>" and candidate["covM"]/library_stats["chr_cov"][chrA] < 0.1:
 			GT="1/1"
-		elif var == "DUP" and candidate["covM"]/library_stats["chr_cov"][chrA] > 1.8: 
+		elif "DUP" in var and candidate["covM"]/library_stats["chr_cov"][chrA] > 1.8: 
 			GT="1/1"
- 
+
 	return(var,variant_type,GT)
 
 def Part(a, b, sizeA, sizeB, gap, insert_mean, insert_stddev, coverage, readLength ):

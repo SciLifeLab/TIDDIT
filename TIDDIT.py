@@ -7,7 +7,7 @@ wd=os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, '{}/src/'.format(wd))
 import TIDDIT_calling
 
-version = "2.3.0"
+version = "2.3.1"
 parser = argparse.ArgumentParser("""TIDDIT-{}""".format(version),add_help=False)
 parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 parser.add_argument('--cov'        , help="generate a coverage bed file", required=False, action="store_true")

@@ -126,8 +126,14 @@ def signals(args,coverage_data):
 			idx_a=len(coverage_data[chrA])-1
 		coverage_data[chrA][idx_a,2]+=1
 
+
 	if len(signal_data):
 		args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
+
+	#If no signals were found, parse and return the header
+	if first_signal:
+		chromosomes,library_stats,chromosome_len=find_contigs(header)
+
 	return(header,chromosomes,library_stats)
 
 #analyse the cigar operation of the read
