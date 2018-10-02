@@ -31,17 +31,15 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 		return("Ploidy")
 
 	#coverage is too high
-	if candidate["MaxcovA"] >= library_stats["chr_cov"][chrA]*(library_stats["ploidies"][chrA]+2) or candidate["MaxcovB"] >= library_stats["chr_cov"][chrB]*(library_stats["ploidies"][chrB]+2):
+	if candidate["MaxcovA"] >= library_stats["chr_cov"][chrA]*(library_stats["ploidies"][chrA]*2+library_stats["ploidies"][chrA]) or candidate["MaxcovB"] >= library_stats["chr_cov"][chrB]*(library_stats["ploidies"][chrB]*2+library_stats["ploidies"][chrA]):
 		filt = "UnexpectedCoverage"
-	elif candidate["discsA"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]+1) or candidate["discsB"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]+1):
+	elif candidate["discsA"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]*2) or candidate["discsB"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]*2):
 		filt= "FewLinks"
 	elif chrA == chrB and candidate["max_A"] > candidate["min_B"]:
 		filt = "Smear"
 	elif chrA != chrB or (abs(candidate["posA"]-candidate["posB"]) > library_stats["MeanInsertSize"]+3*library_stats["STDInsertSize"] ):
 		if not candidate["discs"] or candidate["discs"]*4 <  candidate["splits"] or candidate["discs"] <= args.p/2:
 			filt= "SplitsVSDiscs"
-	elif candidate["QRA"] < args.Q or candidate["QRB"] < args.Q:
-		filt = "RegionalQ"
 
 	#fewer links than expected
 	if chrA == chrB and (abs(candidate["max_A"]-candidate["min_B"]) < args.z):

@@ -52,7 +52,7 @@ void Window::printHeader(SamHeader head,string libraryData) {
 
 void Window::insertRead(BamAlignment alignment,readStatus alignmentStatus) {
 
-	if( not alignment.IsMateMapped()  or alignment.MapQuality < minimum_mapping_quality or alignmentStatus == lowQualty) {
+	if( not alignment.IsMateMapped()  or alignmentStatus == lowQualty) {
 		return; // in case the alignment is of no use discard it
 	}
 
@@ -68,7 +68,7 @@ void Window::insertRead(BamAlignment alignment,readStatus alignmentStatus) {
 	bool alignment_split = false;	
 	alignment.BuildCharData();			
 	alignment_split = alignment.HasTag("SA");
-	if (alignment_split and alignment.IsPrimaryAlignment() and not alignment.IsSupplementaryAlignment() ) {
+	if (alignment_split and alignment.IsPrimaryAlignment() and not alignment.IsSupplementaryAlignment() and alignment.MapQuality >= minimum_mapping_quality) {
 		// parse split read to get the other segment position, akin to a mate.
 		string SA;
 		alignment.GetTag("SA",SA);
@@ -121,34 +121,41 @@ void Window::insertRead(BamAlignment alignment,readStatus alignmentStatus) {
 		}
 	}
 	
-	if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
-		if(alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) {  // insert only "forward" variations
+	if( alignment.IsPrimaryAlignment() ){
+		if(alignmentStatus == pair_wrongChrs or alignmentStatus ==  pair_wrongDistance) {
+			if(alignment.RefID < alignment.MateRefID or (alignment.RefID == alignment.MateRefID and alignment.Position < alignment.MatePosition)) {  // insert only "forward" variations
+				if (alignment.MapQuality >= minimum_mapping_quality){
+					string orientationA="-";
+					if( alignment.IsReverseStrand() == false  ){
+						orientationA="+";
+					}
 
-			string orientationA="-";
-			if( alignment.IsReverseStrand() == false  ){
-				orientationA="+";
+					string orientationB="-";
+					if(alignment.IsMateReverseStrand() == false  ){
+						orientationB="+";
+					}
+
+					string cigar ="";
+					// iterate over cigar operations
+					vector<CigarOp>::const_iterator cigarIter = alignment.CigarData.begin();
+	 				vector<CigarOp>::const_iterator cigarEnd  = alignment.CigarData.end();
+					std::stringstream sscigar;
+	 				for ( ; cigarIter != cigarEnd; ++cigarIter) {
+						const CigarOp& op = (*cigarIter);
+						sscigar << op.Length << op.Type;
+					}
+
+					cigar=sscigar.str();
+					std::stringstream ss;
+
+					ss << alignment.Name << "\t" << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << position2contig[alignment.MateRefID] << "\t" << alignment.MatePosition+1 << "\t"<< orientationB << "\t" << "NA" << "\t" << -1 << "\t" << 100 << "\n";
+					SV_calls_discordant[alignment.Name]=ss.str();
+				}
+			}else if (alignment.MapQuality < minimum_mapping_quality){
+				if(SV_calls_discordant.count(alignment.Name) == 1){
+					SV_calls_discordant.erase(alignment.Name);
+				}
 			}
-
-			string orientationB="-";
-			if(alignment.IsMateReverseStrand() == false  ){
-				orientationB="+";
-			}
-
-			string cigar ="";
-			// iterate over cigar operations
-			vector<CigarOp>::const_iterator cigarIter = alignment.CigarData.begin();
- 			vector<CigarOp>::const_iterator cigarEnd  = alignment.CigarData.end();
-			std::stringstream sscigar;
- 			for ( ; cigarIter != cigarEnd; ++cigarIter) {
-				const CigarOp& op = (*cigarIter);
-				sscigar << op.Length << op.Type;
-			}
-
-			cigar=sscigar.str();
-
-			std::stringstream ss;
-			ss << alignment.Name << "\t" << position2contig[alignment.RefID] << "\t" << alignment.Position +1 << "\t" << orientationA << "\t" << cigar << "\t" << alignment.MapQuality << "\t" << position2contig[alignment.MateRefID] << "\t" << alignment.MatePosition+1 << "\t"<< orientationB << "\t" << "NA" << "\t" << -1 << "\t" << 100 << "\n";
-			SV_calls[alignment.MateRefID].push_back(ss.str());
 		}
 	}
 	chr=alignment.RefID;

@@ -63,6 +63,11 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 		}
 	}
 
+	for ( map<string,string>::iterator it =  window -> SV_calls_discordant.begin(); it != window -> SV_calls_discordant.end(); ++it  ){
+		window-> TIDDITVCF <<  it-> second;
+	} 
+
+
 	window->TIDDITVCF.close();
 	printf ("signal extraction time consumption= %lds\n", time(NULL) - start);
 

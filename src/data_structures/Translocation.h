@@ -38,6 +38,7 @@ public:
 	vector<string> contig_length;
 	vector<string> contig_assembly;	
 	map<unsigned int, vector<string> > SV_calls;
+	map<string, string > SV_calls_discordant;
 
 	//Output part
 	string outputFileHeader;
