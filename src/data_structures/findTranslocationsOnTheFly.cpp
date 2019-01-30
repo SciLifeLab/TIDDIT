@@ -34,7 +34,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	BamAlignment currentRead;
 
         Cov *calculateCoverage;
-        calculateCoverage = new Cov(100,bamFileName,outputFileHeader);
+        calculateCoverage = new Cov(50,bamFileName,outputFileHeader);
 
 	uint64_t mappedReadsLength= 0;
 

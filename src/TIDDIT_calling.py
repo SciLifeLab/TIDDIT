@@ -5,6 +5,7 @@ import sys
 import sqlite3
 import os
 import time
+import pysam
 
 import DBSCAN
 import TIDDIT_coverage
@@ -12,8 +13,8 @@ import TIDDIT_filtering
 import TIDDIT_signals
 
 def retrieve_coverage(chromosome,start,end,coverage_data):
-	start_index=int(math.floor(start/100.0))
-	end_index=int(math.floor(end/100.0))+1
+	start_index=int(math.floor(start/50.0))
+	end_index=int(math.floor(end/50.0))+1
 	regional_coverage=coverage_data[chromosome][start_index:end_index,0]
 	coverage=numpy.average(regional_coverage[numpy.where(regional_coverage > -1)])
 	max_coverage=max(regional_coverage[numpy.where(regional_coverage > -1)])
@@ -24,8 +25,8 @@ def retrieve_coverage(chromosome,start,end,coverage_data):
 #Find the number of discordant pairs within a region
 def retrieve_discs(chromosome,start,end,coverage_data):
 	discs=0
-	start_index=int(math.floor(start/100.0))
-	end_index=int(math.floor(end/100.0))+1
+	start_index=int(math.floor(start/50.0))
+	end_index=int(math.floor(end/50.0))+1
 	discs=sum(coverage_data[chromosome][start_index:end_index,2])
 	return(discs)
 
@@ -60,19 +61,55 @@ def inv_recluster(vcf_line,candidate,library_stats,args):
 
 	return([vcf_line_rr,vcf_line_ff])
 
-def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats):
+def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,samfile):
 	vcf_line=[]
 	if chrA == chrB and  candidate["posA"] > candidate["posB"]:
 		candidate["posA"]=candidate["min_A"]
 		candidate["posB"]=candidate["max_B"]
 
+	if candidate["discs"] > candidate["splits"]:
+		pairs=candidate["discs"]
+	else:
+		pairs=candidate["splits"]
+
+	percentile_list=numpy.arange(0,101,1)
+	p=0
+	if candidate["covA"] < candidate["covB"]:
+		coverage=candidate["covA"]
+		ploidy=library_stats["ploidies"][chrA]
+	else:
+		coverage=candidate["covB"]
+		ploidy=library_stats["ploidies"][chrB]
+	i=0
+	perc=0
+	for percentile in percentiles:
+		if pairs*ploidy > percentile*coverage:
+			p=percentile_list[i]
+			perc=percentile
+		i+=1
+	if p:
+		qual=str(p)
+	else:
+		qual="0"
+
+	a_dr,a_rr=TIDDIT_signals.count_ref(args,library_stats,chrA,candidate["posA"],samfile)
+	b_dr,b_rr=TIDDIT_signals.count_ref(args,library_stats,chrB,candidate["posB"],samfile)
+
+	split_ratio=0
+	if candidate["splits"]:
+		split_ratio=candidate["splits"]/float(candidate["splits"]+min([a_rr,b_rr]))
+	disc_ratio=0
+	if candidate["discs"]:
+		disc_ratio=candidate["discs"]/float(candidate["discs"]+min([a_dr,b_dr]))
+
+
 	vcf_line.append(chrA)
 	vcf_line.append(candidate["posA"])
 	vcf_line.append("SV_{}_1".format(n))
 	vcf_line.append("N")
-	var,variant_type,GT=TIDDIT_filtering.fetch_variant_type(chrA,chrB,candidate,args,library_stats)
+	var,variant_type,GT=TIDDIT_filtering.fetch_variant_type(chrA,chrB,candidate,args,library_stats,disc_ratio,split_ratio)
 	vcf_line.append(var)
-	vcf_line.append(".")
+	vcf_line.append(str(qual))
 	vcf_line.append(TIDDIT_filtering.fetch_filter(chrA,chrB,candidate,args,library_stats))
 	INFO="{};CIPOS={},{};CIEND={},{}".format(variant_type,candidate["min_A"]-candidate["posA"],candidate["max_A"]-candidate["posA"],candidate["min_B"]-candidate["posB"],candidate["max_B"]-candidate["posB"])
 	if chrA == chrB:
@@ -84,7 +121,7 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats):
 	INFO+=stats
 
 	vcf_line.append(INFO)
-	FORMAT_FORMAT="GT:CN:DV:RV"
+	FORMAT_FORMAT="GT:CN:DV:RV:DR:RR"
 	vcf_line.append(FORMAT_FORMAT)
 	CN="."
 	if "DEL" in var or "DUP" in var:
@@ -94,7 +131,7 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats):
 		if CN < 0:
 			CN=library_stats["ploidies"][chrA]
 
-	FORMAT_STR="{}:{}:{}:{}".format(GT,CN,candidate["discs"],candidate["splits"])
+	FORMAT_STR="{}:{}:{}:{}:{},{}:{},{}".format(GT,CN,candidate["discs"],candidate["splits"],a_dr,b_dr,a_rr,b_rr)
 	vcf_line.append(FORMAT_STR)
 	if not "BND" in variant_type and not "INV" in variant_type:
 		return([vcf_line])
@@ -145,6 +182,7 @@ def cluster(args):
 
 	coverage_data=TIDDIT_coverage.coverage(args)
 
+
 	conn = sqlite3.connect(args.o+".db")
 	args.c = conn.cursor()
 
@@ -160,6 +198,9 @@ def cluster(args):
 
 	ploidies,library_stats,coverage_data=TIDDIT_coverage.determine_ploidy(args,chromosomes,coverage_data,Ncontent,library_stats)
 	library_stats["ploidies"]=ploidies
+
+	samfile = pysam.AlignmentFile(args.bam, "rb")
+	percentiles_disc,percentiles_splits=TIDDIT_signals.sample(args,coverage_data,library_stats,samfile)
 
 	if not args.e:
 		args.e=int(math.sqrt(library_stats["MeanInsertSize"]*2)*12)
@@ -217,7 +258,10 @@ def cluster(args):
 				else:
 					candidates[i]["e1"]=int(round( min([coverageA,coverageB])*0.75 ))
 					candidates[i]["e2"]=int(round( min([coverageA,coverageB])*0.75 ))
-				vcf_line=generate_vcf_line(chrA,chrB,n,candidates[i],args,library_stats)
+				if candidates[i]["discs"] > candidates[i]["splits"]:
+					vcf_line=generate_vcf_line(chrA,chrB,n,candidates[i],args,library_stats,percentiles_disc,samfile)
+				else:
+					vcf_line=generate_vcf_line(chrA,chrB,n,candidates[i],args,library_stats,percentiles_splits,samfile)
 
 				if len(vcf_line) == 1:
 					calls[chrA].append(vcf_line[0])

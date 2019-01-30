@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 	int min_variant_size= 100;
 	int sample = 100000000;
 	string outputFileHeader ="output";
-	string version = "2.4.0";
+	string version = "2.5.0";
 	
 	//collect all options as a vector
 	vector<string> arguments(argv, argv + argc);

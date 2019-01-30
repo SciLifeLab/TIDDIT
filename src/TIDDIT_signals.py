@@ -1,6 +1,8 @@
 import itertools
 import sqlite3
 import math
+import pysam
+import numpy
 
 #The functions of this script are used to read the input signals, and to create the database of signals
 
@@ -17,6 +19,87 @@ def find_contigs(header):
 			stats=line.strip().split(" ")
 			library_stats={"Coverage":float(stats[1].split("=")[-1]),"ReadLength":int(stats[2].split("=")[-1]),"MeanInsertSize":int(stats[3].split("=")[-1]),"STDInsertSize":int(stats[4].split("=")[-1]),"Orientation":stats[5].split("=")[-1]}
 	return (chromosomes,library_stats,chromosome_len)
+
+def sample(args,coverage_data,library_stats,samfile):
+	n=1000
+	bin_size=50
+	bridges=[]
+	bridges_reads=[]
+
+	region=int(library_stats["MeanInsertSize"]+2*library_stats["STDInsertSize"])
+	read_length=library_stats["ReadLength"]
+
+	for chromosome in coverage_data:
+
+		if bin_size*len(coverage_data[chromosome][:,0]) < 200000:
+			continue
+		index=numpy.random.randint(low=1000, high=len(coverage_data[chromosome][:,0])-1000,size=n)
+		for i in range(0,n):
+			
+			median_coverage=numpy.median(coverage_data[chromosome][index[i]:index[i]+region/bin_size,0])
+			roi=[index[i]*bin_size,index[i]*bin_size+region]
+			if median_coverage == 0 or median_coverage > library_stats["Coverage"]*5:
+				continue
+
+			bridging=0
+			bridging_reads=0
+			for read in samfile.fetch(chromosome, roi[0], roi[1]):
+				if not read.reference_id == read.next_reference_id:
+					continue
+				if read.mapping_quality < args.q:
+					continue
+				if int("{0:012b}".format(read.flag)[1]):
+					continue
+
+				if  index[i]*bin_size+region < read.next_reference_start and read.next_reference_start < index[i]*bin_size+region*2:
+					bridging+=1
+
+				aln_length=0
+				for entry in read.cigar:
+					if not entry[0]:
+						aln_length+=entry[1]
+
+				if  index[i]*bin_size+region-25 > read.reference_start and read.reference_start+aln_length > index[i]*bin_size+region:
+					bridging_reads+=1
+
+			bridges_reads.append(bridging_reads/median_coverage)
+			bridges.append(bridging/median_coverage)
+
+	percentile_list=numpy.arange(0,101,1)
+	percentiles_disc=numpy.percentile(bridges,percentile_list)
+	percentiles_splits=numpy.percentile(bridges_reads,percentile_list)
+	return (percentiles_disc,percentiles_splits)
+
+
+def count_ref(args,library_stats,chromosome,position,samfile):
+	roi_start= position-(int(library_stats["MeanInsertSize"]+2*library_stats["STDInsertSize"]))
+	if roi_start < 1:
+		roi_start=1
+	read_length=library_stats["ReadLength"]
+
+	n_disc=0
+	n_splits=0
+	for read in samfile.fetch(chromosome, roi_start, position):
+		if not read.reference_id == read.next_reference_id:
+			continue
+		if read.mapping_quality < args.q:
+			continue
+		if int("{0:012b}".format(read.flag)[1]):
+			continue
+
+		if  position < read.next_reference_start and read.next_reference_start < position+library_stats["MeanInsertSize"]*2:
+			n_disc+=1
+
+		aln_length=0
+		for entry in read.cigar:
+			if not entry[0]:
+				aln_length+=entry[1]
+
+		if  position-25 > read.reference_start and read.reference_start+aln_length > position:
+			n_splits+=1
+
+	return (n_disc,n_splits)
+
 
 #Read the signals tab file
 def signals(args,coverage_data):
@@ -116,12 +199,12 @@ def signals(args,coverage_data):
 			args.c.executemany('INSERT INTO TIDDITcall VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',signal_data)  
 			signal_data=[]
 
-		idx_b=int(math.floor(posB/100.0))
+		idx_b=int(math.floor(posB/50.0))
 		if idx_b >= len(coverage_data[chrB]):
 			idx_b =len(coverage_data[chrB])-1
 		coverage_data[chrB][idx_b,2]+=1
                 
-		idx_a=int(math.floor(posA/100.0))
+		idx_a=int(math.floor(posA/50.0))
 		if idx_a >= len(coverage_data[chrA]):
 			idx_a=len(coverage_data[chrA])-1
 		coverage_data[chrA][idx_a,2]+=1

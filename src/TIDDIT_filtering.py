@@ -1,4 +1,5 @@
 import numpy
+import pysam
 from scipy.stats import norm
 
 #This script contains functions for applying and computing the filters and statistics
@@ -40,7 +41,6 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	elif chrA != chrB or (abs(candidate["posA"]-candidate["posB"]) > library_stats["MeanInsertSize"]+3*library_stats["STDInsertSize"] ):
 		if not candidate["discs"] or candidate["discs"]*4 <  candidate["splits"] or candidate["discs"] <= args.p/2:
 			filt= "SplitsVSDiscs"
-
 	#fewer links than expected
 	if chrA == chrB and (abs(candidate["max_A"]-candidate["min_B"]) < args.z):
 		filt="MinSize"
@@ -48,7 +48,7 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	return(filt)
 
 #determine the variant type
-def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
+def fetch_variant_type(chrA,chrB,candidate,args,library_stats,disc_ratio,split_ratio):
 	variant_type="SVTYPE=BND"
 	var="N[{}:{}[".format(chrB,candidate["posB"])
 	if not library_stats["ploidies"][chrA] and chrA == chrB:
@@ -110,21 +110,25 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats):
 					variant_type="SVTYPE=DEL"
 					var="<DEL>"		
 
-	if candidate["discs"]:
-		if candidate["e2"]*1.5 <= (candidate["discs"]):
+
+	if candidate["discs"] > candidate["splits"]:
+
+		if disc_ratio >= 0.8:
 			GT="1/1"
 		else:
 			GT="0/1"
 	else:
-		if candidate["e2"]*1.5 <= (candidate["splits"]):
+		if split_ratio >= 0.8:
 			GT="1/1"
 		else:
 			GT="0/1"
 
 	if ("DUP" in var or var == "<DEL>") and library_stats["chr_cov"][chrA] != 0:
-		if var == "<DEL>" and candidate["covM"]/library_stats["chr_cov"][chrA] < 0.1:
+		if var == "<DEL>" and candidate["covM"]/library_stats["chr_cov"][chrA] < 0.2:
 			GT="1/1"
 		elif "DUP" in var and candidate["covM"]/library_stats["chr_cov"][chrA] > 1.8: 
+			GT="1/1"
+		else:
 			GT="1/1"
 
 	return(var,variant_type,GT)
