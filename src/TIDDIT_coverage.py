@@ -4,17 +4,29 @@ import numpy
 
 #read the coverage tab file
 def coverage(args):
-	coverage_data={}
+	chromosome_size={}
 	for line in open(args.o+".tab"):
 		if line[0] == "#":
 			continue
 		content=line.strip().split()
-		if not content[0] in coverage_data:
-			coverage_data[content[0]]=[]
-		coverage_data[content[0]].append([ float(content[3]),float(content[4]),0 ])
+		if not content[0] in chromosome_size:
+			chromosome_size[content[0]]=0
+		chromosome_size[content[0]]+=1
+	
+	coverage_data={}
+	chromosome_index={}
+	for chromosome in chromosome_size:
+		coverage_data[chromosome]=numpy.zeros( (chromosome_size[chromosome],3) )
+		chromosome_index[chromosome]=0
 
-	for chromosome in coverage_data:
-		coverage_data[chromosome]=numpy.array(coverage_data[chromosome])
+	for line in open(args.o+".tab"):
+		if line[0] == "#":
+			continue
+		content=line.strip().split()
+		
+		coverage_data[content[0]][chromosome_index[content[0]]][0]=float(content[3])
+		coverage_data[content[0]][chromosome_index[content[0]]][1]=float(content[4])
+		chromosome_index[content[0]]+=1
 
 	return(coverage_data)
 
@@ -28,9 +40,9 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,library_stats):
 		try:
 			if args.ref:
 				N_count=Ncontent[chromosome]
-				chr_cov=coverage_data[chromosome][numpy.where( (N_count > 0) & (coverage_data[chromosome][:,1] > args.q)  ),0][0]
+				chr_cov=coverage_data[chromosome][numpy.where( (N_count > 0) & (coverage_data[chromosome][:,1] > args.Q)  ),0][0]
 			else:
-				chr_cov=coverage_data[chromosome][numpy.where( coverage_data[chromosome][:,1] > args.q  ),0][0]
+				chr_cov=coverage_data[chromosome][numpy.where( coverage_data[chromosome][:,1] > args.Q  ),0][0]
 
 			if len(chr_cov):
 				chromosomal_average=numpy.median(chr_cov)
@@ -60,9 +72,9 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,library_stats):
 	
 		if args.ref:
 			N_count=Ncontent[chromosome]
-			cov=coverage_data[chromosome][numpy.where( (N_count > -1) & ( (coverage_data[chromosome][:,1] > args.q) | (coverage_data[chromosome][:,1] == 0) ) ),0]
+			cov=coverage_data[chromosome][numpy.where( (N_count > -1) & ( (coverage_data[chromosome][:,1] > args.Q) | (coverage_data[chromosome][:,1] == 0) ) ),0]
 		else:
-			cov=coverage_data[chromosome][numpy.where( (coverage_data[chromosome][:,1] > args.q) | (coverage_data[chromosome][:,1] == 0) ),0]
+			cov=coverage_data[chromosome][numpy.where( (coverage_data[chromosome][:,1] > args.Q) | (coverage_data[chromosome][:,1] == 0) ),0]
 
 		chromosomal_average=numpy.median(cov)
 		if not args.force_ploidy:
@@ -106,23 +118,33 @@ def gc_norm(args,median_coverage,normalising_chromosomes,coverage_data,Ncontent)
 #load the GC tab, and find which bins contain too many N
 def retrieve_N_content(args):
 
+	chromosome_size={}
+	for line in open(args.o+".gc.tab"):
+		if line[0] == "#":
+			continue
+		content=line.strip().split()
+		if not content[0] in chromosome_size:
+			chromosome_size[content[0]]=0
+		chromosome_size[content[0]]+=1
+	
 	Ncontent={}
+	chromosome_index={}
+	for chromosome in chromosome_size:
+		Ncontent[chromosome]=numpy.zeros( chromosome_size[chromosome] )
+		chromosome_index[chromosome]=0
+
 	for line in open(args.o+".gc.tab"):
 		if line[0] == "#":
 			continue
 
 		content=line.strip().split()
-		if not content[0] in Ncontent:
-			Ncontent[ content[0] ] = []
 		contig=content[0]
 		gc=round(float(content[-2]),2)
 		n=float(content[-1])
 		if n > args.n_mask:
-			Ncontent[contig].append(-1)
+			Ncontent[contig][chromosome_index[contig]]=-1
 		else:  
-			Ncontent[contig].append( gc )
-
-	for contig in Ncontent:		
-		Ncontent[contig]=numpy.array(Ncontent[contig])
+			Ncontent[contig][chromosome_index[contig]]=gc 
+		chromosome_index[contig]+=1
 
 	return(Ncontent)

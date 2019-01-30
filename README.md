@@ -7,7 +7,7 @@ TIDDIT has two modes of analysing bam files. The sv mode, which is used to searc
 
 INSTALLATION
 ==============
-TIDDIT requires standard c++/c libraries, python 2.7, and Numpy. To compile TIDDIT, cmake must be installed. 
+TIDDIT requires standard c++/c libraries, python 2.7,pysam, scipy, cython, and Numpy. To compile TIDDIT, cmake must be installed. 
 
 ```
 git clone https://github.com/SciLifeLab/TIDDIT.git
@@ -18,7 +18,7 @@ To install TIDDIT:
 cd TIDDIT
 ./INSTALL.sh
 ```
-
+The install script will compile python and use pip to install the python dependencies
 TIDDIT is run via the TIDDIT.py script:
 ```
 
@@ -54,13 +54,14 @@ Optionally, TIDDIT acccepts a reference fasta for GC cocrrection:
 
 NOTE: It is important that you use the TIDDIT.py wrapper for SV detection. The TIDDIT binary in the TIDDIT/bin folder does not perform any clustering, it simply extract SV signatures into a tab file.
 
-Where bam is the input bam file. And reference.fasta is the reference fasta used to align the sequencing data: TIDDIT will crash if the reference fasta is different from the one used to align the reads. The reads of the input bam file must be sorted on genome position.
+Where bam is the input bam file. And reference.fasta is the reference fasta used to align the sequencing data: TIDDIT will crash if the reference fasta is different from the one used to align the reads. The reads of the input bam file must be sorted on genome position, and the bam file needs to be indexed.
+
 TIDDIT may be fine tuned by altering these optional parameters:
 
     -o - The prefix of the output files(default = output)
         
     -i - The maximum allowed insert size of a normal pair. Pairs having larger insert 
-         than this is treated as discordant pairs. Default is 3*std+mean insert size
+         than this is treated as discordant pairs. Default is 2.1*std+mean insert size
                         
     -d - The pair orientation, use this setting to override the automatic orientation selection
 
@@ -80,14 +81,13 @@ TIDDIT may be fine tuned by altering these optional parameters:
 
 output:
 
-TIDDIT SV module produces three output files, a vcf file containing SV calls, a tab file describing the coverage across the genome in bins of size 100 bp, and a tab file dscribing the estimated ploidy and coverage across each contig.
+TIDDIT SV module produces three output files, a vcf file containing SV calls, a tab file describing the coverage across the genome in bins of size 50 bp, and a tab file dscribing the estimated ploidy and coverage across each contig.
 
 Useful settings:
 
-It may be useful to increase the precision of TIDDIT, especially when searching the entire genome for disease causing variants.
-on 30X bam files, I usually set -p 7 and -r 5.
+It may be useful to increase the precision of TIDDIT, especially when searching the entire genome for disease causing variants. I usually set -p 7 and -r 5.
 
-In noisy datasets you may get too many small variants. If this is the case, then you may increase the -l parameter, or set the -i parameter to a high value (such as 2000) (on 10X linked read data, I usually set l to 5).
+In noisy datasets you may get too many small variants. If this is the case, then you may increase the -l parameter, or set the -i parameter to a high value (such as 2000) (on 10X linked read data, I usually set -l to 5).
                                         
 The cov module
 ==============
@@ -118,6 +118,13 @@ Failed Variants may be removed using tools such as VCFtools or grep. Removing th
 This command may be usedto filter the TIDDIT vcf:
 
 	grep -E "#|PASS" input.vcf > output.filtered.vcf
+
+Quality column
+=============
+The scores in the quality column are calculated using non parametric sampling: 1000 points/genomic positions are sampled across each chromosome. And the number of read-pairs and reads spanning these points are counted.
+The variant support of each call is compared to these values, and the quality column is set to he lowest percentile higher than the (variant support*ploidy).
+
+Note: SVs usually occur in repetetive regions, hence these scores are expected to be relatively low. A true variant may have a low score, and the score itself depends on the input data (mate-pair vs pe for instance).
 
 Contents of the VCF INFO field
 =============
@@ -153,6 +160,17 @@ The INFO field of the VCF contains the following entries:
         Expected number of discordant pairs - assuming uniform coverage
 
 The content of the INFO field can be used to filter out false positives and to gain more understanding of the structure of the variant. More info is found in the vcf file. 
+Merging the vcf files
+=====================
+I usually merge vcf files using SVDB (https://github.com/J35P312)
+
+svdb --merge --vcf file1.vcf file2.vcf --bnd_distance 500 --overlap 0.6 > merged.vcf
+
+Merging of vcf files could be useful for tumor-normal analysis or for analysing a pedigree. But also to combine the ouput of multiple callers.
+
+Annotation
+==========
+genes may be annotated using vep or snpeff. NIRVANA may be used for annotating CNVs, and SVDB may be used as a frequency database
 
 Algorithm
 =========

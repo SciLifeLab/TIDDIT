@@ -34,7 +34,7 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 	BamAlignment currentRead;
 
         Cov *calculateCoverage;
-        calculateCoverage = new Cov(100,bamFileName,outputFileHeader);
+        calculateCoverage = new Cov(50,bamFileName,outputFileHeader);
 
 	uint64_t mappedReadsLength= 0;
 
@@ -62,6 +62,11 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 			window-> TIDDITVCF <<  window -> SV_calls[i][j];
 		}
 	}
+
+	for ( map<string,string>::iterator it =  window -> SV_calls_discordant.begin(); it != window -> SV_calls_discordant.end(); ++it  ){
+		window-> TIDDITVCF <<  it-> second;
+	} 
+
 
 	window->TIDDITVCF.close();
 	printf ("signal extraction time consumption= %lds\n", time(NULL) - start);
