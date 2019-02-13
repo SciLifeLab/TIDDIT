@@ -7,7 +7,7 @@ TIDDIT has two modes of analysing bam files. The sv mode, which is used to searc
 
 INSTALLATION
 ==============
-TIDDIT requires standard c++/c libraries, python 2.7,pysam, scipy, cython, and Numpy. To compile TIDDIT, cmake must be installed. 
+TIDDIT requires standard c++/c libraries, python 2.7,pysam, cython, and Numpy. To compile TIDDIT, cmake must be installed. 
 
 ```
 git clone https://github.com/SciLifeLab/TIDDIT.git
@@ -105,8 +105,7 @@ Filters
 TIDDIT uses four different filters to detect low quality calls. The filter field of variants passing these tests are set to "PASS". If a variant fail any of these tests, the filter field is set to the filter failing that variant. These are the four filters empoyed by TIDDIT:
 
     Expectedlinks
-        The number of discordant pairs/supplementary alignments supporting
-        the variant is less than 60% of the expected number of supporting reads
+	Less than 20% of the pairs/reads within the region support the variant
     FewLinks
         The number of discordant pairs supporting the variant is too low compared to the number of discordant pairs within that genomic region.
     Unexpectedcoverage
@@ -154,10 +153,6 @@ The INFO field of the VCF contains the following entries:
         The average mapping quality of the reads in window A
     QUALB
         The average mapping quality of the reads in window B
-    E1
-        Expected number of discordant pairs - assuming normal distribution (similar to the model used by the BESST scaffolder)
-    E2
-        Expected number of discordant pairs - assuming uniform coverage
 
 The content of the INFO field can be used to filter out false positives and to gain more understanding of the structure of the variant. More info is found in the vcf file. 
 Merging the vcf files

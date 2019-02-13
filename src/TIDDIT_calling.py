@@ -102,6 +102,12 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,samfi
 	if candidate["discs"]:
 		disc_ratio=candidate["discs"]/float(candidate["discs"]+min([a_dr,b_dr]))
 
+	candidate["ratio"]=1
+	if candidate["splits"] and candidate["splits"] > candidate["discs"]:
+		candidate["ratio"]=split_ratio
+	elif candidate["discs"]:
+		candidate["ratio"]=disc_ratio
+
 
 	vcf_line.append(chrA)
 	vcf_line.append(candidate["posA"])
@@ -116,7 +122,7 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,samfi
 		if not "BND" in variant_type:
 			INFO += ";END={};SVLEN={}".format(candidate["posB"],abs(candidate["posB"]-candidate["posA"]+1))
 		INFO += ";COVM={}".format(candidate["covM"])
-	stats=";COVA={};COVB={};LFA={};LFB={};LTE={};E1={};E2={};OR={},{},{},{};ORSR={},{};QUALA={};QUALB={}".format(candidate["covA"],candidate["covB"],int(round(candidate["discsA"])),int(round(candidate["discsB"])),candidate["discs"]+candidate["splits"],candidate["e1"],candidate["e2"],candidate["FF"],candidate["RR"] ,candidate["RF"],candidate["FR"],candidate["splitsINV"],candidate["splits"]-candidate["splitsINV"],candidate["QRA"],candidate["QRB"])
+	stats=";COVA={};COVB={};LFA={};LFB={};LTE={};OR={},{},{},{};ORSR={},{};QUALA={};QUALB={}".format(candidate["covA"],candidate["covB"],int(round(candidate["discsA"])),int(round(candidate["discsB"])),candidate["discs"]+candidate["splits"],candidate["FF"],candidate["RR"] ,candidate["RF"],candidate["FR"],candidate["splitsINV"],candidate["splits"]-candidate["splitsINV"],candidate["QRA"],candidate["QRB"])
 
 	INFO+=stats
 
@@ -133,6 +139,7 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,samfi
 
 	FORMAT_STR="{}:{}:{}:{}:{},{}:{},{}".format(GT,CN,candidate["discs"],candidate["splits"],a_dr,b_dr,a_rr,b_rr)
 	vcf_line.append(FORMAT_STR)
+
 	if not "BND" in variant_type and not "INV" in variant_type:
 		return([vcf_line])
 	elif "INV" in variant_type:
@@ -252,12 +259,6 @@ def cluster(args):
 				else:
 					coverageB=candidates[i]["covB"]/float(args.n)
 
-				if candidates[i]["discs"] and not ( candidates[i]["splits"] and abs(candidates[i]["posA"]-candidates[i]["posB"]) < 3*library_stats["STDInsertSize"] and chrA == chrB ):
-					candidates[i]["e1"]=int(round(TIDDIT_filtering.expected_links(coverageA,coverageB,sizeA,sizeB,gap,library_stats["MeanInsertSize"],library_stats["STDInsertSize"],library_stats["ReadLength"])))
-					candidates[i]["e2"]= int( round( (min([coverageA,coverageB])*(library_stats["MeanInsertSize"]-library_stats["ReadLength"]/3)) / (float(library_stats["ReadLength"]))/2.0 ) )
-				else:
-					candidates[i]["e1"]=int(round( min([coverageA,coverageB])*0.75 ))
-					candidates[i]["e2"]=int(round( min([coverageA,coverageB])*0.75 ))
 				if candidates[i]["discs"] > candidates[i]["splits"]:
 					vcf_line=generate_vcf_line(chrA,chrB,n,candidates[i],args,library_stats,percentiles_disc,samfile)
 				else:
