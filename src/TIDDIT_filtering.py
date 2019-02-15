@@ -112,5 +112,7 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats,disc_ratio,split_r
 			GT="1/1"
 		elif "DUP" in var and candidate["covM"]/library_stats["chr_cov"][chrA] > 1.8: 
 			GT="1/1"
+		else:
+			gt="0/1"
 
 	return(var,variant_type,GT)
