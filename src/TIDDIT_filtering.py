@@ -1,38 +1,22 @@
 import numpy
 import pysam
-from scipy.stats import norm
-
-#This script contains functions for applying and computing the filters and statistics
-def expected_links(coverageA,coverageB,sizeA,sizeB,gap,insert_mean,insert_stddev,readLength):
-	coverage=numpy.average([coverageA,coverageB])
-
-	b1 = (sizeA + sizeB + gap - insert_mean) / float(insert_stddev)
-	a1 = (max([sizeA, sizeB]) + gap + readLength  - insert_mean) / float(insert_stddev)
-	b2 = (min([sizeA, sizeB]) + gap + readLength  - insert_mean) / float(insert_stddev)
-	a2 = (gap + 2 * readLength - insert_mean) / float(insert_stddev)
-
-	e = Part(a1, b1, sizeA, sizeB, gap, insert_mean, insert_stddev, coverage, readLength ) - Part(a2, b2, sizeA, sizeB, gap, insert_mean, insert_stddev, coverage, readLength)
-	return(e)
 
 #compute the filters
 def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	filt="PASS"
 
 	#Less than the expected number of signals
-	if candidate["discs"] and not ( candidate["splits"] and abs(candidate["posA"]-candidate["posB"]) < 3*library_stats["STDInsertSize"] and chrA == chrB ):
-		if candidate["e1"]*0.6 >= candidate["discs"]+candidate["splits"]:
-			filt = "BelowExpectedLinks"
-		elif candidate["e2"]*library_stats["ReadLength"]/float(library_stats["MeanInsertSize"]) >= candidate["discs"]+candidate["splits"]:
-			filt = "BelowExpectedLinks"
-	else:
-		if candidate["e1"]*0.4 >= (candidate["splits"]+candidate["discs"]):
-			filt = "BelowExpectedLinks"
+	if candidate["ratio"] <= 0.2 and candidate["discs"] > candidate["splits"]:
+		filt = "BelowExpectedLinks"
+	elif candidate["ratio"] <= 0.1 and candidate["discs"] < candidate["splits"]:
+		filt = "BelowExpectedLinks"
+
 	#The ploidy of this contig is 0, hence there shoud be no variant here
 	if library_stats["ploidies"][chrA] == 0 or library_stats["ploidies"][chrB] == 0:
 		return("Ploidy")
 
 	#coverage is too high
-	if candidate["MaxcovA"] >= library_stats["chr_cov"][chrA]*(library_stats["ploidies"][chrA]*2+library_stats["ploidies"][chrA]) or candidate["MaxcovB"] >= library_stats["chr_cov"][chrB]*(library_stats["ploidies"][chrB]*2+library_stats["ploidies"][chrA]):
+	if candidate["covA"] >= library_stats["chr_cov"][chrA]*(library_stats["ploidies"][chrA]*4+library_stats["ploidies"][chrA]) or candidate["covB"] >= library_stats["chr_cov"][chrB]*(library_stats["ploidies"][chrB]*4+library_stats["ploidies"][chrA]):
 		filt = "UnexpectedCoverage"
 	elif candidate["discsA"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]*2) or candidate["discsB"] > (candidate["discs"]+candidate["splits"])*(library_stats["ploidies"][chrA]*2):
 		filt= "FewLinks"
@@ -129,18 +113,6 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats,disc_ratio,split_r
 		elif "DUP" in var and candidate["covM"]/library_stats["chr_cov"][chrA] > 1.8: 
 			GT="1/1"
 		else:
-			GT="1/1"
+			gt="0/1"
 
 	return(var,variant_type,GT)
-
-def Part(a, b, sizeA, sizeB, gap, insert_mean, insert_stddev, coverage, readLength ):
-
-	readfrequency = 2 * readLength / coverage;
-	expr1 = (min([sizeA, sizeB]) - (readLength - 0)) / readfrequency * norm.cdf(a, 0, 1);
-	expr2 = -(- 0 ) / readfrequency * norm.cdf(b, 0, 1);
-	expr3 = (b * insert_stddev) / readfrequency * (norm.cdf(b, 0, 1) - norm.cdf(a, 0, 1));
-	expr4 = (insert_stddev / readfrequency) * (norm.pdf(b, 0, 1) - norm.pdf(a, 0, 1));
-	value = expr1 + expr2 + expr3 + expr4
-	return(value)
-
-
