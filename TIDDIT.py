@@ -7,7 +7,7 @@ wd=os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, '{}/src/'.format(wd))
 import TIDDIT_calling
 
-version = "2.6.0"
+version = "2.7.0"
 parser = argparse.ArgumentParser("""TIDDIT-{}""".format(version),add_help=False)
 parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 parser.add_argument('--cov'        , help="generate a coverage bed file", required=False, action="store_true")
@@ -37,14 +37,14 @@ if args.sv:
 	args= parser.parse_args()
 	args.wd=os.path.dirname(os.path.realpath(__file__))
 	if args.l < 2:
-		print "error, too low --l value!"
+		print ("error, too low --l value!")
 		quit()
 	if args.ref:
 		if not os.path.isfile(args.ref):
-			print "error,  could not find the reference file"
+			print ("error,  could not find the reference file")
 			quit()
 	if not os.path.isfile(args.bam):
-		print "error,  could not find the bam file"
+		print ("error,  could not find the bam file")
 		quit()
 
 	command_str="{}/bin/TIDDIT --sv -b {} -o {} -p {} -r {} -q {} -n {} -s {}".format(args.wd,args.bam,args.o,args.p,args.r,args.q,args.n,args.s)

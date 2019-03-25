@@ -36,7 +36,7 @@ def sample(args,coverage_data,library_stats,samfile):
 		index=numpy.random.randint(low=1000, high=len(coverage_data[chromosome][:,0])-1000,size=n)
 		for i in range(0,n):
 			
-			median_coverage=numpy.median(coverage_data[chromosome][index[i]:index[i]+region/bin_size,0])
+			median_coverage=numpy.median(coverage_data[chromosome][index[i]:index[i]+int( math.floor(region/bin_size) ),0])
 			roi=[index[i]*bin_size,index[i]*bin_size+region]
 			if median_coverage == 0 or median_coverage > library_stats["Coverage"]*5:
 				continue
@@ -239,7 +239,7 @@ def read_cigar(cigar):
 
 		if SC[i*2+1] == "M":
 			length += int( SC[i*2] )
-			bases=range(0,int( SC[i*2] ))
+			bases=list(range(0,int( SC[i*2] )))
 			for j in range(0,len(bases)):
 				bases[j] += current_pos
 
@@ -247,7 +247,7 @@ def read_cigar(cigar):
 			current_pos += int( SC[i*2] )
 		elif SC[i*2+1] == "I":
 			insertions+=1
-			bases=range(0,int( SC[i*2] ))
+			bases=list(range(0,int( SC[i*2] )))
 			for j in range(0,len(bases)):
 				bases[j] += current_pos
 			aligned_range += bases

@@ -212,11 +212,11 @@ def cluster(args):
 	if not args.e:
 		args.e=int(math.sqrt(library_stats["MeanInsertSize"]*2)*12)
 	n=1
-	print "clustering signals on chromosome:"
+	print ("clustering signals on chromosome:")
 	calls={}
 	for chrA in chromosomes:
 		calls[chrA] =[]
-		print "{}".format(chrA)
+		print ("{}".format(chrA))
 		for chrB in chromosomes:
 			signal_data=numpy.array([ [hit[0],hit[1],hit[2],hit[3],hit[4],hit[5],hit[6],hit[7]] for hit in args.c.execute('SELECT posA,posB,forwardA,qualA,forwardB,qualB,resolution,name FROM TIDDITcall WHERE chrA == \'{}\' AND chrB == \'{}\''.format(chrA,chrB)).fetchall()])
 
@@ -292,8 +292,8 @@ def cluster(args):
 			output="\t".join(output)+"\n"
 			outfile.write(output)
 
-	print "variant clustering completed in {}".format(time.time()-start_time)
-	print "Work complete!"
+	print ("variant clustering completed in {}".format(time.time()-start_time))
+	print ("Work complete!")
 	os.remove("{}.db".format(args.o))
 	return()
 
