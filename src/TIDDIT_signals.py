@@ -70,7 +70,7 @@ def sample(args,coverage_data,library_stats,samfile):
 		percentiles_disc=numpy.percentile(bridges,percentile_list)
 		percentiles_splits=numpy.percentile(bridges_reads,percentile_list)
 	else:
-		print "Warning - to few reads in the bam file, skipping permutation tests"
+		print ("Warning - to few reads in the bam file, skipping permutation tests")
 		percentiles_disc=[]
 		percentiles_splits=[]
 

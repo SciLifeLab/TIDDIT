@@ -246,48 +246,64 @@ int main(int argc, char **argv) {
 
 
 		if (outputfile == "stdout"){
-			cout << "#chromosome\tstart\tend\tGC\tN" << endl;
+			cout << "track type=wiggle_0 name=\"GC\" description=\"Per bin GC values\"" << endl;
 			for(int i=0;i< chromosomes.size();i++){
-				for (int j=0;j<bins[chromosomes[i]].size();j++){
+				cout << "fixedStep chrom=" << chromosomes[i] << " start=1 step=50" << endl;  
+	 			for (int j=0;j<bins[chromosomes[i]].size();j++){
 					float gc =0;
 					if (bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0] > 0){
 						gc=(float)bins[chromosomes[i]][j][1]/(bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0]);
 					}
+					cout << gc << "\n";
+				}
+			}
 
+			cout << "track type=wiggle_0 name=\"N-count\" description=\"Per bin fraction of N\"" << endl;
+			for(int i=0;i< chromosomes.size();i++){
+				cout << "fixedStep chrom=" << chromosomes[i] << " start=1 step=50" << endl;  
+	 			for (int j=0;j<bins[chromosomes[i]].size();j++){
 					float n = 0;
 					if (bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1] > 0){
 						n=(float)bins[chromosomes[i]][j][2]/( bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][2] );
 					}else{
 						n=1;
 					}
-
-						cout << chromosomes[i] << "\t" << j*binSize << "\t" << (j+1)*binSize << "\t" << gc << "\t" << n << endl;
+					cout << n << endl;
 					
 				}
 			}
+
 		}else{
 			ofstream gcOutput;
-			gcOutput.open((outputfile+".gc.tab").c_str());
+			gcOutput.open((outputfile+".gc.wig").c_str());
 			ostream& gcout=gcOutput;
-			gcout << "#chromosome\tstart\tend\tGC\tN" << endl;
+			gcout << "track type=wiggle_0 name=\"GC\" description=\"Per bin GC values\"" << endl;
 			for(int i=0;i< chromosomes.size();i++){
-				for (int j=0;j<bins[chromosomes[i]].size();j++){
+				gcout << "fixedStep chrom=" << chromosomes[i] << " start=1 step=50" << endl;  
+	 			for (int j=0;j<bins[chromosomes[i]].size();j++){
 					float gc =0;
 					if (bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0] > 0){
 						gc=(float)bins[chromosomes[i]][j][1]/(bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0]);
 					}
+					gcout << gc << "\n";
+				}
+			}
 
+			gcout << "track type=wiggle_0 name=\"N-count\" description=\"Per bin fraction of N\"" << endl;
+			for(int i=0;i< chromosomes.size();i++){
+				gcout << "fixedStep chrom=" << chromosomes[i] << " start=1 step=50" << endl;  
+	 			for (int j=0;j<bins[chromosomes[i]].size();j++){
 					float n = 0;
 					if (bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1] > 0){
 						n=(float)bins[chromosomes[i]][j][2]/( bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][2] );
 					}else{
 						n=1;
 					}
-
-						gcout << chromosomes[i] << "\t" << j*binSize << "\t" << (j+1)*binSize << "\t" << gc << "\t" << n << endl;
+					gcout << n << endl;
 					
 				}
 			}
+
 		}
 		return(0);
 	}

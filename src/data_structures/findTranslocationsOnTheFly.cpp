@@ -69,9 +69,8 @@ void StructuralVariations::findTranslocationsOnTheFly(string bamFileName, bool o
 
 
 	window->TIDDITVCF.close();
-	printf ("signal extraction time consumption= %lds\n", time(NULL) - start);
 
 	calculateCoverage -> printCoverage();
-
+	printf ("signal extraction time consumption= %lds\n", time(NULL) - start);
 }
 

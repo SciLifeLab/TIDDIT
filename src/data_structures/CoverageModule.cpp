@@ -140,7 +140,12 @@ void Cov::printCoverage(){
 			if(double(qualityStructure[1][i][j]) > 0){
 				quality=double(qualityStructure[0][i][j])/double(qualityStructure[1][i][j]);
 			}
-			covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << endl;
+			if (j == coverageStructure[i].size()-1){
+				covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << endl;
+
+			}else{
+				covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << "\n";
+			}
 		}
 	}
 	

@@ -47,6 +47,10 @@ if args.sv:
 		print ("error,  could not find the bam file")
 		quit()
 
+	if not os.path.isfile("{}/bin/TIDDIT".format(args.wd)):
+		print ("error,  could not find the TIDDIT executable file, try rerun the INSTALL.sh script")
+		quit()
+
 	command_str="{}/bin/TIDDIT --sv -b {} -o {} -p {} -r {} -q {} -n {} -s {}".format(args.wd,args.bam,args.o,args.p,args.r,args.q,args.n,args.s)
 	if args.i:
 		command_str += " -i {}".format(args.i)
@@ -57,6 +61,7 @@ if args.sv:
 		os.system(command_str)
 
 		if args.ref:
+			print ("Generating GC wig file")
 			if args.ref.endswith(".gz"):
 				os.system("zcat {} | {}/bin/TIDDIT --gc -z 50 -o {}".format(args.ref,args.wd,args.o))
 			else:

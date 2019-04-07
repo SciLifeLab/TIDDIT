@@ -119,33 +119,43 @@ def gc_norm(args,median_coverage,normalising_chromosomes,coverage_data,Ncontent)
 def retrieve_N_content(args):
 
 	chromosome_size={}
-	for line in open(args.o+".gc.tab"):
-		if line[0] == "#":
+	for line in open(args.o+".gc.wig"):
+		if "Per bin GC values" in line:
 			continue
-		content=line.strip().split()
-		if not content[0] in chromosome_size:
-			chromosome_size[content[0]]=0
-		chromosome_size[content[0]]+=1
+		elif "chrom=" in line:
+			chromosome=line.split("chrom=")[-1].split()[0]
+			continue
+		elif "Per bin fraction of N" in line:
+			break
+		if not chromosome in chromosome_size:
+			chromosome_size[chromosome]=0
+		chromosome_size[chromosome]+=1
 	
 	Ncontent={}
-	chromosome_index={}
 	for chromosome in chromosome_size:
 		Ncontent[chromosome]=numpy.zeros( chromosome_size[chromosome],dtype=numpy.int8 )
-		chromosome_index[chromosome]=0
 
-	for line in open(args.o+".gc.tab"):
-		if line[0] == "#":
+	read_n=False
+	for line in open(args.o+".gc.wig"):
+		if "Per bin GC values" in line:
+			continue
+		elif "chrom=" in line:
+			chromosome=line.split("chrom=")[-1].split()[0]
+			chromosome_index=0
+			continue
+		elif "Per bin fraction of N" in line:
+			read_n=True
 			continue
 
-		content=line.strip().split()
-		contig=content[0]
+		content=line.strip()
+	
+		if read_n:
+			n=float(content[-1])
+			if n > args.n_mask:
+				Ncontent[chromosome][chromosome_index]=-1
+		else:
+			gc=int(round(float(content)*100))
+			Ncontent[chromosome][chromosome_index]=gc 
 
-		gc=int(round(float(content[-2])*100))
-		n=float(content[-1])
-		if n > args.n_mask:
-			Ncontent[contig][chromosome_index[contig]]=-1
-		else:  
-			Ncontent[contig][chromosome_index[contig]]=gc 
-		chromosome_index[contig]+=1
-
+		chromosome_index+=1
 	return(Ncontent)

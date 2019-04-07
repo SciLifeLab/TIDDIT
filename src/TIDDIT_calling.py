@@ -90,7 +90,7 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,samfi
 		i+=1
 	if p:
 		qual=str(p)
-	elif not p and not percentiles:
+	elif not p and not len(percentiles):
 		qual="."
 	else:
 		qual="0"
