@@ -66,8 +66,14 @@ def sample(args,coverage_data,library_stats,samfile):
 			bridges.append(bridging/median_coverage)
 
 	percentile_list=numpy.arange(0,101,1)
-	percentiles_disc=numpy.percentile(bridges,percentile_list)
-	percentiles_splits=numpy.percentile(bridges_reads,percentile_list)
+	if len(bridges):
+		percentiles_disc=numpy.percentile(bridges,percentile_list)
+		percentiles_splits=numpy.percentile(bridges_reads,percentile_list)
+	else:
+		print "Warning - to few reads in the bam file, skipping permutation tests"
+		percentiles_disc=[]
+		percentiles_splits=[]
+
 	return (percentiles_disc,percentiles_splits)
 
 

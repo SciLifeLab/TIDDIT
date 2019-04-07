@@ -82,6 +82,7 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,samfi
 		ploidy=library_stats["ploidies"][chrB]
 	i=0
 	perc=0
+	p=0
 	for percentile in percentiles:
 		if pairs*ploidy > percentile*coverage:
 			p=percentile_list[i]
@@ -89,8 +90,11 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,samfi
 		i+=1
 	if p:
 		qual=str(p)
+	elif not p and not percentiles:
+		qual="."
 	else:
 		qual="0"
+
 
 	a_dr,a_rr=TIDDIT_signals.count_ref(args,library_stats,chrA,candidate["posA"],samfile)
 	b_dr,b_rr=TIDDIT_signals.count_ref(args,library_stats,chrB,candidate["posB"],samfile)
