@@ -74,6 +74,7 @@ int main(int argc, char **argv) {
 	vm["-s"]="";
 	vm["-n"]="";
 	vm["-m"] = "";
+
 	
 	string sv_help ="\nUsage: TIDDIT --sv -b inputfile [-o prefix] \nOther options\n";
 	sv_help +="\t-b\tcoordinate sorted bam file(required)\n";
@@ -90,6 +91,8 @@ int main(int argc, char **argv) {
 	//the coverage module
 	vm["--cov"]="store";
 	vm["-z"]="";
+	vm["-w"] = "store";
+	vm["-u"] = "store";
 
 	//the gc module
         vm["--gc"]="store";
@@ -97,10 +100,13 @@ int main(int argc, char **argv) {
 	string coverage_help="\nUsage: TIDDIT --cov [Mode] -b inputfile [-o prefix]\n";
 	coverage_help +="\t-b\tcoordinate sorted bam file(required)\n";
 	coverage_help +="\n\t-z\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
+	coverage_help +="\n\t-w\tOutput wig instead of bed\n";
+	coverage_help +="\n\t-u\tSkip quality values\n";
+
 	
 	string gc_help="\nUsage: cat in.fa | TIDDIT --gc [Mode] [-o prefix]\n";
-	coverage_help +="\t-r\treference fasta file(required)\n";
-	coverage_help +="\n\t-z\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
+	gc_help+="\t-r\treference fasta file(required)\n";
+	gc_help+="\n\t-z\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
 
 
 	//store the options in a map
@@ -446,7 +452,17 @@ int main(int argc, char **argv) {
 		    outputFileHeader=vm["-o"];
 		}
 
-		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader);
+		bool wig = false;
+		if(vm["-w"] == "found"){
+		    wig = true;
+		}
+
+		bool skipQual= false;
+		if(vm["-u"] == "found"){
+		     skipQual = true;
+		}
+
+		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader,wig,skipQual);
 		BamReader bam;
 		bam.Open(alignmentFile);
 		BamAlignment currentRead;

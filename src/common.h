@@ -63,6 +63,8 @@ public:
 	int binStart;
 	int binEnd;
 	int currentChr;
+	bool wig;
+	bool skipQual;
 	vector< vector<unsigned int> > coverageStructure;
 	vector< vector< vector<unsigned int> > > qualityStructure;
 	map<unsigned int,string> position2contig;
@@ -73,7 +75,7 @@ public:
 	string output;
 
 	//constructor
-	Cov(int binSize,string bamFile,string output);
+	Cov(int binSize,string bamFile,string output, bool wig, bool skipQual);
 	//module used to calculate the coverage of the genome
 	void bin(BamAlignment currentRead, readStatus alignmentStatus);
 	void printCoverage();

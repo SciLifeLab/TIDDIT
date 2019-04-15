@@ -5,28 +5,41 @@ import numpy
 #read the coverage tab file
 def coverage(args):
 	chromosome_size={}
-	for line in open(args.o+".tab"):
-		if line[0] == "#":
+	for line in open(args.o+".wig"):
+		if "chrom=" in line:
+			chromosome=line.split("chrom=")[-1].split()[0]
 			continue
-		content=line.strip().split()
-		if not content[0] in chromosome_size:
-			chromosome_size[content[0]]=0
-		chromosome_size[content[0]]+=1
+		elif "quality" in line:
+			break
+		elif "descrip" in line:
+			continue
+
+		if not chromosome in chromosome_size:
+			chromosome_size[chromosome]=0
+		chromosome_size[chromosome]+=1
 	
 	coverage_data={}
-	chromosome_index={}
 	for chromosome in chromosome_size:
 		coverage_data[chromosome]=numpy.zeros( (chromosome_size[chromosome],3), dtype=numpy.float32 )
-		chromosome_index[chromosome]=0
 
-	for line in open(args.o+".tab"):
-		if line[0] == "#":
+	mapq=False
+	for line in open(args.o+".wig"):
+		if "name=\"Coverage\"" in line:
 			continue
-		content=line.strip().split()
-		
-		coverage_data[content[0]][chromosome_index[content[0]]][0]=float(content[3])
-		coverage_data[content[0]][chromosome_index[content[0]]][1]=float(content[4])
-		chromosome_index[content[0]]+=1
+		elif "chrom=" in line:
+			chromosome=line.split("chrom=")[-1].split()[0]
+			chromosome_index=0
+			continue
+		elif "quality" in line:
+			mapq=True
+			continue
+
+		content=line.strip()	
+		if mapq:
+			coverage_data[chromosome][chromosome_index][1]=float(content)
+		else:
+			coverage_data[chromosome][chromosome_index][0]=float(content)
+		chromosome_index+=1
 
 	return(coverage_data)
 
@@ -125,6 +138,7 @@ def retrieve_N_content(args):
 		elif "chrom=" in line:
 			chromosome=line.split("chrom=")[-1].split()[0]
 			continue
+
 		elif "Per bin fraction of N" in line:
 			break
 		if not chromosome in chromosome_size:
@@ -134,7 +148,6 @@ def retrieve_N_content(args):
 	Ncontent={}
 	for chromosome in chromosome_size:
 		Ncontent[chromosome]=numpy.zeros( chromosome_size[chromosome],dtype=numpy.int8 )
-
 	read_n=False
 	for line in open(args.o+".gc.wig"):
 		if "Per bin GC values" in line:

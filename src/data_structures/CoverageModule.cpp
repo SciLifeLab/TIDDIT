@@ -24,10 +24,14 @@ ostream& test(ofstream &coverageOutput,string output){
 
 }
 //constructor
-Cov::Cov(int binSize,string bamFile,string output){
+Cov::Cov(int binSize,string bamFile,string output,bool wig, bool skipQual){
 	ostream& covout=test(coverageOutput,output);
 	if(output != "stdout"){
+		if (wig == false){
 		coverageOutput.open((output+".tab").c_str());
+		}else{
+		coverageOutput.open((output+".wig").c_str());
+		}
 		static ostream& covout = coverageOutput;
 		
 	}else{
@@ -40,13 +44,20 @@ Cov::Cov(int binSize,string bamFile,string output){
 	this -> binStart =0;
 	this -> binEnd=binSize+binStart;
 	this -> binSize = binSize;
+	this -> wig = wig;
+	this -> skipQual = skipQual;
 	this -> currentChr=-1;
 	
 	this -> contigsNumber = 0;
 	this -> bamFile = bamFile;
 	this -> output = output;
-
-	covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "quality" << endl;
+	if (wig == false){
+		if (skipQual == true){
+			covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << endl;
+		}else{
+			covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "quality" << endl;
+		}
+	}
 	BamReader alignmentFile;
 
 	//open the bam file
@@ -126,25 +137,57 @@ void Cov::printCoverage(){
 	if ( this -> output == "stdout") {
 		static ostream& covout=cout;
 	}
-
-	for(int i=0;i<contigsNumber;i++){
-		for(int j=0;j<coverageStructure[i].size();j++){
-			int binStart = j*binSize;
-			int binEnd=binStart+binSize;
+	if (this -> wig == false){
+		for(int i=0;i<contigsNumber;i++){
+			for(int j=0;j<coverageStructure[i].size();j++){
+				int binStart = j*binSize;
+				int binEnd=binStart+binSize;
             
-			if(binEnd > contigLength[i]){
-				binEnd=contigLength[i];
-			}
-			double coverage=double(coverageStructure[i][j])/double(binEnd-binStart);
-			double quality = 0;
-			if(double(qualityStructure[1][i][j]) > 0){
-				quality=double(qualityStructure[0][i][j])/double(qualityStructure[1][i][j]);
-			}
-			if (j == coverageStructure[i].size()-1){
-				covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << endl;
+				if(binEnd > contigLength[i]){
+					binEnd=contigLength[i];
+				}
+				double coverage=double(coverageStructure[i][j])/double(binEnd-binStart);
+				double quality = 0;
+				if(double(qualityStructure[1][i][j]) > 0){
+					quality=double(qualityStructure[0][i][j])/double(qualityStructure[1][i][j]);
+				}
+				if (this -> skipQual == false){
+					covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << endl;
+				}else{
+					covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << endl;
+				}
 
-			}else{
-				covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << "\n";
+			}
+		}
+	}else{
+		covout << "track type=wiggle_0 name=\"Coverage\" description=\"Per bin average coverage\"" << endl;
+		for(int i=0;i<contigsNumber;i++){
+			covout << "fixedStep chrom=" << position2contig[i] << " start=1 step=" << binSize << endl;
+
+			for(int j=0;j<coverageStructure[i].size();j++){
+				int binStart = j*binSize;
+				int binEnd=binStart+binSize;
+            
+				if(binEnd > contigLength[i]){
+					binEnd=contigLength[i];
+				}
+				double coverage=double(coverageStructure[i][j])/double(binEnd-binStart);
+				covout << coverage << endl;
+
+			}
+		}
+		if (this -> skipQual == false){
+			covout << "track type=wiggle_0 name=\"MapQ\" description=\"Per bin average mapping quality\"" << endl;
+			for(int i=0;i<contigsNumber;i++){
+				covout << "fixedStep chrom=" << position2contig[i] << " start=1 step=" << binSize << endl;
+
+				for(int j=0;j<coverageStructure[i].size();j++){
+					double quality = 0;
+					if(double(qualityStructure[1][i][j]) > 0){
+						quality=double(qualityStructure[0][i][j])/double(qualityStructure[1][i][j]);
+					}
+					covout << quality << endl;
+				}
 			}
 		}
 	}
