@@ -1,5 +1,4 @@
 import numpy
-import pysam
 
 #compute the filters
 def fetch_filter(chrA,chrB,candidate,args,library_stats):

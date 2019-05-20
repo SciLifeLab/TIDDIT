@@ -7,7 +7,7 @@ TIDDIT has two modes of analysing bam files. The sv mode, which is used to searc
 
 INSTALLATION
 ==============
-TIDDIT requires standard c++/c libraries, python 2.7,pysam, cython, and Numpy. To compile TIDDIT, cmake must be installed. 
+TIDDIT requires standard c++/c libraries, python 2.7 or 3.6, cython, and Numpy. To compile TIDDIT, cmake must be installed. 
 
 ```
 git clone https://github.com/SciLifeLab/TIDDIT.git

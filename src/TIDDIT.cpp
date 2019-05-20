@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 	int min_variant_size= 100;
 	int sample = 100000000;
 	string outputFileHeader ="output";
-	string version = "2.7.0";
+	string version = "2.7.1";
 	
 	//collect all options as a vector
 	vector<string> arguments(argv, argv + argc);
@@ -93,6 +93,7 @@ int main(int argc, char **argv) {
 	vm["-z"]="";
 	vm["-w"] = "store";
 	vm["-u"] = "store";
+	vm["-a"] = "store";
 
 	//the gc module
         vm["--gc"]="store";
@@ -102,7 +103,7 @@ int main(int argc, char **argv) {
 	coverage_help +="\n\t-z\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
 	coverage_help +="\n\t-w\tOutput wig instead of bed\n";
 	coverage_help +="\n\t-u\tSkip quality values\n";
-
+	coverage_help +="\n\t-a\tSkip print breadth of coverage (reads and spanning pairs, only possible with wig)\n";
 	
 	string gc_help="\nUsage: cat in.fa | TIDDIT --gc [Mode] [-o prefix]\n";
 	gc_help+="\t-r\treference fasta file(required)\n";
@@ -462,7 +463,12 @@ int main(int argc, char **argv) {
 		     skipQual = true;
 		}
 
-		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader,wig,skipQual);
+		bool span = false;
+		if(vm["-a"] == "found"){
+		     span = true;
+		}
+
+		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader,0,wig,skipQual,span);
 		BamReader bam;
 		bam.Open(alignmentFile);
 		BamAlignment currentRead;

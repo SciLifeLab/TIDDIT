@@ -22,7 +22,14 @@ def coverage(args):
 	for chromosome in chromosome_size:
 		coverage_data[chromosome]=numpy.zeros( (chromosome_size[chromosome],3), dtype=numpy.float32 )
 
+	span_coverage={}
+	for chromosome in chromosome_size:
+		span_coverage[chromosome]=numpy.zeros( (chromosome_size[chromosome],2), dtype=numpy.uint32 )
+
+
 	mapq=False
+	spanning_pair=False
+	spanning_read=False
 	for line in open(args.o+".wig"):
 		if "name=\"Coverage\"" in line:
 			continue
@@ -33,15 +40,26 @@ def coverage(args):
 		elif "quality" in line:
 			mapq=True
 			continue
+		elif "SpanPairs" in line:
+			spanning_pair=True
+			continue
+		elif "SpanReads" in line:
+			spanning_read=True
+			continue
 
 		content=line.strip()	
-		if mapq:
+		if mapq and not spanning_read and not spanning_pair:
 			coverage_data[chromosome][chromosome_index][1]=float(content)
+		elif mapq and spanning_pair and not spanning_read:
+			span_coverage[chromosome][chromosome_index][0]=int(content)
+		elif mapq and spanning_pair and  spanning_read:
+			span_coverage[chromosome][chromosome_index][1]=int(content)
 		else:
 			coverage_data[chromosome][chromosome_index][0]=float(content)
+
 		chromosome_index+=1
 
-	return(coverage_data)
+	return(coverage_data,span_coverage)
 
 #estimate the ploidy of each chromosome
 def determine_ploidy(args,chromosomes,coverage_data,Ncontent,library_stats):

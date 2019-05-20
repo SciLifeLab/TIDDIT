@@ -24,7 +24,7 @@ ostream& test(ofstream &coverageOutput,string output){
 
 }
 //constructor
-Cov::Cov(int binSize,string bamFile,string output,bool wig, bool skipQual){
+Cov::Cov(int binSize,string bamFile,string output,int minQ,bool wig, bool skipQual, bool span){
 	ostream& covout=test(coverageOutput,output);
 	if(output != "stdout"){
 		if (wig == false){
@@ -47,10 +47,11 @@ Cov::Cov(int binSize,string bamFile,string output,bool wig, bool skipQual){
 	this -> wig = wig;
 	this -> skipQual = skipQual;
 	this -> currentChr=-1;
-	
+	this -> minQ = minQ;
 	this -> contigsNumber = 0;
 	this -> bamFile = bamFile;
 	this -> output = output;
+	this -> span = span;
 	if (wig == false){
 		if (skipQual == true){
 			covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << endl;
@@ -73,13 +74,25 @@ Cov::Cov(int binSize,string bamFile,string output,bool wig, bool skipQual){
 	}
 	this -> coverageStructure.resize(contigsNumber);
 	this -> qualityStructure.resize(2);
+	this -> spanCoverageStructure.resize(2);
 
 	qualityStructure[0].resize(contigsNumber);
 	qualityStructure[1].resize(contigsNumber);
+
+	if (this -> span){
+		spanCoverageStructure[0].resize(contigsNumber);
+		spanCoverageStructure[1].resize(contigsNumber);
+	}
+
 	for(int i=0;i<contigsNumber;i++){
 		coverageStructure[i].resize(ceil(contigLength[i]/double(binSize)),0);
-		qualityStructure[0][i].resize(ceil(contigLength[i]/double(binSize)),0);
+
 		qualityStructure[1][i].resize(ceil(contigLength[i]/double(binSize)),0);
+		qualityStructure[0][i].resize(ceil(contigLength[i]/double(binSize)),0);
+		if (this -> span){
+			spanCoverageStructure[1][i].resize(ceil(contigLength[i]/double(binSize)),0);
+			spanCoverageStructure[0][i].resize(ceil(contigLength[i]/double(binSize)),0);
+		}
 	}
 	
 	
@@ -104,6 +117,7 @@ void Cov::bin(BamAlignment currentRead, readStatus alignmentStatus){
 			coverageStructure[currentRead.RefID][element]+=currentRead.Length;
 			qualityStructure[0][currentRead.RefID][element] += currentRead.MapQuality;
 			qualityStructure[1][currentRead.RefID][element] += 1;
+
 		}else{
 		//if the read starts within the region but reaches outside it, add only those bases that fit inside the region.
 			coverageStructure[currentRead.RefID][element]+=(element+1)*binSize-currentRead.Position+1;
@@ -126,6 +140,26 @@ void Cov::bin(BamAlignment currentRead, readStatus alignmentStatus){
 				qualityStructure[1][currentRead.RefID][element] += 1;
 			}
 
+		}
+		//span coverage based on discordants
+		if ( alignmentStatus != pair_wrongDistance and alignmentStatus != pair_wrongOrientation and this -> span and currentRead.MapQuality > this-> minQ ){
+			element=floor(double(currentRead.Position)/double(binSize));
+			int elements=ceil(double(currentRead.InsertSize-binSize+ currentRead.Position-element*binSize)/double(binSize));
+			if ( currentRead.Position-element*binSize < 20){
+				element++;
+				elements=elements-1;
+			}
+
+			for (int i=0;i < elements;i++){
+				spanCoverageStructure[0][currentRead.RefID][element+i] +=1;
+			}
+
+			if (not currentRead.HasTag("SA")){
+				elements=ceil(double(currentRead.Length-binSize+currentRead.Position-element*binSize)/double(binSize));
+				for (int i=0;i < elements;i++){
+					spanCoverageStructure[1][currentRead.RefID][element+i] +=1;
+				}
+			}
 		}
 	}
 
@@ -190,6 +224,23 @@ void Cov::printCoverage(){
 				}
 			}
 		}
+		if (this -> span){
+			covout << "track type=wiggle_0 name=\"SpanPairs\" description=\"Spanning pairs per bin\"" << endl;
+			for(int i=0;i<contigsNumber;i++){
+				covout << "fixedStep chrom=" << position2contig[i] << " start=1 step=" << binSize << endl;
+				for(int j=0;j<coverageStructure[i].size();j++){
+					covout << spanCoverageStructure[0][i][j] << endl;
+				}
+			}
+			covout << "track type=wiggle_0 name=\"SpanReads\" description=\"Spanning reads per bin\"" << endl;
+			for(int i=0;i<contigsNumber;i++){
+				covout << "fixedStep chrom=" << position2contig[i] << " start=1 step=" << binSize << endl;
+				for(int j=0;j<coverageStructure[i].size();j++){
+					covout << spanCoverageStructure[1][i][j] << endl;
+				}
+			}
+		}
+
 	}
 	
 }
