@@ -207,7 +207,7 @@ string Window::VCFHeader(string libraryData){
 	headerString+="##FILTER=<ID=MinSize,Description=\"The variant is smaller than the user set limit\">\n";
 	headerString+="##FILTER=<ID=Ploidy,Description=\"Intrachromosomal variant on a chromosome having 0 ploidy\">\n";
 	headerString+="##FILTER=<ID=SplitsVSDiscs,Description=\"large variant supported mainly by split reads (and not discorant pairs) \">\n";
-	headerString+="##FILTER=<ID=Density,Description=\"The discordant reads cluster too tighlt\">\n";
+	headerString+="##FILTER=<ID=Density,Description=\"The discordant reads cluster too tightly\">\n";
 	//set format 
 	headerString+="##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n";
 	headerString+="##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy number genotype for imprecise events\">\n";

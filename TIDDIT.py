@@ -2,12 +2,13 @@
 import argparse
 import os
 import sys
+import time
 
 wd=os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, '{}/src/'.format(wd))
 import TIDDIT_calling
 
-version = "2.6.0"
+version = "2.7.1"
 parser = argparse.ArgumentParser("""TIDDIT-{}""".format(version),add_help=False)
 parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 parser.add_argument('--cov'        , help="generate a coverage bed file", required=False, action="store_true")
@@ -37,14 +38,17 @@ if args.sv:
 	args= parser.parse_args()
 	args.wd=os.path.dirname(os.path.realpath(__file__))
 	if args.l < 2:
-		print "error, too low --l value!"
+		print ("error, too low --l value!")
 		quit()
 	if args.ref:
 		if not os.path.isfile(args.ref):
-			print "error,  could not find the reference file"
+			print ("error,  could not find the reference file")
 			quit()
 	if not os.path.isfile(args.bam):
-		print "error,  could not find the bam file"
+		print ("error,  could not find the bam file")
+		quit()
+	if not os.path.isfile("{}/bin/TIDDIT".format(args.wd)):
+		print ("error,  could not find the TIDDIT executable file, try rerun the INSTALL.sh script")
 		quit()
 
 	command_str="{}/bin/TIDDIT --sv -b {} -o {} -p {} -r {} -q {} -n {} -s {}".format(args.wd,args.bam,args.o,args.p,args.r,args.q,args.n,args.s)
@@ -57,22 +61,40 @@ if args.sv:
 		os.system(command_str)
 
 		if args.ref:
+			t=time.time()
+			print ("Generating GC wig file")
 			if args.ref.endswith(".gz"):
 				os.system("zcat {} | {}/bin/TIDDIT --gc -z 50 -o {}".format(args.ref,args.wd,args.o))
 			else:
 				os.system("cat {} | {}/bin/TIDDIT --gc -z 50 -o {}".format(args.ref,args.wd,args.o))
+			print ("Constructed GC wig in {} sec".format(time.time()-t))
 
 	TIDDIT_calling.cluster(args)
 
 elif args.cov:
 	parser = argparse.ArgumentParser("""TIDDIT --cov --bam inputfile [-o prefix]""")
-	parser.add_argument('--cov'        , help="generate a coverage bed file", required=False, action="store_true")
+	parser.add_argument('--cov'        , help="generate a coverage bed/wig file", required=False, action="store_true")
 	parser.add_argument('--bam', type=str,required=True, help="coordinate sorted bam file(required)")
 	parser.add_argument('-o', type=str,default="output", help="output prefix(default=output)")
 	parser.add_argument('-z', type=int,default=500, help="use bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout")
+	parser.add_argument('-w'        , help="generate wig instead of bed", required=False, action="store_true")
+	parser.add_argument('-u'        , help="skip per bin mapping quality", required=False, action="store_true")
 	args= parser.parse_args()
 	args.wd=os.path.dirname(os.path.realpath(__file__))
+	command="{}/bin/TIDDIT --cov -b {} -o {} -z {}".format(args.wd,args.bam,args.o,args.z)
+	if args.w:
+		command += " -w"
 
-	os.system("{}/bin/TIDDIT --cov -b {} -o {} -z {}".format(args.wd,args.bam,args.o,args.z))
+	if args.u:
+		command += " -u"
+
+	if not os.path.isfile(args.bam):
+		print ("error,  could not find the bam file")
+		quit()
+	if not os.path.isfile("{}/bin/TIDDIT".format(args.wd)):
+		print ("error,  could not find the TIDDIT executable file, try rerun the INSTALL.sh script")
+		quit()
+	os.system(command)
+
 else:
 	parser.print_help()

@@ -24,10 +24,14 @@ ostream& test(ofstream &coverageOutput,string output){
 
 }
 //constructor
-Cov::Cov(int binSize,string bamFile,string output){
+Cov::Cov(int binSize,string bamFile,string output,int minQ,bool wig, bool skipQual, bool span){
 	ostream& covout=test(coverageOutput,output);
 	if(output != "stdout"){
+		if (wig == false){
 		coverageOutput.open((output+".tab").c_str());
+		}else{
+		coverageOutput.open((output+".wig").c_str());
+		}
 		static ostream& covout = coverageOutput;
 		
 	}else{
@@ -40,13 +44,21 @@ Cov::Cov(int binSize,string bamFile,string output){
 	this -> binStart =0;
 	this -> binEnd=binSize+binStart;
 	this -> binSize = binSize;
+	this -> wig = wig;
+	this -> skipQual = skipQual;
 	this -> currentChr=-1;
-	
+	this -> minQ = minQ;
 	this -> contigsNumber = 0;
 	this -> bamFile = bamFile;
 	this -> output = output;
-
-	covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "quality" << endl;
+	this -> span = span;
+	if (wig == false){
+		if (skipQual == true){
+			covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << endl;
+		}else{
+			covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "quality" << endl;
+		}
+	}
 	BamReader alignmentFile;
 
 	//open the bam file
@@ -62,13 +74,25 @@ Cov::Cov(int binSize,string bamFile,string output){
 	}
 	this -> coverageStructure.resize(contigsNumber);
 	this -> qualityStructure.resize(2);
+	this -> spanCoverageStructure.resize(2);
 
 	qualityStructure[0].resize(contigsNumber);
 	qualityStructure[1].resize(contigsNumber);
+
+	if (this -> span){
+		spanCoverageStructure[0].resize(contigsNumber);
+		spanCoverageStructure[1].resize(contigsNumber);
+	}
+
 	for(int i=0;i<contigsNumber;i++){
 		coverageStructure[i].resize(ceil(contigLength[i]/double(binSize)),0);
-		qualityStructure[0][i].resize(ceil(contigLength[i]/double(binSize)),0);
+
 		qualityStructure[1][i].resize(ceil(contigLength[i]/double(binSize)),0);
+		qualityStructure[0][i].resize(ceil(contigLength[i]/double(binSize)),0);
+		if (this -> span){
+			spanCoverageStructure[1][i].resize(ceil(contigLength[i]/double(binSize)),0);
+			spanCoverageStructure[0][i].resize(ceil(contigLength[i]/double(binSize)),0);
+		}
 	}
 	
 	
@@ -93,6 +117,7 @@ void Cov::bin(BamAlignment currentRead, readStatus alignmentStatus){
 			coverageStructure[currentRead.RefID][element]+=currentRead.Length;
 			qualityStructure[0][currentRead.RefID][element] += currentRead.MapQuality;
 			qualityStructure[1][currentRead.RefID][element] += 1;
+
 		}else{
 		//if the read starts within the region but reaches outside it, add only those bases that fit inside the region.
 			coverageStructure[currentRead.RefID][element]+=(element+1)*binSize-currentRead.Position+1;
@@ -116,6 +141,26 @@ void Cov::bin(BamAlignment currentRead, readStatus alignmentStatus){
 			}
 
 		}
+		//span coverage based on discordants
+		if ( alignmentStatus != pair_wrongDistance and alignmentStatus != pair_wrongOrientation and this -> span and currentRead.MapQuality > this-> minQ ){
+			element=floor(double(currentRead.Position)/double(binSize));
+			int elements=ceil(double(currentRead.InsertSize-binSize+ currentRead.Position-element*binSize)/double(binSize));
+			if ( currentRead.Position-element*binSize < 20){
+				element++;
+				elements=elements-1;
+			}
+
+			for (int i=0;i < elements;i++){
+				spanCoverageStructure[0][currentRead.RefID][element+i] +=1;
+			}
+
+			if (not currentRead.HasTag("SA")){
+				elements=ceil(double(currentRead.Length-binSize+currentRead.Position-element*binSize)/double(binSize));
+				for (int i=0;i < elements;i++){
+					spanCoverageStructure[1][currentRead.RefID][element+i] +=1;
+				}
+			}
+		}
 	}
 
 }
@@ -126,22 +171,76 @@ void Cov::printCoverage(){
 	if ( this -> output == "stdout") {
 		static ostream& covout=cout;
 	}
-
-	for(int i=0;i<contigsNumber;i++){
-		for(int j=0;j<coverageStructure[i].size();j++){
-			int binStart = j*binSize;
-			int binEnd=binStart+binSize;
+	if (this -> wig == false){
+		for(int i=0;i<contigsNumber;i++){
+			for(int j=0;j<coverageStructure[i].size();j++){
+				int binStart = j*binSize;
+				int binEnd=binStart+binSize;
             
-			if(binEnd > contigLength[i]){
-				binEnd=contigLength[i];
+				if(binEnd > contigLength[i]){
+					binEnd=contigLength[i];
+				}
+				double coverage=double(coverageStructure[i][j])/double(binEnd-binStart);
+				double quality = 0;
+				if(double(qualityStructure[1][i][j]) > 0){
+					quality=double(qualityStructure[0][i][j])/double(qualityStructure[1][i][j]);
+				}
+				if (this -> skipQual == false){
+					covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << endl;
+				}else{
+					covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << endl;
+				}
+
 			}
-			double coverage=double(coverageStructure[i][j])/double(binEnd-binStart);
-			double quality = 0;
-			if(double(qualityStructure[1][i][j]) > 0){
-				quality=double(qualityStructure[0][i][j])/double(qualityStructure[1][i][j]);
-			}
-			covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << endl;
 		}
+	}else{
+		covout << "track type=wiggle_0 name=\"Coverage\" description=\"Per bin average coverage\"" << endl;
+		for(int i=0;i<contigsNumber;i++){
+			covout << "fixedStep chrom=" << position2contig[i] << " start=1 step=" << binSize << endl;
+
+			for(int j=0;j<coverageStructure[i].size();j++){
+				int binStart = j*binSize;
+				int binEnd=binStart+binSize;
+            
+				if(binEnd > contigLength[i]){
+					binEnd=contigLength[i];
+				}
+				double coverage=double(coverageStructure[i][j])/double(binEnd-binStart);
+				covout << coverage << endl;
+
+			}
+		}
+		if (this -> skipQual == false){
+			covout << "track type=wiggle_0 name=\"MapQ\" description=\"Per bin average mapping quality\"" << endl;
+			for(int i=0;i<contigsNumber;i++){
+				covout << "fixedStep chrom=" << position2contig[i] << " start=1 step=" << binSize << endl;
+
+				for(int j=0;j<coverageStructure[i].size();j++){
+					double quality = 0;
+					if(double(qualityStructure[1][i][j]) > 0){
+						quality=double(qualityStructure[0][i][j])/double(qualityStructure[1][i][j]);
+					}
+					covout << quality << endl;
+				}
+			}
+		}
+		if (this -> span){
+			covout << "track type=wiggle_0 name=\"SpanPairs\" description=\"Spanning pairs per bin\"" << endl;
+			for(int i=0;i<contigsNumber;i++){
+				covout << "fixedStep chrom=" << position2contig[i] << " start=1 step=" << binSize << endl;
+				for(int j=0;j<coverageStructure[i].size();j++){
+					covout << spanCoverageStructure[0][i][j] << endl;
+				}
+			}
+			covout << "track type=wiggle_0 name=\"SpanReads\" description=\"Spanning reads per bin\"" << endl;
+			for(int i=0;i<contigsNumber;i++){
+				covout << "fixedStep chrom=" << position2contig[i] << " start=1 step=" << binSize << endl;
+				for(int j=0;j<coverageStructure[i].size();j++){
+					covout << spanCoverageStructure[1][i][j] << endl;
+				}
+			}
+		}
+
 	}
 	
 }

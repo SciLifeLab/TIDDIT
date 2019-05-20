@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 	int min_variant_size= 100;
 	int sample = 100000000;
 	string outputFileHeader ="output";
-	string version = "2.6.0";
+	string version = "2.7.1";
 	
 	//collect all options as a vector
 	vector<string> arguments(argv, argv + argc);
@@ -74,6 +74,7 @@ int main(int argc, char **argv) {
 	vm["-s"]="";
 	vm["-n"]="";
 	vm["-m"] = "";
+
 	
 	string sv_help ="\nUsage: TIDDIT --sv -b inputfile [-o prefix] \nOther options\n";
 	sv_help +="\t-b\tcoordinate sorted bam file(required)\n";
@@ -90,6 +91,9 @@ int main(int argc, char **argv) {
 	//the coverage module
 	vm["--cov"]="store";
 	vm["-z"]="";
+	vm["-w"] = "store";
+	vm["-u"] = "store";
+	vm["-a"] = "store";
 
 	//the gc module
         vm["--gc"]="store";
@@ -97,10 +101,13 @@ int main(int argc, char **argv) {
 	string coverage_help="\nUsage: TIDDIT --cov [Mode] -b inputfile [-o prefix]\n";
 	coverage_help +="\t-b\tcoordinate sorted bam file(required)\n";
 	coverage_help +="\n\t-z\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
+	coverage_help +="\n\t-w\tOutput wig instead of bed\n";
+	coverage_help +="\n\t-u\tSkip quality values\n";
+	coverage_help +="\n\t-a\tSkip print breadth of coverage (reads and spanning pairs, only possible with wig)\n";
 	
 	string gc_help="\nUsage: cat in.fa | TIDDIT --gc [Mode] [-o prefix]\n";
-	coverage_help +="\t-r\treference fasta file(required)\n";
-	coverage_help +="\n\t-z\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
+	gc_help+="\t-r\treference fasta file(required)\n";
+	gc_help+="\n\t-z\tuse bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout\n";
 
 
 	//store the options in a map
@@ -246,48 +253,64 @@ int main(int argc, char **argv) {
 
 
 		if (outputfile == "stdout"){
-			cout << "#chromosome\tstart\tend\tGC\tN" << endl;
+			cout << "track type=wiggle_0 name=\"GC\" description=\"Per bin GC values\"" << endl;
 			for(int i=0;i< chromosomes.size();i++){
-				for (int j=0;j<bins[chromosomes[i]].size();j++){
+				cout << "fixedStep chrom=" << chromosomes[i] << " start=1 step=50" << endl;  
+	 			for (int j=0;j<bins[chromosomes[i]].size();j++){
 					float gc =0;
 					if (bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0] > 0){
 						gc=(float)bins[chromosomes[i]][j][1]/(bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0]);
 					}
+					cout << gc << "\n";
+				}
+			}
 
+			cout << "track type=wiggle_0 name=\"N-count\" description=\"Per bin fraction of N\"" << endl;
+			for(int i=0;i< chromosomes.size();i++){
+				cout << "fixedStep chrom=" << chromosomes[i] << " start=1 step=50" << endl;  
+	 			for (int j=0;j<bins[chromosomes[i]].size();j++){
 					float n = 0;
 					if (bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1] > 0){
 						n=(float)bins[chromosomes[i]][j][2]/( bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][2] );
 					}else{
 						n=1;
 					}
-
-						cout << chromosomes[i] << "\t" << j*binSize << "\t" << (j+1)*binSize << "\t" << gc << "\t" << n << endl;
+					cout << n << endl;
 					
 				}
 			}
+
 		}else{
 			ofstream gcOutput;
-			gcOutput.open((outputfile+".gc.tab").c_str());
+			gcOutput.open((outputfile+".gc.wig").c_str());
 			ostream& gcout=gcOutput;
-			gcout << "#chromosome\tstart\tend\tGC\tN" << endl;
+			gcout << "track type=wiggle_0 name=\"GC\" description=\"Per bin GC values\"" << endl;
 			for(int i=0;i< chromosomes.size();i++){
-				for (int j=0;j<bins[chromosomes[i]].size();j++){
+				gcout << "fixedStep chrom=" << chromosomes[i] << " start=1 step=50" << endl;  
+	 			for (int j=0;j<bins[chromosomes[i]].size();j++){
 					float gc =0;
 					if (bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0] > 0){
 						gc=(float)bins[chromosomes[i]][j][1]/(bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][0]);
 					}
+					gcout << gc << "\n";
+				}
+			}
 
+			gcout << "track type=wiggle_0 name=\"N-count\" description=\"Per bin fraction of N\"" << endl;
+			for(int i=0;i< chromosomes.size();i++){
+				gcout << "fixedStep chrom=" << chromosomes[i] << " start=1 step=50" << endl;  
+	 			for (int j=0;j<bins[chromosomes[i]].size();j++){
 					float n = 0;
 					if (bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1] > 0){
 						n=(float)bins[chromosomes[i]][j][2]/( bins[chromosomes[i]][j][0]+bins[chromosomes[i]][j][1]+bins[chromosomes[i]][j][2] );
 					}else{
 						n=1;
 					}
-
-						gcout << chromosomes[i] << "\t" << j*binSize << "\t" << (j+1)*binSize << "\t" << gc << "\t" << n << endl;
+					gcout << n << endl;
 					
 				}
 			}
+
 		}
 		return(0);
 	}
@@ -430,7 +453,22 @@ int main(int argc, char **argv) {
 		    outputFileHeader=vm["-o"];
 		}
 
-		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader);
+		bool wig = false;
+		if(vm["-w"] == "found"){
+		    wig = true;
+		}
+
+		bool skipQual= false;
+		if(vm["-u"] == "found"){
+		     skipQual = true;
+		}
+
+		bool span = false;
+		if(vm["-a"] == "found"){
+		     span = true;
+		}
+
+		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader,0,wig,skipQual,span);
 		BamReader bam;
 		bam.Open(alignmentFile);
 		BamAlignment currentRead;

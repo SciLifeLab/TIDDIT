@@ -1,5 +1,3 @@
-
-
 #ifndef TYPES_H_
 #define TYPES_H_
 
@@ -63,8 +61,13 @@ public:
 	int binStart;
 	int binEnd;
 	int currentChr;
+	bool wig;
+	bool skipQual;
+	bool span;
+	int minQ;
 	vector< vector<unsigned int> > coverageStructure;
 	vector< vector< vector<unsigned int> > > qualityStructure;
+	vector< vector< vector<unsigned int> > > spanCoverageStructure;
 	map<unsigned int,string> position2contig;
 	map<string,unsigned int> contig2position;
 	vector<int> contigLength;
@@ -73,7 +76,7 @@ public:
 	string output;
 
 	//constructor
-	Cov(int binSize,string bamFile,string output);
+	Cov(int binSize,string bamFile,string output,int minQ, bool wig, bool skipQual, bool span);
 	//module used to calculate the coverage of the genome
 	void bin(BamAlignment currentRead, readStatus alignmentStatus);
 	void printCoverage();

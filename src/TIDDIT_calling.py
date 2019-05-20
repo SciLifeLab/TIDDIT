@@ -5,7 +5,6 @@ import sys
 import sqlite3
 import os
 import time
-import pysam
 
 import DBSCAN
 import TIDDIT_coverage
@@ -29,6 +28,12 @@ def retrieve_discs(chromosome,start,end,coverage_data):
 	end_index=int(math.floor(end/50.0))+1
 	discs=sum(coverage_data[chromosome][start_index:end_index,2])
 	return(discs)
+
+def count_ref(chromosome,pos,span_data):
+	index=int(math.floor(pos/50.0))
+	dr=span_data[chromosome][index,0]
+	rr=span_data[chromosome][index,1]
+	return(dr,rr)
 
 #split inversions into two separate calls
 def redefine_inv(vcf_line,signals,library_stats,args):
@@ -61,7 +66,7 @@ def inv_recluster(vcf_line,candidate,library_stats,args):
 
 	return([vcf_line_rr,vcf_line_ff])
 
-def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,samfile):
+def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,span_data):
 	vcf_line=[]
 	if chrA == chrB and  candidate["posA"] > candidate["posB"]:
 		candidate["posA"]=candidate["min_A"]
@@ -82,6 +87,7 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,samfi
 		ploidy=library_stats["ploidies"][chrB]
 	i=0
 	perc=0
+	p=0
 	for percentile in percentiles:
 		if pairs*ploidy > percentile*coverage:
 			p=percentile_list[i]
@@ -89,11 +95,14 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,samfi
 		i+=1
 	if p:
 		qual=str(p)
+	elif not p and not len(percentiles):
+		qual="."
 	else:
 		qual="0"
 
-	a_dr,a_rr=TIDDIT_signals.count_ref(args,library_stats,chrA,candidate["posA"],samfile)
-	b_dr,b_rr=TIDDIT_signals.count_ref(args,library_stats,chrB,candidate["posB"],samfile)
+
+	a_dr,a_rr=count_ref(chrA,candidate["posA"],span_data)
+	b_dr,b_rr=count_ref(chrB,candidate["posB"],span_data)
 
 	split_ratio=0
 	if candidate["splits"]:
@@ -187,7 +196,7 @@ def cluster(args):
 	else:
 		Ncontent=[]
 
-	coverage_data=TIDDIT_coverage.coverage(args)
+	coverage_data,span_data=TIDDIT_coverage.coverage(args)
 
 
 	conn = sqlite3.connect(args.o+".db")
@@ -206,17 +215,16 @@ def cluster(args):
 	ploidies,library_stats,coverage_data=TIDDIT_coverage.determine_ploidy(args,chromosomes,coverage_data,Ncontent,library_stats)
 	library_stats["ploidies"]=ploidies
 
-	samfile = pysam.AlignmentFile(args.bam, "rb")
-	percentiles_disc,percentiles_splits=TIDDIT_signals.sample(args,coverage_data,library_stats,samfile)
+	percentiles_disc,percentiles_splits=TIDDIT_signals.sample(args,coverage_data,span_data)
 
 	if not args.e:
 		args.e=int(math.sqrt(library_stats["MeanInsertSize"]*2)*12)
 	n=1
-	print "clustering signals on chromosome:"
+	print ("clustering signals on chromosome:")
 	calls={}
 	for chrA in chromosomes:
 		calls[chrA] =[]
-		print "{}".format(chrA)
+		print ("{}".format(chrA))
 		for chrB in chromosomes:
 			signal_data=numpy.array([ [hit[0],hit[1],hit[2],hit[3],hit[4],hit[5],hit[6],hit[7]] for hit in args.c.execute('SELECT posA,posB,forwardA,qualA,forwardB,qualB,resolution,name FROM TIDDITcall WHERE chrA == \'{}\' AND chrB == \'{}\''.format(chrA,chrB)).fetchall()])
 
@@ -260,9 +268,9 @@ def cluster(args):
 					coverageB=candidates[i]["covB"]/float(args.n)
 
 				if candidates[i]["discs"] > candidates[i]["splits"]:
-					vcf_line=generate_vcf_line(chrA,chrB,n,candidates[i],args,library_stats,percentiles_disc,samfile)
+					vcf_line=generate_vcf_line(chrA,chrB,n,candidates[i],args,library_stats,percentiles_disc,span_data)
 				else:
-					vcf_line=generate_vcf_line(chrA,chrB,n,candidates[i],args,library_stats,percentiles_splits,samfile)
+					vcf_line=generate_vcf_line(chrA,chrB,n,candidates[i],args,library_stats,percentiles_splits,span_data)
 
 				if len(vcf_line) == 1:
 					calls[chrA].append(vcf_line[0])
@@ -292,8 +300,8 @@ def cluster(args):
 			output="\t".join(output)+"\n"
 			outfile.write(output)
 
-	print "variant clustering completed in {}".format(time.time()-start_time)
-	print "Work complete!"
+	print ("variant clustering completed in {}".format(time.time()-start_time))
+	print ("Work complete!")
 	os.remove("{}.db".format(args.o))
 	return()
 

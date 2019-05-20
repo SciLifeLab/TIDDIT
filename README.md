@@ -7,7 +7,7 @@ TIDDIT has two modes of analysing bam files. The sv mode, which is used to searc
 
 INSTALLATION
 ==============
-TIDDIT requires standard c++/c libraries, python 2.7,pysam, cython, and Numpy. To compile TIDDIT, cmake must be installed. 
+TIDDIT requires standard c++/c libraries, python 2.7 or 3.6, cython, and Numpy. To compile TIDDIT, cmake must be installed. 
 
 ```
 git clone https://github.com/SciLifeLab/TIDDIT.git
@@ -84,8 +84,6 @@ output:
 TIDDIT SV module produces three output files, a vcf file containing SV calls, a tab file describing the coverage across the genome in bins of size 50 bp, and a tab file dscribing the estimated ploidy and coverage across each contig.
 
 Useful settings:
-
-It may be useful to increase the precision of TIDDIT, especially when searching the entire genome for disease causing variants. I usually set -p 7 and -r 5.
 
 In noisy datasets you may get too many small variants. If this is the case, then you may increase the -l parameter, or set the -i parameter to a high value (such as 2000) (on 10X linked read data, I usually set -l to 5).
                                         
