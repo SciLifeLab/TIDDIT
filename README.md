@@ -27,6 +27,16 @@ python TIDDIT.py  --sv --help
 python TIDDIT.py  --cov --help
 ```
 
+TIDDIT may be installed using bioconda:
+
+	conda install tiddit
+	
+Next, you may run TIDDIT like this:
+
+	tiddit --help
+	tiddit --sv
+	tiddit --cov
+
 TIDDIT is also distributed with a Singularity environment (http://singularity.lbl.gov/index.html). Type the following command to download the container:
 
     singularity pull --name TIDDIT.simg shub://J35P312/TIDDIT
