@@ -8,7 +8,7 @@ wd=os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, '{}/src/'.format(wd))
 import TIDDIT_calling
 
-version = "2.7.1"
+version = "2.8.0"
 parser = argparse.ArgumentParser("""TIDDIT-{}""".format(version),add_help=False)
 parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 parser.add_argument('--cov'        , help="generate a coverage bed file", required=False, action="store_true")
@@ -19,17 +19,17 @@ if args.sv:
 	parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 	parser.add_argument('--bam', type=str,required=True, help="coordinate sorted bam file(required)")
 	parser.add_argument('-o', type=str,default="output", help="output prefix(default=output)")
-	parser.add_argument('-i', type=int, help="paired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (default=3std + mean_insert_size)")
+	parser.add_argument('-i', type=int, help="paired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (default= 99th percentile of insert size)")
 	parser.add_argument('-d', type=str,help="expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset")
 	parser.add_argument('-p', type=int,default=3, help="Minimum number of supporting pairs in order to call a variation event (default 3)")
 	parser.add_argument('-r', type=int,default=3, help="Minimum number of supporting split reads to call a small variant (default 3)")
-	parser.add_argument('-q', type=int,default=10, help="Minimum mapping quality to consider an alignment (default 10)")
+	parser.add_argument('-q', type=int,default=5, help="Minimum mapping quality to consider an alignment (default 5)")
 	parser.add_argument('-Q', type=int,default=20, help="Minimum regional mapping quality (default 20)")
 	parser.add_argument('-n', type=int,default=2, help="the ploidy of the organism,(default = 2)")
 	parser.add_argument('-e', type=int, help="clustering distance  parameter, discordant pairs closer than this distance are considered to belong to the same variant(default = sqrt(insert-size*2)*12)")
 	parser.add_argument('-l', type=int,default=3, help="min-pts parameter (default=3),must be set > 2")
-	parser.add_argument('-s', type=int,default=50000000, help="Number of reads to sample when computing library statistics(default=50000000)")
-	parser.add_argument('-z', type=int,default=100, help="minimum variant size (default=100), variants smaller than this will not be printed( z < 10 is not recomended)")
+	parser.add_argument('-s', type=int,default=20000000, help="Number of reads to sample when computing library statistics(default=50000000)")
+	parser.add_argument('-z', type=int,default=100, help="minimum variant size (default=100), variants smaller than this will not be printed ( z < 10 is not recomended)")
 	parser.add_argument('--force_ploidy',action="store_true", help="force the ploidy to be set to -n across the entire genome (i.e skip coverage normalisation of chromosomes)")
 	parser.add_argument('--debug',action="store_true", help="rerun the tiddit clustering procedure")
 	parser.add_argument('--n_mask',type=float,default=0.5, help="exclude regions from coverage calculation if they contain more than this fraction of N (default = 0.5)")
@@ -44,9 +44,14 @@ if args.sv:
 		if not os.path.isfile(args.ref):
 			print ("error,  could not find the reference file")
 			quit()
+	if not args.bam.endswith(".bam"):
+		print ("error, the input file is not a bam file, make sure that the file extension is .bam")
+		quit()
+
 	if not os.path.isfile(args.bam):
 		print ("error,  could not find the bam file")
 		quit()
+
 	if not os.path.isfile("{}/bin/TIDDIT".format(args.wd)):
 		print ("error,  could not find the TIDDIT executable file, try rerun the INSTALL.sh script")
 		quit()

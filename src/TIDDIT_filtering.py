@@ -38,6 +38,7 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats,disc_ratio,split_r
 		variant_type="SVTYPE=DUP"
 		var="<DUP>"		
 
+	ploidy_factor= 0.6
 	if chrA == chrB and library_stats["ploidies"][chrA]:
 		ploidy=library_stats["ploidies"][chrA]
 		if ploidy > 10:
@@ -61,35 +62,35 @@ def fetch_variant_type(chrA,chrB,candidate,args,library_stats,disc_ratio,split_r
 				variant_type="SVTYPE=INV"
 				var="<INV>"
 			elif library_stats["Orientation"] == "innie":
-				if candidate["covM"]/library_stats["chr_cov"][chrA] > (ploidy+0.5)/float(ploidy):
+				if candidate["covM"]/library_stats["chr_cov"][chrA] > (ploidy+ploidy_factor)/float(ploidy):
 					variant_type="SVTYPE=DUP"
 					var="<DUP>"
 					if candidate["RF"] > candidate["FR"]: 
 						variant_type="SVTYPE=TDUP"
 						var="<TDUP>"
-				elif candidate["covM"]/library_stats["chr_cov"][chrA] < (ploidy-0.5)/float(ploidy):
+				elif candidate["covM"]/library_stats["chr_cov"][chrA] < (ploidy-ploidy_factor)/float(ploidy):
 					variant_type="SVTYPE=DEL"
 					var="<DEL>"	
 
 			else:
-				if candidate["covM"]/library_stats["chr_cov"][chrA] > (ploidy+0.5)/float(ploidy):
+				if candidate["covM"]/library_stats["chr_cov"][chrA] > (ploidy+ploidy_factor)/float(ploidy):
 					variant_type="SVTYPE=DUP"
 					var="<DUP>"
 					if candidate["RF"] < candidate["FR"]: 
 						variant_type="SVTYPE=TDUP"
 						var="<TDUP>"
 
-				elif candidate["covM"]/library_stats["chr_cov"][chrA] < (ploidy-0.5)/float(ploidy):
+				elif candidate["covM"]/library_stats["chr_cov"][chrA] < (ploidy-ploidy_factor)/float(ploidy):
 					variant_type="SVTYPE=DEL"
 					var="<DEL>"
 		else:
 			if candidate["splitsINV"] > candidate["splits"]-candidate["splitsINV"]:
 				variant_type="SVTYPE=INV"
 				var="<INV>"
-			elif candidate["covM"]/library_stats["chr_cov"][chrA] >(ploidy+0.5)/float(ploidy):
+			elif candidate["covM"]/library_stats["chr_cov"][chrA] >(ploidy+ploidy_factor)/float(ploidy):
 					variant_type="SVTYPE=DUP"
 					var="<DUP>"
-			elif candidate["covM"]/library_stats["chr_cov"][chrA] < (ploidy-0.5)/float(ploidy):
+			elif candidate["covM"]/library_stats["chr_cov"][chrA] < (ploidy-ploidy_factor)/float(ploidy):
 					variant_type="SVTYPE=DEL"
 					var="<DEL>"		
 

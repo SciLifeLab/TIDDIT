@@ -100,6 +100,7 @@ struct LibraryStatistics{
 	float insertMean;
 	float insertStd;
 	int readLength;
+	int percentile;
 	bool mp;
 };
 
@@ -169,12 +170,9 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 
 	//All var declarations
 	uint32_t reads 		 	  = 0;
-	uint32_t unmappedReads 	  = 0;
-	uint32_t lowQualityReads  = 0;
-	uint32_t mappedReads 	  = 0;
-	uint64_t mappedReadsLength= 0;
+	uint64_t ReadsLength= 0;
 	int sampled = 0;
-
+	vector<unsigned int> insert_sizes;
 
 	uint64_t insertsLength = 0; // total inserts length
 	float insertMean;
@@ -185,27 +183,8 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	// wrongly distance
 	uint32_t wrongDistanceReads 		= 0;  // number of paired reads too far away
 	uint64_t wrongDistanceReadsLength   = 0; // length  of paired reads too far away
-	// wrongly oriented reads
-	uint32_t wronglyOrientedReads 		= 0;       // number of wrongly oriented reads
-	uint64_t wronglyOrientedReadsLength = 0; // length of wrongly oriented reads
-	// singletons
-	uint32_t singletonReads 	  = 0; // number of singleton reads
-	uint64_t singletonReadsLength = 0;     // total length of singleton reads
-	// mates on different contigs
-	uint32_t matedDifferentContig 		= 0; // number of contig placed in a different contig
-	uint64_t matedDifferentContigLength = 0; // total number of reads placed in different contigs
-	// split reads
-	uint32_t splitReads = 0;
-	uint32_t readLength=0;
 
-	float C_A = 0; // total read coverage
-	float S_A = 0; // total span coverage
-	float C_M = 0; // coverage induced by proper pairs (same contig and correct orientation)
-	float C_W = 0; // coverage induced by wrongly mated pairs
-	float C_S = 0; // coverage induced by singletons
-	float C_D = 0; // coverage induced by reads with mate on a different contigs
-
-
+	uint32_t wronglyOrientedReads           = 0;       // number of wrongly oriented reads
 
 	// compute mean and std on the fly
 	float Mk = 0;
@@ -218,19 +197,15 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	BamAlignment al;
 	
 	while ( bamFile.GetNextAlignmentCore(al) ) {
-		reads ++;
 		readStatus read_status = computeReadType(al, max_insert, min_insert,is_mp);
-		if (read_status != unmapped and read_status != lowQualty ) {
-			mappedReads ++;
-			mappedReadsLength += al.Length;
-			
-		}
 		
 		if (al.IsFirstMate() && al.IsMateMapped() and read_status != lowQualty ) {
 			if( al.IsReverseStrand() != al.IsMateReverseStrand() ){
 				if(al.RefID == al.MateRefID and abs(al.MatePosition-al.Position+1) < max_insert and al.MapQuality > quality ){
 					sampled+=1;
+					reads ++;
 					iSize = abs(al.InsertSize);
+					ReadsLength+=al.Length;
 					if(counterK == 1) {
 						Mk = iSize;
 						Qk = 0;
@@ -242,44 +217,16 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 						Qk = oldQk + (counterK-1)*(iSize - oldMk)*(iSize - oldMk)/(float)counterK;
 						counterK++;
 					}
+
+					insert_sizes.push_back(iSize);
 					insertsLength += iSize;
+					if (read_status == pair_wrongOrientation){
+						 wronglyOrientedReads ++;
+					}
 				}
 			}
 		}
 
-		switch (read_status) {
-		  case unmapped:
-			  unmappedReads ++;
-		     break;
-		  case lowQualty:
-			  lowQualityReads ++;
-		     break;
-		  case singleton:
-			  singletonReads ++;
-			  singletonReadsLength += al.Length ;
-			  break;;
-		  case pair_wrongChrs:
-			  matedDifferentContig ++;
-			  matedDifferentContigLength += al.Length ;
-			  break;
-		  case pair_proper:
-			  matedReads ++;
-			  matedReadsLength += al.Length ;
-			  break;
-		  case pair_wrongDistance:
-			  wrongDistanceReads ++;
-			  wrongDistanceReadsLength += al.Length ;
-			  break;
-		  case pair_wrongOrientation:
-			  wronglyOrientedReads ++;
-			  wronglyOrientedReadsLength += al.Length ;
-			  break;			  
-		  default:
-		     cout << "This should never be printed\n";
-		     break;
-		}
-
-		
 		if (sampled >= sample){
 			break;
 		}
@@ -289,10 +236,10 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	bamFile.Close();
 	
 	cout << "LIBRARY STATISTICS\n";
-	uint32_t total = matedReads + wrongDistanceReads +  wronglyOrientedReads +  matedDifferentContig + singletonReads  ;
 
-	library.readLength= mappedReadsLength/mappedReads;
+	library.readLength= ReadsLength/reads;
 	library.insertMean = insertMean = Mk;
+
 	if(reads-wronglyOrientedReads > wronglyOrientedReads){
 		library.mp=true;
 		cout << "\tPair orientation = Reverse-forward "<< endl;
@@ -303,13 +250,15 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 
 	Qk = sqrt(Qk/counterK);
 	library.insertStd = insertStd = Qk;
+	sort(insert_sizes.begin(), insert_sizes.end());
+	library.percentile=insert_sizes[ (int)( (insert_sizes.size()/100.0)*99.8 )  ];
 
 	cout << "\tRead length = " << library.readLength << endl;
 	cout << "\tMean Insert length = " << Mk << endl;
 	cout << "\tStd Insert length = " << Qk << endl;
+	cout << "\t" << 99.8  <<"th percentile "  << library.percentile << endl;
 	cout << "----------\n";
 
-	
 	return library;
 }
 

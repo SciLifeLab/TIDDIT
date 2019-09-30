@@ -50,6 +50,7 @@ You may also build it yourself (if you have sudo permisions)
     sudo singularity build TIDDIT.simg Singularity
 
 The singularity container will download and install the latest commit on the scilifelab branch of TIDDIT.
+The "versioned_singularity" folder contains singularity recipes for installing certain releases of TIDDIT.
 
 The SV module
 =============

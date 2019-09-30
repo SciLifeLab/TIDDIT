@@ -406,25 +406,20 @@ int main(int argc, char **argv) {
 				cout << "auto-config orientation: innie" << endl;
 			}
 		}
-		
+
 		meanInsert = library.insertMean;
 		insertStd  = library.insertStd;
-		max_insert=meanInsert+2.1*insertStd;
-		if(outtie == true){
-			max_insert=meanInsert+4*insertStd;
-		}
+		max_insert=library.percentile;
+
 		if(vm["-i"] != ""){
 			max_insert  = convert_str( vm["-i"], "-i");
-		}else{
-			cout << "insert size threshold:" << max_insert << endl;
 		}
-
-
+		cout << "insert size threshold:" << max_insert << endl;
         
 		if (vm["-m"] != ""){
 			min_variant_size = convert_str( vm["-m"],"-m" );
 		}
-        
+
 		map<string,int> SV_options;
 		SV_options["max_insert"]      = max_insert;
 		SV_options["pairs"]           = minimumSupportingPairs;
@@ -436,7 +431,7 @@ int main(int argc, char **argv) {
 		SV_options["STDInsert"]       = insertStd;
 		SV_options["min_variant_size"]	  = min_variant_size;
 		SV_options["splits"] = minimumSupportingReads;
-        
+ 
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();		
 		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, outtie, coverage,outputFileHeader, version, "TIDDIT" + argString,SV_options, genomeLength);
