@@ -39,7 +39,7 @@ Next, you may run TIDDIT like this:
 
 TIDDIT is also distributed with a Singularity environment (http://singularity.lbl.gov/index.html). Type the following command to download the container:
 
-    singularity pull --name TIDDIT.simg shub://J35P312/TIDDIT
+    singularity pull --name TIDDIT.simg shub://J35P312/TIDDIT:latest
 
 Type the following to run tiddit:
 
@@ -51,6 +51,9 @@ You may also build it yourself (if you have sudo permisions)
 
 The singularity container will download and install the latest commit on the scilifelab branch of TIDDIT.
 The "versioned_singularity" folder contains singularity recipes for installing certain releases of TIDDIT.
+These releases may also be downloaded through singularity hub
+
+	singularity pull --name TIDDIT.simg shub://J35P312/TIDDIT:2.7.1
 
 The SV module
 =============
