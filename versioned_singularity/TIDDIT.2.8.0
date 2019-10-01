@@ -18,7 +18,7 @@ MirrorURL: http://us.archive.ubuntu.com/ubuntu/
     wget https://github.com/SciLifeLab/TIDDIT/archive/TIDDIT-2.8.0.zip
     unzip TIDDIT-2.8.0.zip
 
-    mv TIDDIT-TIDDIT-2.7.1/* /bin/
+    mv TIDDIT-TIDDIT-2.8.0/* /bin/
     cd /bin/ && ./INSTALL.sh
     chmod +x /bin/TIDDIT.py
 
