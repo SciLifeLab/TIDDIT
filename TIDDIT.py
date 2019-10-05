@@ -19,7 +19,7 @@ if args.sv:
 	parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 	parser.add_argument('--bam', type=str,required=True, help="coordinate sorted bam file(required)")
 	parser.add_argument('-o', type=str,default="output", help="output prefix(default=output)")
-	parser.add_argument('-i', type=int, help="paired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (default= 99th percentile of insert size)")
+	parser.add_argument('-i', type=int, help="paired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (default= 99.9th percentile of insert size)")
 	parser.add_argument('-d', type=str,help="expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset")
 	parser.add_argument('-p', type=int,default=3, help="Minimum number of supporting pairs in order to call a variation event (default 3)")
 	parser.add_argument('-r', type=int,default=3, help="Minimum number of supporting split reads to call a small variant (default 3)")
