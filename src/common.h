@@ -251,12 +251,12 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	Qk = sqrt(Qk/counterK);
 	library.insertStd = insertStd = Qk;
 	sort(insert_sizes.begin(), insert_sizes.end());
-	library.percentile=insert_sizes[ (int)( (insert_sizes.size()/100.0)*99.8 )  ];
+	library.percentile=insert_sizes[ (int)( (insert_sizes.size()/100.0)*99.9 )  ];
 
 	cout << "\tRead length = " << library.readLength << endl;
 	cout << "\tMean Insert length = " << Mk << endl;
 	cout << "\tStd Insert length = " << Qk << endl;
-	cout << "\t" << 99.8  <<"th percentile "  << library.percentile << endl;
+	cout << "\t" << 99.9  <<"th percentile "  << library.percentile << endl;
 	cout << "----------\n";
 
 	return library;
