@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 	uint32_t minimumSupportingPairs = 4;
 	uint32_t minimumSupportingReads = 6;
 	int min_insert = 100;      // min insert size
-	int max_insert = 80000;  // max insert size
+	int max_insert = 100000;  // max insert size
 	int minimum_mapping_quality = 10;
 	float coverage;
 	float coverageStd;
@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 	int min_variant_size= 100;
 	int sample = 100000000;
 	string outputFileHeader ="output";
-	string version = "2.8.1";
+	string version = "2.9.0";
 	
 	//collect all options as a vector
 	vector<string> arguments(argv, argv + argc);
@@ -409,7 +409,7 @@ int main(int argc, char **argv) {
 
 		meanInsert = library.insertMean;
 		insertStd  = library.insertStd;
-		max_insert=library.percentile;
+		max_insert=library.percentile+100;
 
 		if(vm["-i"] != ""){
 			max_insert  = convert_str( vm["-i"], "-i");
