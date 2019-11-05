@@ -66,16 +66,17 @@ Optionally, TIDDIT acccepts a reference fasta for GC cocrrection:
     python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta
 
 
-NOTE: It is important that you use the TIDDIT.py wrapper for SV detection. The TIDDIT binary in the TIDDIT/bin folder does not perform any clustering, it simply extract SV signatures into a tab file.
 
 Where bam is the input bam file. And reference.fasta is the reference fasta used to align the sequencing data: TIDDIT will crash if the reference fasta is different from the one used to align the reads. The reads of the input bam file must be sorted on genome position, and the bam file needs to be indexed.
+
+NOTE: It is important that you use the TIDDIT.py wrapper for SV detection. The TIDDIT binary in the TIDDIT/bin folder does not perform any clustering, it simply extract SV signatures into a tab file.
 
 TIDDIT may be fine tuned by altering these optional parameters:
 
     -o - The prefix of the output files(default = output)
         
     -i - The maximum allowed insert size of a normal pair. Pairs having larger insert 
-         than this is treated as discordant pairs. Default is 2.1*std+mean insert size
+         than this is treated as discordant pairs. Default is 99.9th percentile + 100 bp
                         
     -d - The pair orientation, use this setting to override the automatic orientation selection
 
@@ -86,7 +87,7 @@ TIDDIT may be fine tuned by altering these optional parameters:
     -r - The minimum number of supplementary alignments used to call small SV. Default is 3
             
     -q - The minimum mapping quality of the discordant pairs/supplementary alignments 
-         forming a variant. Default value is 10.
+         forming a variant. Default value is 5.
 
     -n - The ploidy of the organism ,(default = 2)
 
@@ -111,13 +112,15 @@ optional parameters:
 
     -o - the prefix of the output files
     -z - compute the coverage within bins of a specified size across the entire genome, default bin size is 500
+    -u - do not print per bin quality values
+    -w - generate a wig file instead of bed
 
 Filters
 =============
 TIDDIT uses four different filters to detect low quality calls. The filter field of variants passing these tests are set to "PASS". If a variant fail any of these tests, the filter field is set to the filter failing that variant. These are the four filters empoyed by TIDDIT:
 
     Expectedlinks
-	Less than 20% of the pairs/reads within the region support the variant
+	Less than 20% of the spanning pairs/reads support the variant
     FewLinks
         The number of discordant pairs supporting the variant is too low compared to the number of discordant pairs within that genomic region.
     Unexpectedcoverage

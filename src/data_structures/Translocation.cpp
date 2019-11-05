@@ -190,19 +190,17 @@ string Window::VCFHeader(string libraryData){
 	headerString+="##INFO=<ID=COVA,Number=1,Type=Float,Description=\"Coverage on window A\">\n";
 	headerString+="##INFO=<ID=COVM,Number=1,Type=Float,Description=\"The coverage between A and B\">\n";
 	headerString+="##INFO=<ID=COVB,Number=1,Type=Float,Description=\"Coverage on window B\">\n";
-	headerString+="##INFO=<ID=OR,Number=4,Type=Integer,Description=\"Orientation of the pairs (FF,FR,RF,FR)\">\n";
+	headerString+="##INFO=<ID=OR,Number=4,Type=Integer,Description=\"Orientation of the pairs (FF,RR,RF,FR)\">\n";
 	headerString+="##INFO=<ID=ORSR,Number=2,Type=Integer,Description=\"Orientation of the split reads (inverted,normal)\">\n";
 	headerString+="##INFO=<ID=CIPOS,Number=2,Type=Integer,Description=\"Confidence interval around POS for imprecise variants\">\n";
 	headerString+="##INFO=<ID=CIEND,Number=2,Type=Integer,Description=\"Confidence interval around END for imprecise variants\">\n";
-	headerString+="##INFO=<ID=E1,Number=1,Type=Float,Description=\"Expected links to window B\">\n";
-	headerString+="##INFO=<ID=E2,Number=1,Type=Float,Description=\"Expected links to window B(assuming ideal window length)\">\n";
 	headerString+="##INFO=<ID=QUALA,Number=1,Type=Float,Description=\"The average mapping quality of the reads in window A\">\n";
 	headerString+="##INFO=<ID=QUALB,Number=1,Type=Float,Description=\"The average mapping quality of the reads in window B\">\n";
 	//set filters
-	headerString+="##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links or reads between A and B is less than 40\% of the expected value\">\n";
+	headerString+="##FILTER=<ID=BelowExpectedLinks,Description=\"The number of links or reads between A and B is too small\">\n";
 	headerString+="##FILTER=<ID=FewLinks,Description=\"Unexpectedly low fraction of discordant reads betwen A and B\">\n";
 	headerString+="##FILTER=<ID=UnexpectedCoverage,Description=\"The coverage of the window on chromosome B or A is higher than 4*average coverage\">\n";
-	headerString+="##FILTER=<ID=Smear,Description=\"window A and Window B overlap\">\n";
+	headerString+="##FILTER=<ID=Smear,Description=\"Window A and Window B overlap\">\n";
 	headerString+="##FILTER=<ID=RegionalQ,Description=\"The mapping quality of the region is lower than the user set limit\">\n";
 	headerString+="##FILTER=<ID=MinSize,Description=\"The variant is smaller than the user set limit\">\n";
 	headerString+="##FILTER=<ID=Ploidy,Description=\"Intrachromosomal variant on a chromosome having 0 ploidy\">\n";
