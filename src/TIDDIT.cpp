@@ -275,7 +275,13 @@ int main(int argc, char **argv) {
 					}else{
 						n=1;
 					}
-					cout << n << endl;
+
+					if ( j < bins[chromosomes[i]].size() -1 ){
+						cout << n << "\n";
+					}else{
+						cout << n << endl;
+					}
+
 					
 				}
 			}
@@ -306,11 +312,16 @@ int main(int argc, char **argv) {
 					}else{
 						n=1;
 					}
-					gcout << n << endl;
+
+					if ( j < bins[chromosomes[i]].size() -1 ){
+						gcout << n << "\n";
+					}else{
+						gcout << n << endl;
+					}
 					
 				}
 			}
-
+			gcOutput.close();
 		}
 		return(0);
 	}
