@@ -176,7 +176,7 @@ I usually merge vcf files using SVDB (https://github.com/J35P312)
 
 svdb --merge --vcf file1.vcf file2.vcf --bnd_distance 500 --overlap 0.6 > merged.vcf
 
-Merging of vcf files could be useful for tumor-normal analysis or for analysing a pedigree. But also to combine the ouput of multiple callers.
+Merging of vcf files could be useful for tumor-normal analysis or for analysing a pedigree. But also to combine the output of multiple callers.
 
 Annotation
 ==========

@@ -5,9 +5,15 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	filt="PASS"
 
 	#Less than the expected number of signals
-	if candidate["ratio"] <= 0.2 and candidate["discs"] > candidate["splits"]:
+	ratio_scaling=min([ candidate["covA"]/library_stats["chr_cov"][chrA], candidate["covB"]/library_stats["chr_cov"][chrB] ])
+	if ratio_scaling > 2:
+		ratio_scaling=2
+	elif ratio_scaling < 1:
+		ratio_scaling=1
+
+	if candidate["ratio"]*ratio_scaling <= 0.2 and candidate["discs"] > candidate["splits"]:
 		filt = "BelowExpectedLinks"
-	elif candidate["ratio"] <= 0.1 and candidate["discs"] < candidate["splits"]:
+	elif candidate["ratio"]*ratio_scaling <= 0.1 and candidate["discs"] < candidate["splits"]:
 		filt = "BelowExpectedLinks"
 
 	#The ploidy of this contig is 0, hence there shoud be no variant here

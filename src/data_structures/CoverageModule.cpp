@@ -185,10 +185,21 @@ void Cov::printCoverage(){
 				if(double(qualityStructure[1][i][j]) > 0){
 					quality=double(qualityStructure[0][i][j])/double(qualityStructure[1][i][j]);
 				}
+
 				if (this -> skipQual == false){
-					covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << endl;
+					if (j < coverageStructure[i].size()-1 ){
+						covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << "\n";
+					}else{
+						covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\t" << quality << endl;
+					}
+
 				}else{
-					covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << endl;
+					if (j < coverageStructure[i].size()-1 ){
+						covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << "\n";
+					}else{
+						covout << position2contig[i] << "\t" << binStart << "\t" << binEnd << "\t" << coverage << endl;
+					}
+
 				}
 
 			}
@@ -202,13 +213,17 @@ void Cov::printCoverage(){
 				int binStart = j*binSize;
 				int binEnd=binStart+binSize;
             
-				if(binEnd > contigLength[i]){
-					binEnd=contigLength[i];
-				}
-				double coverage=double(coverageStructure[i][j])/double(binEnd-binStart);
-				covout << coverage << endl;
+				if (j < coverageStructure[i].size()-1 ){
+					covout << coverageStructure[i][j]/double(binEnd-binStart) << "\n";
+				}else{
+					if(binEnd > contigLength[i]){
+						binEnd=contigLength[i];
+					}
 
+					covout << coverageStructure[i][j]/double(binEnd-binStart) << endl;
+				}
 			}
+			
 		}
 		if (this -> skipQual == false){
 			covout << "track type=wiggle_0 name=\"MapQ\" description=\"Per bin average mapping quality\"" << endl;
@@ -220,7 +235,12 @@ void Cov::printCoverage(){
 					if(double(qualityStructure[1][i][j]) > 0){
 						quality=double(qualityStructure[0][i][j])/double(qualityStructure[1][i][j]);
 					}
-					covout << quality << endl;
+
+					if (j < qualityStructure[1][i].size()-1 ){
+						covout << quality << "\n";
+					}else{
+						covout << quality << endl;
+					}
 				}
 			}
 		}
@@ -228,15 +248,24 @@ void Cov::printCoverage(){
 			covout << "track type=wiggle_0 name=\"SpanPairs\" description=\"Spanning pairs per bin\"" << endl;
 			for(int i=0;i<contigsNumber;i++){
 				covout << "fixedStep chrom=" << position2contig[i] << " start=1 step=" << binSize << endl;
-				for(int j=0;j<coverageStructure[i].size();j++){
-					covout << spanCoverageStructure[0][i][j] << endl;
+				for(int j=0;j<spanCoverageStructure[0][i].size();j++){
+					if (j < spanCoverageStructure[0][i].size()-1 ){
+						covout << spanCoverageStructure[0][i][j] << "\n";
+					}else{
+						covout << spanCoverageStructure[0][i][j] << endl;
+					}
 				}
 			}
 			covout << "track type=wiggle_0 name=\"SpanReads\" description=\"Spanning reads per bin\"" << endl;
 			for(int i=0;i<contigsNumber;i++){
 				covout << "fixedStep chrom=" << position2contig[i] << " start=1 step=" << binSize << endl;
-				for(int j=0;j<coverageStructure[i].size();j++){
-					covout << spanCoverageStructure[1][i][j] << endl;
+				for(int j=0;j < spanCoverageStructure[1][i].size();j++){
+
+					if (j < spanCoverageStructure[1][i].size()-1 ){
+						covout << spanCoverageStructure[1][i][j] << "\n";
+					}else{
+						covout << spanCoverageStructure[1][i][j] << endl;
+					}
 				}
 			}
 		}

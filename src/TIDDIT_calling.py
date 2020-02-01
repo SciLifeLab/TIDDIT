@@ -192,13 +192,15 @@ def cluster(args):
 	start_time=time.time()
 
 	if args.ref:
+		print ("Loading GC wig file")
 		Ncontent=TIDDIT_coverage.retrieve_N_content(args)
 	else:
 		Ncontent=[]
 
+	print("Loading coverage wig file")
 	coverage_data,span_data=TIDDIT_coverage.coverage(args)
 
-
+	print ("Constructing SV signal database")
 	conn = sqlite3.connect(args.o+".db")
 	args.c = conn.cursor()
 
@@ -212,6 +214,7 @@ def cluster(args):
 	header,chromosomes,library_stats=TIDDIT_signals.signals(args,coverage_data)
 	args.c.execute("CREATE INDEX CHR ON TIDDITcall (chrA, chrB)")
 
+	print ("Estimating ploidies")
 	ploidies,library_stats,coverage_data=TIDDIT_coverage.determine_ploidy(args,chromosomes,coverage_data,Ncontent,library_stats)
 	library_stats["ploidies"]=ploidies
 
