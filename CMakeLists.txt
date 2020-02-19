@@ -22,7 +22,7 @@ include_directories("${PROJECT_SOURCE_DIR}/lib/bamtools/src")
 file(GLOB TIDDIT_FILES
     ${PROJECT_SOURCE_DIR}/src/TIDDIT.cpp
     ${PROJECT_SOURCE_DIR}/src/data_structures/Translocation.cpp
-	${PROJECT_SOURCE_DIR}/src/data_structures/findTranslocationsOnTheFly.cpp
+    ${PROJECT_SOURCE_DIR}/src/data_structures/findTranslocationsOnTheFly.cpp
     ${PROJECT_SOURCE_DIR}/src/common.h
     ${PROJECT_SOURCE_DIR}/src/data_structures/CoverageModule.cpp
 )

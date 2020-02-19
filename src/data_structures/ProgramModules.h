@@ -17,7 +17,7 @@ public:
 	//constructor
 	StructuralVariations();
 	//main function
-	void findTranslocationsOnTheFly(string bamFileName, bool outtie, float meanCoverage,string outputFileHeader,string version,string commandline, map<string,int> SV_options,uint64_t genomeLength);
+	void findTranslocationsOnTheFly(string bamFileName,BamReader bamFile, bool outtie, float meanCoverage,string outputFileHeader,string version,string commandline, map<string,int> SV_options,uint64_t genomeLength);
 };
 
 #endif /* PROGRAMMODULES_H_ */

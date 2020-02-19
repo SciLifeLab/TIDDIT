@@ -98,7 +98,11 @@ def analyse_pos(candidate_signals,discordants,library_stats,args):
 def generate_clusters(chrA,chrB,coordinates,library_stats,args):
 	candidates=[]
 	coordinates=coordinates[numpy.lexsort((coordinates[:,1],coordinates[:,0]))]
-	db=main(coordinates[:,0:2],args.e,int(round(args.l+library_stats["ploidies"][chrA]/(args.n*10))))
+	min_pts=args.l
+	if chrA == chrB and library_stats["ploidies"][chrA] > args.n*2:
+		min_pts=int(round(args.l/float(args.n)*library_stats["ploidies"][chrA]))
+
+	db=main(coordinates[:,0:2],args.e,min_pts)
 	unique_labels = set(db)
 
 	for var in unique_labels:

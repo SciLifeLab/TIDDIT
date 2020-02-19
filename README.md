@@ -2,12 +2,13 @@ DESCRIPTION
 ==============
 TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Paired End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications and inversions, using supplementary alignments as well as discordant pairs.
 
-TIDDIT has two modes of analysing bam files. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a bam file and generates a coverage report.
+TIDDIT has two analysis modules. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a bam file and generates a coverage report.
 
 
 INSTALLATION
 ==============
 TIDDIT requires standard c++/c libraries, python 2.7 or 3.6, cython, and Numpy. To compile TIDDIT, cmake must be installed. 
+samtools is reuquired for reading cram files (but not for reading bam).
 
 ```
 git clone https://github.com/SciLifeLab/TIDDIT.git
@@ -59,15 +60,26 @@ The SV module
 =============
 The main TIDDIT module, detects structural variant using discordant pairs, split reads and coverage information
 
-    python TIDDIT.py --sv [Options] --bam bam
+    python TIDDIT.py --sv [Options] --bam in.bam
 
-Optionally, TIDDIT acccepts a reference fasta for GC cocrrection:
+
+TIDDIT support streaming of the bam file:
+
+   samtools view -buh in.bam |  python TIDDIT.py --sv [Options] --bam /dev/stdin
+
+Optionally, TIDDIT acccepts a reference fasta for GC correction:
 
     python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta
 
 
+Reference is required for analysing cram files:
 
-Where bam is the input bam file. And reference.fasta is the reference fasta used to align the sequencing data: TIDDIT will crash if the reference fasta is different from the one used to align the reads. The reads of the input bam file must be sorted on genome position, and the bam file needs to be indexed.
+    python TIDDIT.py --sv [Options] --bam in.cram --ref reference.fasta
+
+
+Where bam is the input bam or cran file. And reference.fasta is the reference fasta used to align the sequencing data: TIDDIT will crash if the reference fasta is different from the one used to align the reads. The reads of the input bam file must be sorted on genome position.
+
+The reference is required for analysing cram files.
 
 NOTE: It is important that you use the TIDDIT.py wrapper for SV detection. The TIDDIT binary in the TIDDIT/bin folder does not perform any clustering, it simply extract SV signatures into a tab file.
 
@@ -100,8 +112,10 @@ TIDDIT SV module produces three output files, a vcf file containing SV calls, a 
 
 Useful settings:
 
+
 In noisy datasets you may get too many small variants. If this is the case, then you may increase the -l parameter, or set the -i parameter to a high value (such as 2000) (on 10X linked read data, I usually set -l to 5).
-                                        
+         
+                                
 The cov module
 ==============
 Computes the coverge of different regions of the bam file
@@ -114,13 +128,14 @@ optional parameters:
     -z - compute the coverage within bins of a specified size across the entire genome, default bin size is 500
     -u - do not print per bin quality values
     -w - generate a wig file instead of bed
+ --ref - reference sequence (fasta), required for reading cram file.
 
 Filters
 =============
 TIDDIT uses four different filters to detect low quality calls. The filter field of variants passing these tests are set to "PASS". If a variant fail any of these tests, the filter field is set to the filter failing that variant. These are the four filters empoyed by TIDDIT:
 
     Expectedlinks
-	Less than 20% of the spanning pairs/reads support the variant
+	Less than <p_ratio> fraction of the spanning pairs or <r_ratio> fraction reads support the variant
     FewLinks
         The number of discordant pairs supporting the variant is too low compared to the number of discordant pairs within that genomic region.
     Unexpectedcoverage
@@ -177,6 +192,25 @@ I usually merge vcf files using SVDB (https://github.com/J35P312)
 svdb --merge --vcf file1.vcf file2.vcf --bnd_distance 500 --overlap 0.6 > merged.vcf
 
 Merging of vcf files could be useful for tumor-normal analysis or for analysing a pedigree. But also to combine the output of multiple callers.
+
+Tumor normal example
+===================
+
+run the tumor sample using a lower ratio treshold (to allow for subclonal events, and to account for low purity)
+
+python TIDDIT.py --sv --p_ratio 0.10 --bam tumor.bam -o tumor --ref reference.fasta
+grep -E "#|PASS" tumor.vcf > tumor.pass.vcf
+
+run the normal sample
+
+python TIDDIT.py --sv --bam normal.bam -o normal --ref reference.fasta
+grep -E "#|PASS" normal.vcf > normal.pass.vcf
+
+merge files:
+
+svdb --merge --vcf tumor.pass.vcf normal.pass.vcf --bnd_distance 500 --overlap 0.6 > Tumor_normal.vcf
+
+The output vcf should be filtered further and annotated (using a local-frequency database for instance)
 
 Annotation
 ==========

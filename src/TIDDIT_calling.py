@@ -140,7 +140,13 @@ def generate_vcf_line(chrA,chrB,n,candidate,args,library_stats,percentiles,span_
 	vcf_line.append(FORMAT_FORMAT)
 	CN="."
 	if "DEL" in var or "DUP" in var:
-		CN=int(round(candidate["covM"]/(library_stats["Coverage"]/args.n)))
+		if library_stats["Coverage"]:
+			CN=int(round(candidate["covM"]/(library_stats["Coverage"]/args.n)))
+		elif library_stats["chr_cov"][chrA]:
+			CN=int(round(candidate["covM"]/(library_stats["chr_cov"][chrA]/library_stats["ploidies"][chrA])))
+		else:
+			CN=0
+
 	if "DEL" in var:
 		CN=library_stats["ploidies"][chrA]-CN
 		if CN < 0:

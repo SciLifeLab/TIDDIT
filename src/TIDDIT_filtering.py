@@ -5,15 +5,26 @@ def fetch_filter(chrA,chrB,candidate,args,library_stats):
 	filt="PASS"
 
 	#Less than the expected number of signals
-	ratio_scaling=min([ candidate["covA"]/library_stats["chr_cov"][chrA], candidate["covB"]/library_stats["chr_cov"][chrB] ])
+	r_a=0
+	if library_stats["chr_cov"][chrA]:
+		r_a=candidate["covA"]/library_stats["chr_cov"][chrA]
+	r_b=0
+	if library_stats["chr_cov"][chrB]:
+		r_b=candidate["covB"]/library_stats["chr_cov"][chrB]
+
+
+	ratio_scaling=min([ r_b, r_a ])
+
 	if ratio_scaling > 2:
 		ratio_scaling=2
 	elif ratio_scaling < 1:
 		ratio_scaling=1
 
-	if candidate["ratio"]*ratio_scaling <= 0.2 and candidate["discs"] > candidate["splits"]:
+	if chrA == chrB and library_stats["ploidies"][chrA] > 10 and candidate["ratio"] <= 0.05:
 		filt = "BelowExpectedLinks"
-	elif candidate["ratio"]*ratio_scaling <= 0.1 and candidate["discs"] < candidate["splits"]:
+	elif candidate["ratio"]*ratio_scaling <= args.p_ratio and candidate["discs"] > candidate["splits"]:
+		filt = "BelowExpectedLinks"
+	elif candidate["ratio"]*ratio_scaling <= args.r_ratio and candidate["discs"] < candidate["splits"]:
 		filt = "BelowExpectedLinks"
 
 	#The ploidy of this contig is 0, hence there shoud be no variant here

@@ -14,6 +14,7 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
+#include "api/BamWriter.h"
 
 #include "data_structures/ProgramModules.h"
 //converts a string to int
@@ -45,7 +46,7 @@ int main(int argc, char **argv) {
 	int min_variant_size= 100;
 	int sample = 100000000;
 	string outputFileHeader ="output";
-	string version = "2.10.0";
+	string version = "2.11.0";
 	
 	//collect all options as a vector
 	vector<string> arguments(argv, argv + argc);
@@ -358,8 +359,6 @@ int main(int argc, char **argv) {
 		genomeLength += StringToNumber(sequence->Length);
 		contigsNumber++;
 	}	
-	bamFile.Close();
-
 
 	//if the find structural variations module is chosen collect the options
 	if(vm["--sv"] == "found"){
@@ -397,13 +396,26 @@ int main(int argc, char **argv) {
 			ploidy = convert_str( vm["-n"],"-n" );
 		}
 		
+		BamWriter sampleBam;
+		sampleBam.SetCompressionMode(BamWriter::Uncompressed);
+		string sampleBamName=outputFileHeader+".sample.bam";
+
+		sampleBam.Open(sampleBamName.c_str(), head, bamFile.GetReferenceData());
+		//sample the first reads
+
+		BamAlignment sampleRead;
+		for (int i=0;i< sample;i++){
+	        	bamFile.GetNextAlignment(sampleRead);
+			sampleBam.SaveAlignment(sampleRead);
+	        }		
+		sampleBam.Close();
+
 		//now compute library stats
 		LibraryStatistics library;
 		size_t start = time(NULL);
-		library = computeLibraryStats(alignmentFile, genomeLength, max_insert, 50 , outtie,minimum_mapping_quality,outputFileHeader,sample);
+		library = computeLibraryStats(genomeLength, max_insert, 50 , outtie,minimum_mapping_quality,outputFileHeader,sample);
 		printf ("library stats time consumption= %lds\n", time(NULL) - start);
 		
-        
 		coverage   = library.C_A;
 		if(vm["-c"] != ""){
 			coverage    = convert_str( vm["-c"],"-c" );
@@ -442,10 +454,10 @@ int main(int argc, char **argv) {
 		SV_options["STDInsert"]       = insertStd;
 		SV_options["min_variant_size"]	  = min_variant_size;
 		SV_options["splits"] = minimumSupportingReads;
- 
+
 		StructuralVariations *FindTranslocations;
 		FindTranslocations = new StructuralVariations();		
-		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile, outtie, coverage,outputFileHeader, version, "TIDDIT" + argString,SV_options, genomeLength);
+		FindTranslocations -> findTranslocationsOnTheFly(alignmentFile,bamFile, outtie, coverage,outputFileHeader, version, "TIDDIT" + argString,SV_options, genomeLength);
 
 	//the coverage module
 	}else if(vm["--cov"] == "found"){
@@ -474,16 +486,19 @@ int main(int argc, char **argv) {
 		     span = true;
 		}
 
-		calculateCoverage = new Cov(binSize,alignmentFile,outputFileHeader,0,wig,skipQual,span);
-		BamReader bam;
-		bam.Open(alignmentFile);
+		//BamReader bam;
+		//bam.Open(alignmentFile);
+		SamHeader head = bamFile.GetHeader();
+		calculateCoverage = new Cov(binSize,head,outputFileHeader,0,wig,skipQual,span);
+
 		BamAlignment currentRead;
-		while ( bam.GetNextAlignmentCore(currentRead) ) {
+		while ( bamFile.GetNextAlignmentCore(currentRead) ) {
 			readStatus alignmentStatus = computeReadType(currentRead, 100000,100, true);
 			calculateCoverage -> bin(currentRead, alignmentStatus);
 		}
-		bam.Close();
 		calculateCoverage -> printCoverage();
+		return(0);
+
 	}
 
 }
