@@ -72,11 +72,10 @@ public:
 	map<string,unsigned int> contig2position;
 	vector<int> contigLength;
 	uint32_t contigsNumber;
-	string bamFile;
 	string output;
 
 	//constructor
-	Cov(int binSize,string bamFile,string output,int minQ, bool wig, bool skipQual, bool span);
+	Cov(int binSize,SamHeader head,string output,int minQ, bool wig, bool skipQual, bool span);
 	//module used to calculate the coverage of the genome
 	void bin(BamAlignment currentRead, readStatus alignmentStatus);
 	void printCoverage();
@@ -162,10 +161,9 @@ static readStatus computeReadType(BamAlignment al, uint32_t max_insert, uint32_t
 	}
 }
 
-static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genomeLength, uint32_t max_insert, uint32_t min_insert,bool is_mp,int quality,string outputFileHeader, int sample) {
-		
+static LibraryStatistics computeLibraryStats(uint64_t genomeLength, uint32_t max_insert, uint32_t min_insert,bool is_mp,int quality,string outputFileHeader, int sample) {
 	BamReader bamFile;
-	bamFile.Open(bamFileName);
+	bamFile.Open(outputFileHeader+".sample.bam");
 	LibraryStatistics library;
 
 	//All var declarations
@@ -194,8 +192,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	int32_t currentTid = -1;
 	int32_t iSize;
 
-	BamAlignment al;
-	
+	BamAlignment al;	
 	while ( bamFile.GetNextAlignmentCore(al) ) {
 		readStatus read_status = computeReadType(al, max_insert, min_insert,is_mp);
 		
@@ -205,7 +202,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 					sampled+=1;
 					reads ++;
 					iSize = abs(al.InsertSize);
-					ReadsLength+=al.Length;
+					ReadsLength+=abs(al.GetEndPosition()-al.Position);
 					if(counterK == 1) {
 						Mk = iSize;
 						Qk = 0;
@@ -227,14 +224,9 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 			}
 		}
 
-		if (sampled >= sample){
-			break;
-		}
-
-
 	}
 	bamFile.Close();
-	
+
 	cout << "LIBRARY STATISTICS\n";
 
 	library.readLength= ReadsLength/reads;
@@ -253,6 +245,7 @@ static LibraryStatistics computeLibraryStats(string bamFileName, uint64_t genome
 	sort(insert_sizes.begin(), insert_sizes.end());
 	library.percentile=insert_sizes[ (int)( (insert_sizes.size()/100.0)*99.9 )  ];
 
+	insert_sizes.clear();
 	cout << "\tRead length = " << library.readLength << endl;
 	cout << "\tMean Insert length = " << Mk << endl;
 	cout << "\tStd Insert length = " << Qk << endl;

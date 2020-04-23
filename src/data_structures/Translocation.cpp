@@ -52,21 +52,20 @@ void Window::printHeader(SamHeader head,string libraryData) {
 
 void Window::insertRead(BamAlignment alignment,readStatus alignmentStatus) {
 
-	if( not alignment.IsMateMapped()  or alignmentStatus == lowQualty) {
+	if( not alignment.IsMateMapped() ) {
 		return; // in case the alignment is of no use discard it
 	}
 
-	if(this->chr == -1) { //sets chr to the first chromosome at startup
-		cout << "working on sequence " << position2contig[alignment.RefID] << "\n";
-		chr=alignment.RefID;
-	}
+	//if(this->chr == -1) { //sets chr to the first chromosome at startup
+	//	cout << "working on sequence " << position2contig[alignment.RefID] << "\n";
+	//}
 
-	if(alignment.RefID != chr) { // I am moving to a new chromosomes, need to check if the current window can be used or not
+	if(alignment.RefID != this->chr) { // I am moving to a new chromosomes, need to check if the current window can be used or not
 		cout << "working on seqence " << position2contig[alignment.RefID] << "\n";
+		this-> chr=alignment.RefID;
 	}
 	
 	bool alignment_split = false;	
-	alignment.BuildCharData();			
 	alignment_split = alignment.HasTag("SA");
 	if (alignment_split and alignment.IsPrimaryAlignment() and not alignment.IsSupplementaryAlignment() and alignment.MapQuality >= minimum_mapping_quality) {
 		// parse split read to get the other segment position, akin to a mate.
@@ -223,12 +222,13 @@ string Window::VCFHeader(string libraryData){
 Window::Window(string bamFileName, bool outtie, float meanCoverage,string outputFileHeader, map<string,int> SV_options) {
 	this->max_insert		 = SV_options["max_insert"];
 	this->minimum_mapping_quality = SV_options["mapping_quality"];
-	this->outtie			 = outtie;
-	this->mean_insert		 = SV_options["meanInsert"];
-	this ->std_insert		 = SV_options["STDInsert"];
-	this->bamFileName		 = bamFileName;
-	this -> ploidy           = SV_options["ploidy"];
-	this -> readLength       = SV_options["readLength"];
-	this -> pairOrientation				 = 0;          
-	this->outputFileHeader     = outputFileHeader;
+	this->outtie			= outtie;
+	this->mean_insert		= SV_options["meanInsert"];
+	this ->std_insert		= SV_options["STDInsert"];
+	this->bamFileName		= bamFileName;
+	this -> ploidy			= SV_options["ploidy"];
+	this -> readLength		= SV_options["readLength"];
+	this -> pairOrientation		= 0;          
+	this->outputFileHeader		= outputFileHeader;
+	this -> chr 			= -1;
 }

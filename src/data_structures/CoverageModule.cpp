@@ -24,7 +24,7 @@ ostream& test(ofstream &coverageOutput,string output){
 
 }
 //constructor
-Cov::Cov(int binSize,string bamFile,string output,int minQ,bool wig, bool skipQual, bool span){
+Cov::Cov(int binSize,SamHeader head,string output,int minQ,bool wig, bool skipQual, bool span){
 	ostream& covout=test(coverageOutput,output);
 	if(output != "stdout"){
 		if (wig == false){
@@ -38,8 +38,6 @@ Cov::Cov(int binSize,string bamFile,string output,int minQ,bool wig, bool skipQu
 		static ostream& covout=cout;
 	}
 
-
-
 	//initialize the function
 	this -> binStart =0;
 	this -> binEnd=binSize+binStart;
@@ -49,9 +47,10 @@ Cov::Cov(int binSize,string bamFile,string output,int minQ,bool wig, bool skipQu
 	this -> currentChr=-1;
 	this -> minQ = minQ;
 	this -> contigsNumber = 0;
-	this -> bamFile = bamFile;
 	this -> output = output;
 	this -> span = span;
+
+
 	if (wig == false){
 		if (skipQual == true){
 			covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << endl;
@@ -59,19 +58,17 @@ Cov::Cov(int binSize,string bamFile,string output,int minQ,bool wig, bool skipQu
 			covout << "#CHR" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" <<"\t" << "quality" << endl;
 		}
 	}
-	BamReader alignmentFile;
 
-	//open the bam file
-	alignmentFile.Open(bamFile);
-	
 	//get which refID belongs to which chromosome
-	SamSequenceDictionary sequences  = alignmentFile.GetHeader().Sequences;
+	
+	SamSequenceDictionary sequences  = head.Sequences;
 	for(SamSequenceIterator sequence = sequences.Begin() ; sequence != sequences.End(); ++sequence) {
 		position2contig[contigsNumber]  = sequence->Name;
 		contig2position[sequence->Name] = contigsNumber;
 		contigLength.push_back(StringToNumber(sequence->Length));
 		contigsNumber++;
 	}
+
 	this -> coverageStructure.resize(contigsNumber);
 	this -> qualityStructure.resize(2);
 	this -> spanCoverageStructure.resize(2);
@@ -94,10 +91,7 @@ Cov::Cov(int binSize,string bamFile,string output,int minQ,bool wig, bool skipQu
 			spanCoverageStructure[0][i].resize(ceil(contigLength[i]/double(binSize)),0);
 		}
 	}
-	
-	
-	
-    alignmentFile.Close();
+		
 }
 
 
@@ -114,7 +108,7 @@ void Cov::bin(BamAlignment currentRead, readStatus alignmentStatus){
 		int element=floor(double(currentRead.Position)/double(binSize));
 		//if the entire read is inside the region, add all the bases to sequenced bases
 		if(currentRead.Position >= element*binSize and currentRead.Position+currentRead.Length-1 <= (element+1)*binSize){
-			coverageStructure[currentRead.RefID][element]+=currentRead.Length;
+			coverageStructure[currentRead.RefID][element]+=abs(currentRead.GetEndPosition()-currentRead.Position);
 			qualityStructure[0][currentRead.RefID][element] += currentRead.MapQuality;
 			qualityStructure[1][currentRead.RefID][element] += 1;
 
@@ -125,7 +119,7 @@ void Cov::bin(BamAlignment currentRead, readStatus alignmentStatus){
 			qualityStructure[1][currentRead.RefID][element] += 1;
 		
 			//the part of the read hanging out of the bin is added to the bins following the currentbin
-			int remainingRead=currentRead.Length-((element+1)*binSize-currentRead.Position+1);
+			int remainingRead=abs(currentRead.GetEndPosition()-currentRead.Position)-((element+1)*binSize-currentRead.Position+1);
 			while (remainingRead >= binSize and  coverageStructure[currentRead.RefID].size() > element+1 ){
 				element++;
 				coverageStructure[currentRead.RefID][element]+=binSize;
