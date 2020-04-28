@@ -88,7 +88,7 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,library_stats):
 			print ("make sure that the contigs of the bam file and the reference match")
 			quit()
 
-	if len(cov):
+	if cov.size:
 		coverage_norm=numpy.median(cov)
 	else:
 		coverage_norm=1
@@ -107,7 +107,11 @@ def determine_ploidy(args,chromosomes,coverage_data,Ncontent,library_stats):
 		else:
 			cov=coverage_data[chromosome][numpy.where( (coverage_data[chromosome][:,1] > args.Q) | (coverage_data[chromosome][:,1] == 0) ),0]
 
-		chromosomal_average=numpy.median(cov)
+		if cov.size:
+			chromosomal_average=numpy.median(cov)
+		else:
+			chromosomal_average=0
+
 		if not args.force_ploidy:
 			try:
 				ploidies[chromosome]=int(round((chromosomal_average)/coverage_norm*args.n))
