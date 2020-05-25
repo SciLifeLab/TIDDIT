@@ -234,9 +234,21 @@ def cluster(args):
 	for chrA in chromosomes:
 		calls[chrA] =[]
 		print ("{}".format(chrA))
-		for chrB in chromosomes:
-			signal_data=numpy.array([ [hit[0],hit[1],hit[2],hit[3],hit[4],hit[5],hit[6],hit[7]] for hit in args.c.execute('SELECT posA,posB,forwardA,qualA,forwardB,qualB,resolution,name FROM TIDDITcall WHERE chrA == \'{}\' AND chrB == \'{}\''.format(chrA,chrB)).fetchall()])
+		signals_chrA={}
+		signals=[ [hit[0],hit[1],hit[2],hit[3],hit[4],hit[5],hit[6],hit[7],hit[8]] for hit in args.c.execute('SELECT chrB,posA,posB,forwardA,qualA,forwardB,qualB,resolution,name FROM TIDDITcall WHERE chrA == \'{}\''.format(chrA)).fetchall()]
 
+		for chrB in chromosomes:
+			if not chrB in signals_chrA:
+				signals_chrA[chrB] = []
+
+		for signal in signals:
+			signals_chrA[signal[0]].append(signal[1:])
+
+		for chrB in signals_chrA:
+			signals_chrA[chrB]=numpy.array(signals_chrA[chrB])
+		
+		for chrB in chromosomes:
+			signal_data=signals_chrA[chrB]
 			if not len(signal_data):
 				continue
 
