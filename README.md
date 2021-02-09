@@ -84,27 +84,45 @@ The reference is required for analysing cram files.
 NOTE: It is important that you use the TIDDIT.py wrapper for SV detection. The TIDDIT binary in the TIDDIT/bin folder does not perform any clustering, it simply extract SV signatures into a tab file.
 
 TIDDIT may be fine tuned by altering these optional parameters:
+	-o O	     output prefix(default=output)
+	-i I         paired reads maximum allowed insert size. Pairs aligning
+                     on the same chr at a distance higher than this are
+                     considered candidates for SV (default= 99.9th percentile
+                     of insert size)
+  -d D               expected reads orientations, possible values "innie" (->
+                     <-) or "outtie" (<- ->). Default: major orientation
+                     within the dataset
+  -p P               Minimum number of supporting pairs in order to call a
+                     variation event (default 3)
+  -r R               Minimum number of supporting split reads to call a small
+                     variant (default 3)
+  -q Q               Minimum mapping quality to consider an alignment (default
+                     5)
+  -Q Q               Minimum regional mapping quality (default 20)
+  -n N               the ploidy of the organism,(default = 2)
+  -e E               clustering distance parameter, discordant pairs closer
+                     than this distance are considered to belong to the same
+                     variant(default = sqrt(insert-size*2)*12)
+  -l L               min-pts parameter (default=3),must be set >= 2
+  -s S               Number of reads to sample when computing library
+                     statistics(default=25000000)
+  -z Z               minimum variant size (default=100), variants smaller than
+                     this will not be printed ( z < 10 is not recomended)
+  --force_ploidy     force the ploidy to be set to -n across the entire genome
+                     (i.e skip coverage normalisation of chromosomes)
+  --no_cluster       Run only the TIDDIT signal extraction
+  --debug            rerun the tiddit clustering procedure
+  --n_mask N_MASK    exclude regions from coverage calculation if they contain
+                     more than this fraction of N (default = 0.5)
+  --ref REF          reference fasta, used for GC correction and for reading
+                     cram
+  --p_ratio P_RATIO  minimum discordant pair/normal pair ratio at the
+                     breakpoint junction(default=0.2)
+  --r_ratio R_RATIO  minimum split read/coverage ratio at the breakpoint
+                     junction(default=0.1)
 
-    -o - The prefix of the output files(default = output)
-        
-    -i - The maximum allowed insert size of a normal pair. Pairs having larger insert 
-         than this is treated as discordant pairs. Default is 99.9th percentile + 100 bp
-                        
-    -d - The pair orientation, use this setting to override the automatic orientation selection
 
-    -l - The density parameter, to create a cluster, more than l signals (split reads+ discordant pairs) must be present, signals are added to a cluster if they are neighbouring atleast this  number of signals (defualt 3, minimum 2)
-            
-    -p - The minimum number of discordant pairs and supplementary alignments used to call large SV. Default is 3
-    
-    -r - The minimum number of supplementary alignments used to call small SV. Default is 3
-            
-    -q - The minimum mapping quality of the discordant pairs/supplementary alignments 
-         forming a variant. Default value is 5.
 
-    -n - The ploidy of the organism ,(default = 2)
-
-    --force_ploidy - set the ploidy of all chromosomes to -n (including the sex chromosomes), this option will disable the ploidy estimation.
-                     This option is meant to be used for low quality data or for species having equal ploidy across all chromosomes
 
 output:
 
