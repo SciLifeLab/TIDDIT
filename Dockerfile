@@ -33,7 +33,7 @@ RUN wget --no-verbose https://github.com/samtools/samtools/releases/download/1.1
     rm /app/samtools-1.10.tar
 
 ## Set TIDDIT version
-ARG TIDDIT_VERSION=2.12.0
+ARG TIDDIT_VERSION=2.12.1
 
 ## Add some info
 LABEL base_image="python:3.8-slim"
