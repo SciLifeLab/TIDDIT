@@ -17,7 +17,7 @@ MirrorURL: http://us.archive.ubuntu.com/ubuntu/
     sed -i 's/$/ universe/' /etc/apt/sources.list
     apt-get update
     apt-get upgrade
-    apt-get -y --force-yes install build-essential cmake make zlib1g-dev python python-dev python-setuptools git
+    apt-get -y --force-yes install build-essential cmake make zlib1g-dev python python-dev python-setuptools git wget
 
     cd /root/ && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
     cd /root/ && chmod 700 ./Miniconda3-latest-Linux-x86_64.sh
