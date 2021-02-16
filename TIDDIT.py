@@ -8,7 +8,7 @@ wd=os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, '{}/src/'.format(wd))
 import TIDDIT_calling
 
-version = "2.12.0"
+version = "2.12.1"
 parser = argparse.ArgumentParser("""TIDDIT-{}""".format(version),add_help=False)
 parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 parser.add_argument('--cov'        , help="generate a coverage bed file", required=False, action="store_true")
@@ -35,8 +35,8 @@ if args.sv:
 	parser.add_argument('--debug',action="store_true", help="rerun the tiddit clustering procedure")
 	parser.add_argument('--n_mask',type=float,default=0.5, help="exclude regions from coverage calculation if they contain more than this fraction of N (default = 0.5)")
 	parser.add_argument('--ref', type=str, help="reference fasta, used for GC correction and for reading cram")
-	parser.add_argument('--p_ratio', type=float,default=0.2, help="minimum discordant pair/normal pair ratio at the breakpoint junction(default=20%)")
-	parser.add_argument('--r_ratio', type=float,default=0.1, help="minimum split read/coverage ratio at the breakpoint junction(default=10%)")
+	parser.add_argument('--p_ratio', type=float,default=0.2, help="minimum discordant pair/normal pair ratio at the breakpoint junction(default=0.2)")
+	parser.add_argument('--r_ratio', type=float,default=0.1, help="minimum split read/coverage ratio at the breakpoint junction(default=0.1)")
 
 	args= parser.parse_args()
 	args.wd=os.path.dirname(os.path.realpath(__file__))
