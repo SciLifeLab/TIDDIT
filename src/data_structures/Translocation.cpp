@@ -9,11 +9,6 @@
 #include <string>
 #include <cmath>  
 
-string int2str(int to_be_converted){
-	string converted= static_cast<ostringstream*>( &(ostringstream() << to_be_converted) )->str();
-	return(converted);
-}
-
 void Window::initTrans(SamHeader head) {
 	uint32_t contigsNumber = 0;
 	SamSequenceDictionary sequences  = head.Sequences;
