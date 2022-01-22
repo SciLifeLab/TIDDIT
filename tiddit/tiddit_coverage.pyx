@@ -36,7 +36,7 @@ def print_coverage(coverage_data,bam_header,bin_size,file_type,outfile):
 				if i == len(coverage_data[ contig["SN"] ]) -1:
 					bin_end=contig["LN"]
 
-				f.write("{}\t{}\t{}\t{}".format(contig["SN"],1+i*bin_size,bin_end,coverage_data[ contig["SN"] ][i] ) )
+				f.write("{}\t{}\t{}\t{}\n".format(contig["SN"],1+i*bin_size,bin_end,coverage_data[ contig["SN"] ][i] ) )
 			elif file_type == "wig":
 				f.write("{}\n".format( coverage_data[ contig["SN"] ][i] ))
 
@@ -49,21 +49,31 @@ def update_coverage(read,int bin_size,numpy.ndarray[DTYPE_t, ndim=1] coverage_da
 	cdef long ref_end=read.reference_end
 
 	cdef int first_bin=ref_start//bin_size
-	cdef int bases_first_bin=((first_bin+1)*bin_size)-ref_start
-	coverage_data[first_bin]=bases_first_bin/bin_size+coverage_data[first_bin]
-	
 	cdef int end_bin=int(ref_end-1)//bin_size
+
+	cdef int bases_first_bin
+
+	if end_bin == first_bin:
+		bases_first_bin=ref_end-ref_start
+		coverage_data[first_bin]=float(bases_first_bin)/bin_size+coverage_data[first_bin]
+
+		return(coverage_data)
+
+	bases_first_bin=((first_bin+1)*bin_size)-ref_start
+	coverage_data[first_bin]=float(bases_first_bin)/bin_size+coverage_data[first_bin]	
+	
 	cdef int bases_last_bin=(ref_end-1)-end_bin*bin_size
 
 	if end_bin < len(coverage_data)-1:
-		coverage_data[end_bin]+=bases_last_bin/bin_size
+		coverage_data[end_bin]+=float(bases_last_bin)/bin_size
 	else:
-		coverage_data[end_bin]+=bases_last_bin/end_bin_size
+		coverage_data[end_bin]+=float(bases_last_bin)/end_bin_size
 
 	for i in range(first_bin+1,end_bin):
 		coverage_data[i]+=1.0
 
 	return(coverage_data)
+
 
 #bam_file_name=sys.argv[1]
 

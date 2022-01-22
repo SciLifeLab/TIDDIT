@@ -7,6 +7,7 @@ import time
 
 def find_SA_query_range(SA):
 	a =pysam.AlignedSegment()
+	a.reference_start=int( SA[1] )
 
 	if SA[2] == "+":
 		a.flag = 64
@@ -22,14 +23,38 @@ def find_SA_query_range(SA):
 		SA_cigar.append( (op,int(SC[i*2])) )
 
 	a.cigar = tuple(SA_cigar)
-	return(a.query_alignment_start,a.query_alignment_end)
+	return(a)
 
 def SA_analysis(read,min_q,splits,tag):
 	#print(read.query_alignment_start,read.query_alignment_end,read.is_reverse,read.cigarstring)
 	suplementary_alignments=read.get_tag(tag).rstrip(";").split(";")
 	
 	if len(suplementary_alignments) > 1:
-		return(splits)
+		SA_lengths=[]
+		ok_q=[]
+		for i in range(0,len(suplementary_alignments)):
+			SA_data=suplementary_alignments[0].split(",")
+			if int(SA_data[4]) >= min_q:
+				ok_q.append(i)
+				supplementry_alignment=find_SA_query_range(SA_data)
+				SA_lengths.append(supplementry_alignment.query_alignment_end-supplementry_alignment.query_alignment_start)
+
+
+		longest_aln=0
+		for i in range(0,len(ok_q)):
+			if SA_lengths[i] > SA_lengths[longest_aln]:
+				longest_aln=i
+
+		#all alignments fail quality treshold
+		if len(ok_q) == 0:
+			return(splits)
+
+		#only one SA pass mapping quality treshold		
+		elif len(ok_q) == 1:
+			suplementary_alignments[0]=suplementary_alignments[ ok_q[0] ]
+		#many SA pass mapping quality treshold, pick the longest alignment.
+		else:
+			suplementary_alignments[0]=suplementary_alignments[ longest_aln ]
 
 	SA_data=suplementary_alignments[0].split(",")
 	SA_pos=int(SA_data[1])
@@ -37,17 +62,27 @@ def SA_analysis(read,min_q,splits,tag):
 	if int(SA_data[4]) < min_q:
 		return(splits)
 
-	SA_query_alignment_start,SA_query_alingment_end=find_SA_query_range(SA_data)
+	if (read.query_alignment_start ) < (read.query_length - read.query_alignment_end):
+		split_pos=read.reference_end
+	else:
+		split_pos=read.reference_start
+
+	supplementry_alignment=find_SA_query_range(SA_data)
 	SA_chr=SA_data[0]
 
 
-	SA_split_pos=SA_pos
-	split_pos=read.reference_end
+	if (supplementry_alignment.query_alignment_start ) < (supplementry_alignment.query_length - read.query_alignment_end):
+		SA_split_pos=supplementry_alignment.reference_end
+	else:
+		SA_split_pos=supplementry_alignment.reference_start
+
+
 	if SA_chr < read.reference_name:
 		chrA=SA_chr
 		chrB=read.reference_name
-		SA_split_pos=read.reference_end
-		split_pos=SA_pos
+		tmp=split_pos
+		split_pos=SA_split_pos
+		SA_split_pos=tmp
 
 	else:
 		chrA=read.reference_name
@@ -55,8 +90,9 @@ def SA_analysis(read,min_q,splits,tag):
 
 		if chrA == chrB:
 			if SA_split_pos < split_pos:
-				SA_split_pos=read.reference_end
-				split_pos=SA_pos
+				tmp=split_pos
+				split_pos=SA_split_pos
+				SA_split_pos=tmp
 
 	if not chrA in splits:
 		splits[chrA]={}

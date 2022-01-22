@@ -9,23 +9,24 @@ except ImportError:
 
 if has_cython:
     ext_modules = cythonize([
-        "tiddit_signal.pyx",
-        "tiddit_coverage.pyx",
-        "tiddit_coverage_analysis.pyx",
-        "tiddit_variant.pyx",
-        "tiddit_contig_analysis.pyx"])
+        "tiddit/tiddit_signal.pyx",
+        "tiddit/tiddit_coverage.pyx",
+        "tiddit/tiddit_coverage_analysis.pyx",
+        "tiddit/tiddit_variant.pyx",
+        "tiddit/tiddit_contig_analysis.pyx"])
 else:
     ext_modules = []
 
 setup(
     name = 'tiddit',
-    version = '4.0.0',
+    version = '3.0.0',
     url = "https://github.com/J35P312/SVDB",
     author = "Jesper Eisfeldt",
     author_email= "jesper.eisfeldt@scilifelab.se",
     ext_modules = ext_modules,
     include_dirs=[numpy.get_include()],
     packages = ['tiddit'],
-    install_requires = ['numpy'],
+    install_requires = ['numpy','pysam'],
+    entry_points = {'console_scripts': ['tiddit = tiddit.__tiddit__:main']},
+
 )
-#    entry_points = {'console_scripts': ['svdb = svdb.__main__:main']},
