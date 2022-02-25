@@ -142,7 +142,6 @@ def sv_filter(sample_data,args,chrA,chrB,posA,posB,max_ins_len,n_discordants,n_s
 			if (n_discordants < args.p_ratio * sample_data[sample]["covA"] or n_discordants < args.p_ratio * sample_data[sample]["covB"]) and (n_splits < args.r_ratio * sample_data[sample]["covA"] or n_splits < args.r_ratio * sample_data[sample]["covB"]):
 				return("BelowExpectedLinks")
 
-		if n_splits or n_discordants:
 			if n_discordants > n_splits:
 				if n_discordants < 0.25*n_discs_regionA or n_discordants < 0.25*n_discs_regionB:
 					return("FewLinks")
@@ -151,11 +150,11 @@ def sv_filter(sample_data,args,chrA,chrB,posA,posB,max_ins_len,n_discordants,n_s
 				if n_splits < 0.25*n_splits_regionA or n_splits < 0.25*n_splits_regionB:
 					return("FewLinks")
 
-		if sample_data[sample]["QA"] > 0.2 or sample_data[sample]["QB"] > 0.2:
-			return("RegionalQ")
+			if sample_data[sample]["QA"] > 0.2 or sample_data[sample]["QB"] > 0.2:
+				return("RegionalQ")
 
-		if n_discordants == 0 and (chrA != chrB):
-			return("SplitsVSDiscs")
+			if n_discordants == 0 and (chrA != chrB):
+				return("SplitsVSDiscs")
 
 	return(filt)
 
@@ -297,9 +296,13 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 						if "DEL" in alt:
 							if cn == 0:
 								GT = "1/1"
+							else:
+								GT= "0/1"
 						elif "DUP" in alt:
 							if cn >= 2*library["contig_ploidy_{}".format(chrA)]:
 								GT= "1/1"
+							else:
+								GT="0/1"
 							
 						variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
 					variants.append(variant)				

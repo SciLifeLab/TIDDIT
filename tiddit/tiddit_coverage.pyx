@@ -21,7 +21,7 @@ def print_coverage(coverage_data,bam_header,bin_size,file_type,outfile):
 	f=open(outfile,"w",buffering=819200)
 
 	if file_type == "bed":
-		f.write("#chromosome\tstart\end\tcoverage\n")
+		f.write("#chromosome\tstart\tend\tcoverage\n")
 	elif file_type == "wig":
 		f.write("track type=wiggle_0 name=\"Coverage\" description=\"Per bin average coverage\"\n")
 

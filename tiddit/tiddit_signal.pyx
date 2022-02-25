@@ -147,7 +147,6 @@ def main(str bam_file_name,str prefix,int min_q,int max_ins,str sample_id):
 	clip_dist=100
 
 	t_tot=time.time()
-	#f=open("{}_tiddit/clipped_{}.fa".format(prefix,sample_id),"w")
 	for read in samfile.fetch(until_eof=True):
 
 		if read.is_unmapped or read.is_duplicate:
@@ -161,7 +160,16 @@ def main(str bam_file_name,str prefix,int min_q,int max_ins,str sample_id):
 		if not read.reference_name in chromosome_set:
 			print("Collecting signals on contig: {}".format(read.reference_name))
 			chromosome_set.add(read.reference_name)
+
+			if len(chromosomes):
+				f=open("{}_tiddit/clips_{}_{}.fa".format(prefix,sample_id, chromosomes[-1] ),"w")
+				for clip in clips[ chromosomes[-1] ]:
+					f.write("".join( clip ))
+				f.close()
+				del clips[ chromosomes[-1] ]
+
 			chromosomes.append(read.reference_name)
+
 
 		t=time.time()
 
@@ -170,16 +178,10 @@ def main(str bam_file_name,str prefix,int min_q,int max_ins,str sample_id):
 
 		if not (read.is_supplementary or read.is_secondary) and read.mapq > 1:
 			if (read.cigartuples[0][0] == 4 and read.cigartuples[0][1] > 10) and (read.cigartuples[-1][0] == 0 and read.cigartuples[-1][1] > 30) and len(read.cigartuples) < 7:
-				#if not read.reference_name in clips:
-				#	clips[read.reference_name]=[[],[]]
 				clips[read.reference_name].append([">{}|{}\n".format(read.query_name,read.reference_start),read.query_sequence+"\n"])
-				#clips[read.reference_name][1].append([read.reference_start,0])
 
 			elif read.cigartuples[-1][0] == 4 and read.cigartuples[-1][1] > 10 and (read.cigartuples[0][0] == 0 and read.cigartuples[0][1] > 30) and len(read.cigartuples) < 7:
-				#if not read.reference_name in clips:
-				#	clips[read.reference_name]=[[],[]]
 				clips[read.reference_name].append([">{}|{}\n".format(read.query_name,read.reference_start),read.query_sequence+"\n"])
-				#clips[read.reference_name][1].append([read.reference_start,0])
 
 		t_split+=time.time()-t
 
@@ -235,6 +237,7 @@ def main(str bam_file_name,str prefix,int min_q,int max_ins,str sample_id):
 		for clip in clips[chrA]:
 			f.write("".join( clip ))
 		f.close()
+
 
 	return(coverage_data)
 	#return(coverage_data,clips)

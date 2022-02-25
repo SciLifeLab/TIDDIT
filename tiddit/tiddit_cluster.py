@@ -10,6 +10,15 @@ def find_discordant_pos(fragment,is_mp):
 		if fragment[3] == "False" and fragment[6] == "True":
 			posA=fragment[2]
 			posB=fragment[4]
+		elif fragment[3] == "False" and fragment[6] == "False":
+			posA=fragment[1]
+			posB=fragment[4]
+		elif fragment[3] == "True" and fragment[6] == "True":		
+			posA=fragment[2]
+			posB=fragment[5]
+		else:
+			posA=fragment[1]
+			posB=fragment[5]
 
 	else:
 		if fragment[3] == "False" and fragment[6] == "True":
@@ -21,6 +30,7 @@ def find_discordant_pos(fragment,is_mp):
 		elif fragment[3] == "True" and fragment[6] == "True":
 			posA=fragment[1]
 			posB=fragment[4]
+
 		else:
 			posA=fragment[1]
 			posB=fragment[5]
@@ -195,9 +205,65 @@ def main(prefix,chromosomes,samples,is_mp,epsilon,m,max_ins_len):
 					candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["splits"])
 					candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["splits"])
 
+
 				else:
-					candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
-					candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
+					reverse_A = candidates[chrA][chrB][candidate]["positions_A"]["orientation_discordants"].count("True")
+					forward_A = candidates[chrA][chrB][candidate]["positions_A"]["orientation_discordants"].count("False")
+
+					reverse_B = candidates[chrA][chrB][candidate]["positions_B"]["orientation_discordants"].count("True") 
+					forward_B = candidates[chrA][chrB][candidate]["positions_B"]["orientation_discordants"].count("False")
+
+					if ( reverse_A >= 5*forward_A or reverse_A*5 <= forward_A ) and ( reverse_B >= 5*forward_B or reverse_B*5 <= forward_B ):
+						A_reverse=False
+						if reverse_A > forward_A:
+							A_reverse=True
+
+						B_reverse=False
+						if reverse_B > forward_B:
+							B_reverse=True
+
+						if is_mp:
+							if A_reverse and not B_reverse:
+								candidates[chrA][chrB][candidate]["posA"]=max(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
+								candidates[chrA][chrB][candidate]["posB"]=min(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
+
+							elif not A_reverse and B_reverse:
+								candidates[chrA][chrB][candidate]["posA"]=min(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
+								candidates[chrA][chrB][candidate]["posB"]=max(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
+
+							elif A_reverse and B_reverse:
+								candidates[chrA][chrB][candidate]["posA"]=max(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
+								candidates[chrA][chrB][candidate]["posB"]=max(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
+
+							else:
+								candidates[chrA][chrB][candidate]["posA"]=min(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
+								candidates[chrA][chrB][candidate]["posB"]=min(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
+
+						else:
+							if not A_reverse and B_reverse:
+								candidates[chrA][chrB][candidate]["posA"]=max(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
+								candidates[chrA][chrB][candidate]["posB"]=min(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
+
+							elif A_reverse and not B_reverse:
+								candidates[chrA][chrB][candidate]["posA"]=min(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
+								candidates[chrA][chrB][candidate]["posB"]=max(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
+
+							elif not A_reverse and not B_reverse:
+								candidates[chrA][chrB][candidate]["posA"]=max(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
+								candidates[chrA][chrB][candidate]["posB"]=max(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
+
+							else:
+								candidates[chrA][chrB][candidate]["posA"]=min(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
+								candidates[chrA][chrB][candidate]["posB"]=min(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
+
+					else:
+						candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
+						candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
+
+
+
+					candidates[chrA][chrB][candidate]["posA"]
+					candidates[chrA][chrB][candidate]["posB"]
 
 				candidates[chrA][chrB][candidate]["startB"]=min(candidates[chrA][chrB][candidate]["positions_B"]["contigs"]+candidates[chrA][chrB][candidate]["positions_B"]["splits"]+candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
 				candidates[chrA][chrB][candidate]["endB"]=max(candidates[chrA][chrB][candidate]["positions_B"]["contigs"]+candidates[chrA][chrB][candidate]["positions_B"]["splits"]+candidates[chrA][chrB][candidate]["positions_B"]["discordants"])

@@ -1,11 +1,8 @@
 import sys
-import os
 import argparse
-import math
-import numpy
 import time
-import DBSCAN
 import pysam
+import os
 
 import tiddit_stats
 import tiddit_signal
@@ -110,65 +107,19 @@ if args.sv == True:
 
 	t=time.time()
 	coverage_data=tiddit_signal.main(bam_file_name,prefix,min_mapq,max_ins_len,sample_id)
-	print("extracted signals in")
+	print("extracted signals in:")
 	print(t-time.time())
 
 	t=time.time()
-	library=tiddit_coverage_analysis.determine_ploidy(coverage_data,contigs,library,args.n,prefix,args.c)
-	print("calculated coverage in")
+	library=tiddit_coverage_analysis.determine_ploidy(coverage_data,contigs,library,args.n,prefix,args.c,args.ref,50,bam_header)
+	print("calculated coverage in:")
 	print(time.time()-t)
 
-	clustered_seq={}
 
-	f=open("{}_tiddit/clips.fa".format(prefix),"w")	
-	for chr in contigs:
-		clips={}
-		clips[chr]=[[],[]]
-		c=[]
-		for line in open("{}_tiddit/clips_{}_{}.fa".format(prefix,sample_id,chr)):
-			if line[0] == ">":
-				c.append(line.strip())
-				pos=int(line.strip().split("|")[-1])
-			else:
-				c.append(line.strip())
-				clips[chr][0].append( "\n".join(c) )
-				clips[chr][1].append([pos,0])
-				c=[]
-				
-		
-		clusters,cluster_id = DBSCAN.x_coordinate_clustering(numpy.array(clips[chr][1]),50,args.l)
-		cluster_stats={}
-
-		for i in range(0,len(clusters)):
-			if clusters[i] == -1:
-				continue
-			if not clusters[i] in cluster_stats:
-				cluster_stats[clusters[i]]=[0,[]]
-			cluster_stats[clusters[i]][0]+=1
-			cluster_stats[clusters[i]][1].append( clips[chr][1][i][0] )
-
-		for i in range(0,len(clusters)):
-			if clusters[i] == -1:
-				continue
-			if cluster_stats[clusters[i]][0] < args.r:
-				continue
-
-			if cluster_stats[clusters[i]][0] > 2*library[ "avg_coverage_{}".format(chr) ]:
-				continue
-
-			clip_coverage=coverage_data[chr][ int(math.floor(clips[chr][1][i][0]/50.0)) ]
-			if clip_coverage >  args.max_coverage/2*library[ "avg_coverage_{}".format(chr) ]:
-				continue
-
-			f.write( clips[chr][0][i].strip() +"\n")
-
-	f.close()
-
-	os.system("{} -dNCr {}_tiddit/clips.fa | {} assemble -l 81 - > {}_tiddit/clips.fa.assembly.mag".format(args.ropebwt2,prefix,args.fermi2,prefix))
-	os.system("{} simplify -COS -d 0.8 {}_tiddit/clips.fa.assembly.mag 1> {}_tiddit/clips.fa.assembly.clean.mag 2> /dev/null".format(args.fermi2,prefix,prefix))
-	os.system("{} mem -x intractg {} {}_tiddit/clips.fa.assembly.clean.mag  1> {}_tiddit/clips.sam 2> /dev/null".format(args.bwa,args.ref,prefix,prefix))
-
-	tiddit_contig_analysis.main("{}_tiddit/clips.sam".format(prefix) , prefix, sample_id, args.z )
+	t=time.time()
+	tiddit_contig_analysis.main(prefix,sample_id,library,contigs,coverage_data,args)
+	print("Clip read assembly in:")
+	print(time.time()-t)
 
 	vcf_header=tiddit_vcf_header.main( bam_header,library,sample_id,version )
 	
