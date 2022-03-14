@@ -1,4 +1,5 @@
 import sys
+import json
 import argparse
 import time
 import pysam
@@ -128,6 +129,11 @@ if args.sv == True:
 
 	t=time.time()
 	sv_clusters=tiddit_cluster.main(prefix,contigs,samples,library["mp"],args.e,args.l,max_ins_len)
+
+	#f=open(prefix+".json","w")
+	#f.write( json.dumps(sv_clusters, indent = 4) )
+	#f.close()
+	
 	print("generated clusters in")
 	print(time.time()-t)
 	

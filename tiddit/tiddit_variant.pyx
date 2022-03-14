@@ -164,6 +164,18 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 	#cdef AlignmentFile samfile  = AlignmentFile(bam_file_name, "r")
 	samfile  = AlignmentFile(bam_file_name, "r")
 
+	contig_seqs={}
+	new_seq=False
+	for line in open("{}_tiddit/clips.fa.assembly.clean.mag".format(args.o)):			
+
+		if not new_seq and line[0] == "@" and "\t" in line:
+			name=line.split("\t")[0][1:]
+			new_seq=True
+
+		elif new_seq:
+			contig_seqs[name]=line.strip("\n")
+			new_seq=False
+
 	var_n=0
 	for chrA in sv_clusters:
 		for chrB in sv_clusters[chrA]:
@@ -281,6 +293,18 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 					info+=["LFB={},{}".format(sample_data[sample]["discB"],sample_data[sample]["splitB"])]
 					info+=["LTE={},{}".format(n_discordants,n_splits)]
 
+					if n_contigs:
+						for c in sv_clusters[chrA][chrB][cluster]["contigs"]:
+							if "_" in c:
+								c=c.split("_")[0]
+							ctgs=[ contig_seqs[c] ]
+						info+=["CTG={}".format("|".join(ctgs) )]
+
+					else:
+						info+=["CTG=."]
+
+
+
 					info=";".join(info)
 					variant=[chrA,str(posA),"SV_{}_1".format(var_n),"N",alt,".",filt,info,format_col]
 					for sample in samples:
@@ -337,6 +361,18 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 					info+=["LFB={},{}".format(sample_data[sample]["discA"],sample_data[sample]["splitA"])]
 					info+=["LTE={},{}".format(n_discordants,n_splits)]
 
+					if n_contigs:
+						for c in sv_clusters[chrA][chrB][cluster]["contigs"]:
+							if "_" in c:
+								c=c.split("_")[0]
+
+							ctgs=[ contig_seqs[c] ]
+						info+=["CTG={}".format("|".join(ctgs) )]
+
+					else:
+						info+=["CTG=."]
+
+
 
 					info=";".join(info)
 					variant=[chrA,str(posA),"SV_{}_1".format(var_n),"N",alt_str_a,".",filt,info,format_col]
@@ -354,6 +390,7 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 
 					variant=[chrB,str(posB),"SV_{}_2".format(var_n),"N",alt_str_b,".",filt,info,format_col]
 					for sample in samples:
+						GT="./."
 						if len(sv_clusters[chrA][chrB][cluster]["sample_splits"][sample]) >= args.r or len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]) >= args.p:
 							GT="0/1"
 						if sample_data[sample]["refRB"] < 0.1*len(sv_clusters[chrA][chrB][cluster]["sample_splits"][sample]) or sample_data[sample]["refRA"] < 0.1*len(sv_clusters[chrA][chrB][cluster]["sample_splits"][sample]):
@@ -361,7 +398,6 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 						if sample_data[sample]["refFB"] < 0.1*len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]) or sample_data[sample]["refFA"] < 0.1*len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]):
 							GT="1/1"
 
-						GT="./."
 						variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
 					variants.append(variant)				
 
