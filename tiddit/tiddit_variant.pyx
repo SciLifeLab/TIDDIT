@@ -156,6 +156,16 @@ def sv_filter(sample_data,args,chrA,chrB,posA,posB,max_ins_len,n_discordants,n_s
 			if n_discordants == 0 and (chrA != chrB):
 				return("SplitsVSDiscs")
 
+		#interchromsomal translocation, supported only by contigs
+		if n_contigs and (chrA != chrB):
+			if n_discordants < args.p:
+				return("BelowExpectedLinks")
+
+		#large variant, supported only by contigs but not discordant pairs
+		elif n_contigs and (chrA == chrB and max_ins_len < abs(posB-posA)*3 ):
+			if n_discordants < args.p:
+				return("BelowExpectedLinks")
+
 	return(filt)
 
 def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,samples,dict coverage_data,contig_number,max_ins_len):
@@ -316,6 +326,23 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 							GT="1/1"
 						if sample_data[sample]["refFB"] < 0.1*len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]) or sample_data[sample]["refFA"] < 0.1*len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]):
 							GT="1/1"
+						if n_contigs and (not len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]) and not len(sv_clusters[chrA][chrB][cluster]["sample_splits"][sample])):
+							if sample_data[sample]["covB"]:
+								if sample_data[sample]["refRB"]/sample_data[sample]["covB"] < 0.2:
+									GT="1/1"
+								else:
+									GT="0/1"
+							else:
+									GT="1/1"
+
+							if sample_data[sample]["covA"]:
+								if sample_data[sample]["refRA"]/sample_data[sample]["covA"] < 0.2:
+									GT="1/1"
+								else:
+									GT="0/1"
+							else:
+								GT="1/1"
+
 
 						if "DEL" in alt:
 							if cn == 0:
@@ -384,6 +411,26 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 							GT="1/1"
 						if sample_data[sample]["refFB"] < 0.1*len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]) or sample_data[sample]["refFA"] < 0.1*len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]):
 							GT="1/1"
+						if n_contigs and (not len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]) and not len(sv_clusters[chrA][chrB][cluster]["sample_splits"][sample])):
+							if sample_data[sample]["covB"]:
+								if sample_data[sample]["refRB"]/sample_data[sample]["covB"] < 0.2:
+									GT="1/1"
+								else:
+									GT="0/1"
+							else:
+									GT="1/1"
+
+							if sample_data[sample]["covA"]:
+								if sample_data[sample]["refRA"]/sample_data[sample]["covA"] < 0.2:
+									GT="1/1"
+								else:
+									GT="0/1"
+
+
+							else:
+									GT="1/1"
+
+
 
 						variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
 					variants.append(variant)				
@@ -397,6 +444,27 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 							GT="1/1"
 						if sample_data[sample]["refFB"] < 0.1*len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]) or sample_data[sample]["refFA"] < 0.1*len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]):
 							GT="1/1"
+						if n_contigs and (not len(sv_clusters[chrA][chrB][cluster]["sample_discordants"][sample]) and not len(sv_clusters[chrA][chrB][cluster]["sample_splits"][sample])):
+							if sample_data[sample]["covB"]:
+								if sample_data[sample]["refRB"]/sample_data[sample]["covB"] < 0.2:
+									GT="1/1"
+								else:
+									GT="0/1"
+							else:
+									GT="1/1"
+
+							if sample_data[sample]["covA"]:
+								if sample_data[sample]["refRA"]/sample_data[sample]["covA"] < 0.2:
+									GT="1/1"
+								else:
+									GT="0/1"
+
+
+							else:
+									GT="1/1"
+
+
+
 
 						variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
 					variants.append(variant)				

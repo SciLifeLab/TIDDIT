@@ -110,9 +110,9 @@ def SA_analysis(read,min_q,splits,tag):
 
 	return(splits)
 
-def main(str bam_file_name,str prefix,int min_q,int max_ins,str sample_id):
+def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_id):
 
-	samfile = pysam.AlignmentFile(bam_file_name, "r")
+	samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=ref)
 	bam_header=samfile.header
 	cdef int bin_size=50
 	cdef str file_type="wig"
@@ -187,7 +187,6 @@ def main(str bam_file_name,str prefix,int min_q,int max_ins,str sample_id):
 
 		t=time.time()
 		if ( abs(read.isize) > max_ins or read.next_reference_name != read.reference_name ) and read.mapq >= min_q:
-
 			if read.next_reference_name < read.reference_name:
 				chrA=read.next_reference_name
 				chrB=read.reference_name
@@ -198,7 +197,8 @@ def main(str bam_file_name,str prefix,int min_q,int max_ins,str sample_id):
 			if not read.query_name in data[chrA][chrB]:
 				data[chrA][chrB][read.query_name]=[]
 
-			data[chrA][chrB][read.query_name].extend((read.reference_start,read.reference_end,read.is_reverse))
+
+			data[chrA][chrB][read.query_name].append([read.reference_start,read.reference_end,read.is_reverse,read.reference_name])
 		t_disc+=time.time()-t
 
 	print("total",time.time()-t_tot)
@@ -216,10 +216,15 @@ def main(str bam_file_name,str prefix,int min_q,int max_ins,str sample_id):
 			f=open("{}_tiddit/discordants_{}_{}_{}.tab".format(prefix,sample_id,chrA,chrB),"w")
 
 			for fragment in data[chrA][chrB]:
-				if len(data[chrA][chrB][fragment]) < 4:
+				if len(data[chrA][chrB][fragment]) < 2:
 					continue
 
-				f.write("{}\t{}\n".format(fragment,"\t".join(map(str, data[chrA][chrB][fragment] )))  )
+				if data[chrA][chrB][fragment][1][-1] < data[chrA][chrB][fragment][0][-1]:
+					out=data[chrA][chrB][fragment][1][0:-1]+data[chrA][chrB][fragment][0][0:-1]
+				else:
+					out=data[chrA][chrB][fragment][0][0:-1]+data[chrA][chrB][fragment][1][0:-1]
+
+				f.write("{}\t{}\n".format(fragment,"\t".join(map(str, out )))  )
 
 			f.close()
 

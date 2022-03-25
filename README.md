@@ -8,7 +8,7 @@ TIDDIT has two analysis modules. The sv mode, which is used to search for struct
 
 INSTALLATION
 ==============
-TIDDIT requires python3, cython, pysam, and Numpy; as well as samtools, and fermikit.
+TIDDIT requires python3, cython, pysam, and Numpy; as well as bwa and fermikit (fermi2 and ropebwt2).
 
 Installation
 
@@ -29,7 +29,6 @@ conda install fermikit
 ```
 
 The install script will compile python and use pip to install the python dependencies
-TIDDIT is run via the TIDDIT.py script:
 
 ```
 
@@ -116,36 +115,6 @@ The variant support of each call is compared to these values, and the quality co
 
 Note: SVs usually occur in repetetive regions, hence these scores are expected to be relatively low. A true variant may have a low score, and the score itself depends on the input data (mate-pair vs pe for instance).
 
-Contents of the VCF INFO field
-=============
-The INFO field of the VCF contains the following entries:
-
-    SVTYPE
-        Type of structural variant(DEL,DUP,BND,INV,TDUP)
-    END
-        End position of an intra-chromosomal variant
-    LFA
-        The number of discordant pairs at the the first breakpoint of the variant
-    LFB
-	The number of discordant pairs at the the second breakpoint of the variant
-    LTE
-        The number of discordnat pairs that form the structural variant.
-    COVA
-        Coverage on window A
-    COVM
-        The coverage between A and B
-    COVB
-        Coverage on window B
-    CIPOS
-        start and stop positon of window A
-    CIEND
-        start and stop position of window B
-    QUALA
-        The average mapping quality of the reads in window A
-    QUALB
-        The average mapping quality of the reads in window B
-
-The content of the INFO field can be used to filter out false positives and to gain more understanding of the structure of the variant. More info is found in the vcf file. 
 Merging the vcf files
 =====================
 I usually merge vcf files using SVDB (https://github.com/J35P312)
