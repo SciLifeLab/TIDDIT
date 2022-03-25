@@ -12,7 +12,8 @@ def main(bam_header,library,sample_id,version):
 
 	vcf_header.append("##ALT=<ID=DEL,Description=\"Deletion\">")
 	vcf_header.append("##ALT=<ID=DUP,Description=\"Duplication\">")
-	vcf_header.append("##ALT=<ID=TDUP,Description=\"Tandem duplication\">")
+	vcf_header.append("##ALT=<ID=DUP:TANDEM,Description=\"Tandem duplication\">")
+	vcf_header.append("##ALT=<ID=DUP:INV,Description=\"Inverted tandem duplication\">")
 	vcf_header.append("##ALT=<ID=INV,Description=\"Inversion\">")
 	vcf_header.append("##ALT=<ID=INS,Description=\"Insertion\">")
 	vcf_header.append("##ALT=<ID=BND,Description=\"Break end\">")
@@ -27,18 +28,12 @@ def main(bam_header,library,sample_id,version):
 	vcf_header.append("##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">")
 	vcf_header.append("##INFO=<ID=END,Number=1,Type=Integer,Description=\"End of an intra-chromosomal variant\">")
 	vcf_header.append("##INFO=<ID=SVLEN,Number=.,Type=Integer,Description=\"Difference in length between REF and ALT alleles\">")
-	vcf_header.append("##INFO=<ID=LFA,Number=1,Type=Integer,Description=\"Links from window A\">")
-	vcf_header.append("##INFO=<ID=LFB,Number=1,Type=Integer,Description=\"Links from window B\">")
-	vcf_header.append("##INFO=<ID=LTE,Number=1,Type=Integer,Description=\"Links to event\">")
-	vcf_header.append("##INFO=<ID=COVA,Number=1,Type=Float,Description=\"Coverage on window A\">")
-	vcf_header.append("##INFO=<ID=COVM,Number=1,Type=Float,Description=\"The coverage between A and B\">")
-	vcf_header.append("##INFO=<ID=COVB,Number=1,Type=Float,Description=\"Coverage on window B\">")
-	vcf_header.append("##INFO=<ID=OR,Number=4,Type=Integer,Description=\"Orientation of the pairs (FF,RR,RF,FR)\">")
-	vcf_header.append("##INFO=<ID=ORSR,Number=2,Type=Integer,Description=\"Orientation of the split reads (inverted,normal)\">")
-	vcf_header.append("##INFO=<ID=CIPOS,Number=2,Type=Integer,Description=\"Confidence interval around POS for imprecise variants\">")
-	vcf_header.append("##INFO=<ID=CIEND,Number=2,Type=Integer,Description=\"Confidence interval around END for imprecise variants\">")
-	vcf_header.append("##INFO=<ID=QUALA,Number=1,Type=Float,Description=\"The average mapping quality of the reads in window A\">")
-	vcf_header.append("##INFO=<ID=QUALB,Number=1,Type=Float,Description=\"The average mapping quality of the reads in window B\">")
+	vcf_header.append("##INFO=<ID=LFA,Number=2,Type=Integer,Description=\"Read-pairs and split reads in region A\">")
+	vcf_header.append("##INFO=<ID=LFB,Number=2,Type=Integer,Description=\"Read-pairs and split reads in region B\">")
+	vcf_header.append("##INFO=<ID=LTE,Number=2,Type=Integer,Description=\"Read-pairs and split reads supporting the event\">")
+	vcf_header.append("##INFO=<ID=CTG,Number=1,Type=String,Description=\"Sequence of contig\">")
+	vcf_header.append("##INFO=<ID=REGIONA,Number=2,Type=Integer,Description=\"Start and end of regionB\">")
+	vcf_header.append("##INFO=<ID=REGIONB,Number=2,Type=Integer,Description=\"Start and end of regionB\">")
 
 	#Declare the filters
 
@@ -60,7 +55,8 @@ def main(bam_header,library,sample_id,version):
 	vcf_header.append("##FORMAT=<ID=RV,Number=1,Type=Integer,Description=\"Number of split reads that support the event\">")
 	vcf_header.append("##FORMAT=<ID=DR,Number=2,Type=Integer,Description=\"Number of paired-ends that supporting the reference allele (breakpoint A, and B)\">")
 	vcf_header.append("##FORMAT=<ID=RR,Number=2,Type=Integer,Description=\"Number of reads supporting the reference allele (breakpoint A, and B)\">")
-
+	vcf_header.append("##FORMAT=<ID=DP,Number=3,Type=Float,Description=\"Coverage (at A,B, and between)\">")
+	vcf_header.append("##FORMAT=<ID=LQ,Number=2,Type=Float,Description=\"Fraction of low quality reads\">")
 
 	#library statistics line
 	vcf_header.append("##LibraryStats=TIDDIT-{} Coverage={}  ReadLength={} MeanInsertSize={} STDInsertSize={} Reverse_Forward={}".format(version,library["avg_coverage"],library["avg_read_length"],library["avg_insert_size"],library["std_insert_size"],library["mp"] ) ) 

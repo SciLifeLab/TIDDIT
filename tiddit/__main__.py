@@ -4,6 +4,7 @@ import argparse
 import time
 import pysam
 import os
+import shutil
 
 import tiddit_stats
 import tiddit_signal
@@ -53,9 +54,22 @@ if args.sv == True:
 		print ("error, too low --l value!")
 		quit()
 
+	if not os.path.isfile(args.bwa) and not shutil.which(args.bwa):
+		print("error, BWA executable missing, add BWA to path, or specify using --bwa")
+
+	if not os.path.isfile(args.fermi2) and not shutil.which(args.fermi2):
+		print("error, fermi2 executable missing, add fermi2 to path, or specify using --fermi2")
+
+	if not os.path.isfile(args.ropebwt2) and not shutil.which(args.ropebwt2):
+		print("error, ropebwt2 executable missing, add ropebwt2 to path, or specify using --ropebwt2")
+
 	if args.ref:
 		if not os.path.isfile(args.ref):
 			print ("error,  could not find the reference file")
+			quit()
+
+		if not os.path.isfile(args.ref+".bwt"):
+			print ("error, The reference must be indexed using bwa index")
 			quit()
 
 	if not (args.bam.endswith(".bam") or args.bam.endswith(".cram")):
@@ -67,13 +81,13 @@ if args.sv == True:
 		quit()
 
 	bam_file_name=args.bam
-	samfile = pysam.AlignmentFile(bam_file_name, "r")
+	samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=args.ref)
 	bam_header=samfile.header
 	samfile.close()
 
 
 	try:
-		sample_id=header["RG"][0]["SM"]
+		sample_id=bam_header["RG"][0]["SM"]
 	except:
 		sample_id=bam_file_name.split("/")[-1].split(".")[0]
 
@@ -99,7 +113,7 @@ if args.sv == True:
 	max_ins_len=100000
 	n_reads=args.s 
 
-	library=tiddit_stats.statistics(bam_file_name,min_mapq,max_ins_len,n_reads)
+	library=tiddit_stats.statistics(bam_file_name,args.ref,min_mapq,max_ins_len,n_reads)
 	if args.i:
 		max_ins_len=args.i
 	else:
@@ -107,7 +121,7 @@ if args.sv == True:
 
 
 	t=time.time()
-	coverage_data=tiddit_signal.main(bam_file_name,prefix,min_mapq,max_ins_len,sample_id)
+	coverage_data=tiddit_signal.main(bam_file_name,args.ref,prefix,min_mapq,max_ins_len,sample_id)
 	print("extracted signals in:")
 	print(t-time.time())
 
@@ -159,14 +173,14 @@ elif args.cov:
 	parser.add_argument('-z', type=int,default=500, help="use bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout")
 	parser.add_argument('-w'        , help="generate wig instead of bed", required=False, action="store_true")
 	parser.add_argument('-q'        , help="minimum mapping quality(default=20)", required=False, default=20)
-	parser.add_argument('--ref', type=str, help="reference fasta, used for GC correction and for reading cram")
+	parser.add_argument('--ref', type=str, help="reference fasta, used for reading cram")
 	args= parser.parse_args()
 
 	if not os.path.isfile(args.bam):
 		print ("error,  could not find the bam file")
 		quit()
 
-	samfile = pysam.AlignmentFile(args.bam, "r")
+	samfile = pysam.AlignmentFile(args.bam, "r",reference_filename=args.ref)
 	bam_header=samfile.header
 	coverage_data,end_bin_size=tiddit_coverage.create_coverage(bam_header,args.z)
 	n_reads=0

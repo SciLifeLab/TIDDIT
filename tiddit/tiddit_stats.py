@@ -1,8 +1,8 @@
 import pysam
 import numpy
-def statistics(bam_file_name,min_mapq,max_ins_len,n_reads):
+def statistics(bam_file_name,ref,min_mapq,max_ins_len,n_reads):
 	library={}
-	samfile = pysam.AlignmentFile(bam_file_name, "r")
+	samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=ref)
 
 	insert_size=[]
 	read_length=[]
