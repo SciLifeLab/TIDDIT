@@ -37,7 +37,7 @@ def find_discordant_pos(fragment,is_mp):
 
 	return(posA,posB)
 
-def main(prefix,chromosomes,samples,is_mp,epsilon,m,max_ins_len):
+def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len):
 
 	discordants={}
 	splits={}
@@ -72,6 +72,12 @@ def main(prefix,chromosomes,samples,is_mp,epsilon,m,max_ins_len):
 				for line in open(discordants_path):
 					content=line.rstrip().split("\t")
 					posA,posB=find_discordant_pos(content,is_mp)
+
+					if int(posA) > contig_length[chrA]:
+						posA=contig_length[chrA]
+					if int(posB) > contig_length[chrB]:
+						posA=contig_length[chrB]
+
 					discordants[chrA][chrB].append([content[0],sample,"D",posA,content[3],posB,content[6],i])
 					positions.append([int(posA),int(posB),i])
 					i+=1
@@ -81,6 +87,11 @@ def main(prefix,chromosomes,samples,is_mp,epsilon,m,max_ins_len):
 					posA=content[1]
 					posB=content[3]
 
+					if int(posA) > contig_length[chrA]:
+						posA=contig_length[chrA]
+					if int(posB) > contig_length[chrB]:
+						posA=contig_length[chrB]
+
 					discordants[chrA][chrB].append([content[0],sample,"S",posA,content[2],posB,content[4],i])
 					positions.append([int(posA),int(posB),i])
 					i+=1
@@ -88,6 +99,11 @@ def main(prefix,chromosomes,samples,is_mp,epsilon,m,max_ins_len):
 					content=line.rstrip().split("\t")
 					posA=content[1]
 					posB=content[3]
+
+					if int(posA) > contig_length[chrA]:
+						posA=contig_length[chrA]
+					if int(posB) > contig_length[chrB]:
+						posA=contig_length[chrB]
 
 					discordants[chrA][chrB].append([content[0],sample,"A",posA,content[2],posB,content[4],i])
 					positions.append([int(posA),int(posB),i])

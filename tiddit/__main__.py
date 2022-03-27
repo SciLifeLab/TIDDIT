@@ -96,10 +96,12 @@ if args.sv == True:
 
 	contigs=[]
 	contig_number={}
+	contig_length={}
 	i=0
 	for contig in bam_header["SQ"]:
 		contigs.append(contig["SN"])
 		contig_number[contig["SN"]]=i
+		contig_length[ contig["SN"] ]=contig["LN"]
 		i+=0
 
 	prefix=args.o
@@ -142,7 +144,7 @@ if args.sv == True:
 		args.e=int(library["avg_insert_size"]/2.0)
 
 	t=time.time()
-	sv_clusters=tiddit_cluster.main(prefix,contigs,samples,library["mp"],args.e,args.l,max_ins_len)
+	sv_clusters=tiddit_cluster.main(prefix,contigs,contig_length,samples,library["mp"],args.e,args.l,max_ins_len)
 
 	#f=open(prefix+".json","w")
 	#f.write( json.dumps(sv_clusters, indent = 4) )
@@ -160,8 +162,11 @@ if args.sv == True:
 	print("analyzed clusters in")
 	print(time.time()-t)
 	
-	for variant in variants:
-		f.write( "\t".join(variant)+"\n" ) 
+	for chr in contigs:
+		if not chr in variants:
+			continue
+		for variant in sorted(variants[chr], key=lambda x: x[0]):
+			f.write( "\t".join(variant[1])+"\n" ) 
 	f.close()
 	quit()
 

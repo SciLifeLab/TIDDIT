@@ -162,7 +162,7 @@ def sv_filter(sample_data,args,chrA,chrB,posA,posB,max_ins_len,n_discordants,n_s
 				return("BelowExpectedLinks")
 
 		#large variant, supported only by contigs but not discordant pairs
-		elif n_contigs and (chrA == chrB and max_ins_len < abs(posB-posA)*3 ):
+		elif n_contigs and (chrA == chrB and max_ins_len*3 < abs(posB-posA) ):
 			if n_discordants < args.p:
 				return("BelowExpectedLinks")
 
@@ -170,7 +170,7 @@ def sv_filter(sample_data,args,chrA,chrB,posA,posB,max_ins_len,n_discordants,n_s
 
 def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,samples,dict coverage_data,contig_number,max_ins_len):
 
-	variants=[]
+	variants={}
 	#cdef AlignmentFile samfile  = AlignmentFile(bam_file_name, "r")
 	samfile  = AlignmentFile(bam_file_name, "r")
 
@@ -186,9 +186,15 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 			contig_seqs[name]=line.strip("\n")
 			new_seq=False
 
+	for chrA in sv_clusters:
+		variants[chrA]=[]
+		for chrB in sv_clusters[chrA]:
+			variants[chrB]=[]
+
 	var_n=0
 	for chrA in sv_clusters:
 		for chrB in sv_clusters[chrA]:
+
 			for cluster in sv_clusters[chrA][chrB]:
 				n_discordants=sv_clusters[chrA][chrB][cluster]["N_discordants"]
 				n_splits=sv_clusters[chrA][chrB][cluster]["N_splits"]
@@ -199,6 +205,11 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 
 				posA=sv_clusters[chrA][chrB][cluster]["posA"]
 				posB=sv_clusters[chrA][chrB][cluster]["posB"]
+
+				if chrA == chrB and posA > posB:
+					posT=posA
+					posA=posB
+					posB=posT
 
 				if chrA == chrB and abs(posA-posB) < args.z:
 					continue
@@ -356,8 +367,7 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 								GT="0/1"
 							
 						variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
-					variants.append(variant)				
-
+					variants[chrA].append([posA,variant])
 				else:
 					info=["SVTYPE=BND".format(svtype)]
 					inverted=False
@@ -433,7 +443,8 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 
 
 						variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
-					variants.append(variant)				
+					variants[chrA].append([posA,variant])
+
 
 					variant=[chrB,str(posB),"SV_{}_2".format(var_n),"N",alt_str_b,".",filt,info,format_col]
 					for sample in samples:
@@ -467,7 +478,7 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 
 
 						variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
-					variants.append(variant)				
+					variants[chrB].append([posB,variant])				
 
 	samfile.close()
 	return(variants)

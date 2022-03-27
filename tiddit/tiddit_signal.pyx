@@ -63,9 +63,9 @@ def SA_analysis(read,min_q,splits,tag):
 		return(splits)
 
 	if (read.query_alignment_start ) < (read.query_length - read.query_alignment_end):
-		split_pos=read.reference_end
+		split_pos=read.reference_end+1
 	else:
-		split_pos=read.reference_start
+		split_pos=read.reference_start+1
 
 	supplementry_alignment=find_SA_query_range(SA_data)
 	SA_chr=SA_data[0]
@@ -178,10 +178,10 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 
 		if not (read.is_supplementary or read.is_secondary) and read.mapq > 1:
 			if (read.cigartuples[0][0] == 4 and read.cigartuples[0][1] > 10) and (read.cigartuples[-1][0] == 0 and read.cigartuples[-1][1] > 30) and len(read.cigartuples) < 7:
-				clips[read.reference_name].append([">{}|{}\n".format(read.query_name,read.reference_start),read.query_sequence+"\n"])
+				clips[read.reference_name].append([">{}|{}\n".format(read.query_name,read.reference_start+1),read.query_sequence+"\n"])
 
 			elif read.cigartuples[-1][0] == 4 and read.cigartuples[-1][1] > 10 and (read.cigartuples[0][0] == 0 and read.cigartuples[0][1] > 30) and len(read.cigartuples) < 7:
-				clips[read.reference_name].append([">{}|{}\n".format(read.query_name,read.reference_start),read.query_sequence+"\n"])
+				clips[read.reference_name].append([">{}|{}\n".format(read.query_name,read.reference_start+1),read.query_sequence+"\n"])
 
 		t_split+=time.time()-t
 
@@ -198,7 +198,7 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 				data[chrA][chrB][read.query_name]=[]
 
 
-			data[chrA][chrB][read.query_name].append([read.reference_start,read.reference_end,read.is_reverse,read.reference_name])
+			data[chrA][chrB][read.query_name].append([read.reference_start+1,read.reference_end+1,read.is_reverse,read.reference_name])
 		t_disc+=time.time()-t
 
 	print("total",time.time()-t_tot)
