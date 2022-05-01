@@ -28,6 +28,6 @@ setup(
     include_dirs=[numpy.get_include()],
     packages = ['tiddit'],
     install_requires = ['numpy','pysam'],
-    entry_points = {'console_scripts': ['tiddit = tiddit.__tiddit__:main']},
+    entry_points = {'console_scripts': ['tiddit = tiddit.__main__:main']},
 
 )

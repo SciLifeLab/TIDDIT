@@ -1,8 +1,10 @@
 import numpy
 cimport numpy
 import pysam
-import tiddit_coverage
 import gzip
+
+from . import tiddit_coverage
+
 
 def get_gc(str reference_fasta,bam_header,bin_size):
 

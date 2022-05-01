@@ -1,9 +1,11 @@
 import pysam
-import tiddit_signal
 import numpy
 import math
 import os
-import DBSCAN
+
+from . import DBSCAN
+from . import tiddit_signal
+
 
 def read_contigs(aligned_contigs,prefix,sample_id,min_size):
 	samfile = pysam.AlignmentFile(aligned_contigs, "r")

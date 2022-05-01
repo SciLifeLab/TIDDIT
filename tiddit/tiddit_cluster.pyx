@@ -1,6 +1,6 @@
 import sys
 import os
-import DBSCAN
+from . import DBSCAN
 import numpy
 import statistics 
 from statistics import mode
