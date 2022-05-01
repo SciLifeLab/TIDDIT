@@ -13,7 +13,7 @@ def create_coverage(bam_header,bin_size):
 	for contig in bam_header["SQ"]:
 		bins= int(math.ceil(contig["LN"]/float(bin_size)))
 		coverage_data[ contig["SN"] ]=numpy.zeros(bins)
-		end_bin_size[contig["SN"]]=contig["LN"]-math.floor( contig["LN"]/float(bin_size) )*bin_size
+		end_bin_size[contig["SN"]]=contig["LN"]-(bins-1)*bin_size
 
 	return(coverage_data,end_bin_size)
 
@@ -61,7 +61,6 @@ def update_coverage(read,int bin_size,numpy.ndarray[DTYPE_t, ndim=1] coverage_da
 
 	bases_first_bin=((first_bin+1)*bin_size)-ref_start
 	coverage_data[first_bin]=float(bases_first_bin)/bin_size+coverage_data[first_bin]	
-	
 	cdef int bases_last_bin=(ref_end-1)-end_bin*bin_size
 
 	if end_bin < len(coverage_data)-1:

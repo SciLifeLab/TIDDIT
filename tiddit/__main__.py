@@ -48,6 +48,7 @@ if args.sv == True:
 	parser.add_argument('--p_ratio', type=float,default=0.1, help="minimum discordant pair/normal pair ratio at the breakpoint junction(default=0.1)")
 	parser.add_argument('--r_ratio', type=float,default=0.1, help="minimum split read/coverage ratio at the breakpoint junction(default=0.1)")
 	parser.add_argument('--max_coverage', type=float,default=4, help="filter call if X times higher than chromosome average coverage (default=4)")
+	parser.add_argument('--min_contig', type=int,default=10000, help="Skip calling on small contigs (default < 10000 bp)")
 	args= parser.parse_args()
 
 	if args.l < 2:
@@ -68,7 +69,7 @@ if args.sv == True:
 			print ("error,  could not find the reference file")
 			quit()
 
-		if not os.path.isfile(args.ref+".bwt"):
+		if not os.path.isfile(args.ref+".bwt") and not os.path.isfile(args.ref+".64.bwt"):
 			print ("error, The reference must be indexed using bwa index")
 			quit()
 
@@ -144,7 +145,7 @@ if args.sv == True:
 		args.e=int(library["avg_insert_size"]/2.0)
 
 	t=time.time()
-	sv_clusters=tiddit_cluster.main(prefix,contigs,contig_length,samples,library["mp"],args.e,args.l,max_ins_len)
+	sv_clusters=tiddit_cluster.main(prefix,contigs,contig_length,samples,library["mp"],args.e,args.l,max_ins_len,args.min_contig)
 
 	#f=open(prefix+".json","w")
 	#f.write( json.dumps(sv_clusters, indent = 4) )

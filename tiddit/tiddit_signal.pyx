@@ -147,6 +147,7 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 	clip_dist=100
 
 	t_tot=time.time()
+	f=open("{}_tiddit/clips_{}.fa".format(prefix,sample_id ),"w")
 	for read in samfile.fetch(until_eof=True):
 
 		if read.is_unmapped or read.is_duplicate:
@@ -162,10 +163,8 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 			chromosome_set.add(read.reference_name)
 
 			if len(chromosomes):
-				f=open("{}_tiddit/clips_{}_{}.fa".format(prefix,sample_id, chromosomes[-1] ),"w")
 				for clip in clips[ chromosomes[-1] ]:
 					f.write("".join( clip ))
-				f.close()
 				del clips[ chromosomes[-1] ]
 
 			chromosomes.append(read.reference_name)
@@ -178,15 +177,15 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 
 		if not (read.is_supplementary or read.is_secondary) and read.mapq > 1:
 			if (read.cigartuples[0][0] == 4 and read.cigartuples[0][1] > 10) and (read.cigartuples[-1][0] == 0 and read.cigartuples[-1][1] > 30) and len(read.cigartuples) < 7:
-				clips[read.reference_name].append([">{}|{}\n".format(read.query_name,read.reference_start+1),read.query_sequence+"\n"])
+				clips[read.reference_name].append([">{}|{}|{}\n".format(read.query_name,read.reference_name,read.reference_start+1),read.query_sequence+"\n"])
 
 			elif read.cigartuples[-1][0] == 4 and read.cigartuples[-1][1] > 10 and (read.cigartuples[0][0] == 0 and read.cigartuples[0][1] > 30) and len(read.cigartuples) < 7:
-				clips[read.reference_name].append([">{}|{}\n".format(read.query_name,read.reference_start+1),read.query_sequence+"\n"])
+				clips[read.reference_name].append([">{}|{}|{}\n".format(read.query_name,read.reference_name,read.reference_start+1),read.query_sequence+"\n"])
 
 		t_split+=time.time()-t
 
 		t=time.time()
-		if ( abs(read.isize) > max_ins or read.next_reference_name != read.reference_name ) and read.mapq >= min_q:
+		if ( abs(read.isize) > max_ins or read.next_reference_name != read.reference_name ) and read.mapq >= min_q and not (read.is_supplementary or read.is_secondary):
 			if read.next_reference_name < read.reference_name:
 				chrA=read.next_reference_name
 				chrB=read.reference_name
@@ -201,6 +200,8 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 			data[chrA][chrB][read.query_name].append([read.reference_start+1,read.reference_end+1,read.is_reverse,read.reference_name])
 		t_disc+=time.time()-t
 
+	f.close()
+
 	print("total",time.time()-t_tot)
 	print("coverage",t_update)
 	print("split",t_split)
@@ -211,37 +212,46 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 
 	print("Writing signals to file")
 
+	f=open("{}_tiddit/discordants_{}.tab".format(prefix,sample_id),"w")
+
 	for chrA in data:
 		for chrB in data[chrA]:
-			f=open("{}_tiddit/discordants_{}_{}_{}.tab".format(prefix,sample_id,chrA,chrB),"w")
 
 			for fragment in data[chrA][chrB]:
 				if len(data[chrA][chrB][fragment]) < 2:
 					continue
 
-				if data[chrA][chrB][fragment][1][-1] < data[chrA][chrB][fragment][0][-1]:
-					out=data[chrA][chrB][fragment][1][0:-1]+data[chrA][chrB][fragment][0][0:-1]
+				if chrA == chrB:
+					if data[chrA][chrB][fragment][1][-1] < data[chrA][chrB][fragment][0][-1]:
+						out=data[chrA][chrB][fragment][1][0:-1]+data[chrA][chrB][fragment][0][0:-1]
+					else:
+						out=data[chrA][chrB][fragment][0][0:-1]+data[chrA][chrB][fragment][1][0:-1]
 				else:
-					out=data[chrA][chrB][fragment][0][0:-1]+data[chrA][chrB][fragment][1][0:-1]
+					if data[chrA][chrB][fragment][0][-1] == chrA:
+						out=data[chrA][chrB][fragment][0][0:-1]+data[chrA][chrB][fragment][1][0:-1]
+					else:
+						out=data[chrA][chrB][fragment][1][0:-1]+data[chrA][chrB][fragment][0][0:-1]
 
-				f.write("{}\t{}\n".format(fragment,"\t".join(map(str, out )))  )
+				f.write("{}\t{}\t{}\t{}\n".format(fragment,chrA,chrB,"\t".join(map(str, out )))  )
 
-			f.close()
+	f.close()
+
+	f=open("{}_tiddit/splits_{}.tab".format(prefix,sample_id),"w")
 
 	for chrA in splits:
 		for chrB in splits[chrA]:
 
-			f=open("{}_tiddit/splits_{}_{}_{}.tab".format(prefix,sample_id,chrA,chrB),"w")
 			for fragment in splits[chrA][chrB]:
-				f.write("{}\t{}\n".format(fragment,"\t".join(map(str, splits[chrA][chrB][fragment] )))  )
+				f.write("{}\t{}\t{}\t{}\n".format(fragment,chrA,chrB,"\t".join(map(str, splits[chrA][chrB][fragment] )))  )
 
-			f.close()
+	f.close()
+
+	f=open("{}_tiddit/clips_{}.fa".format(prefix,sample_id),"a")
 
 	for chrA in clips:
-		f=open("{}_tiddit/clips_{}_{}.fa".format(prefix,sample_id,chrA),"w")
 		for clip in clips[chrA]:
 			f.write("".join( clip ))
-		f.close()
+	f.close()
 
 
 	return(coverage_data)

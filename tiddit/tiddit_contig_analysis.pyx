@@ -52,33 +52,36 @@ def read_contigs(aligned_contigs,prefix,sample_id,min_size):
 					split_contigs[read.reference_name][read.reference_name]["{}_d_{}".format(read.query_name,i)]=[current_bp,read.is_reverse,current_bp+read.cigartuples[i][1],read.is_reverse]
 				current_bp+=read.cigartuples[i][1]
 
+	f=open("{}_tiddit/contigs_{}.tab".format(prefix,sample_id),"w")
 	for chrA in split_contigs:
 		for chrB in split_contigs[chrA]:
-			f=open("{}_tiddit/contigs_{}_{}_{}.tab".format(prefix,sample_id,chrA,chrB),"w")
-
 			for fragment in split_contigs[chrA][chrB]:
 
-				f.write("{}\t{}\n".format(fragment,"\t".join(map(str, split_contigs[chrA][chrB][fragment] )))  )
+				f.write("{}\t{}\t{}\t{}\n".format(fragment,chrA,chrB,"\t".join(map(str, split_contigs[chrA][chrB][fragment] )))  )
 
-			f.close()
+	f.close()
 
 def main(prefix,sample_id,library,contigs,coverage_data,args):
+	clips={}
+	c=[]
+
+	for line in open("{}_tiddit/clips_{}.fa".format(prefix,sample_id)):
+
+		if line[0] == ">":
+			c.append(line.strip())
+			pos=int(line.strip().split("|")[-1])
+			chr=line.strip().split("|")[-2]
+			if not chr in clips:
+				clips[chr]=[[],[]]
+
+		else:
+			c.append(line.strip())
+			clips[chr][0].append( "\n".join(c) )
+			clips[chr][1].append([pos,0])
+			c=[]
 
 	f=open("{}_tiddit/clips.fa".format(prefix),"w")	
-	for chr in contigs:
-		clips={}
-		clips[chr]=[[],[]]
-		c=[]
-		for line in open("{}_tiddit/clips_{}_{}.fa".format(prefix,sample_id,chr)):
-			if line[0] == ">":
-				c.append(line.strip())
-				pos=int(line.strip().split("|")[-1])
-			else:
-				c.append(line.strip())
-				clips[chr][0].append( "\n".join(c) )
-				clips[chr][1].append([pos,0])
-				c=[]
-				
+	for chr in clips:
 		
 		clusters,cluster_id = DBSCAN.x_coordinate_clustering(numpy.array(clips[chr][1]),50,args.l)
 		cluster_stats={}
@@ -107,6 +110,7 @@ def main(prefix,sample_id,library,contigs,coverage_data,args):
 			f.write( clips[chr][0][i].strip() +"\n")
 
 	f.close()
+	del clips
 
 	os.system("{} -dNCr {}_tiddit/clips.fa | {} assemble -l 81 - > {}_tiddit/clips.fa.assembly.mag".format(args.ropebwt2,prefix,args.fermi2,prefix))
 	os.system("{} simplify -COS -d 0.8 {}_tiddit/clips.fa.assembly.mag 1> {}_tiddit/clips.fa.assembly.clean.mag 2> /dev/null".format(args.fermi2,prefix,prefix))

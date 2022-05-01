@@ -11,6 +11,7 @@ if has_cython:
     ext_modules = cythonize([
         "tiddit/tiddit_signal.pyx",
         "tiddit/tiddit_coverage.pyx",
+        "tiddit/tiddit_cluster.pyx",
         "tiddit/tiddit_coverage_analysis.pyx",
         "tiddit/tiddit_variant.pyx",
         "tiddit/tiddit_contig_analysis.pyx"])

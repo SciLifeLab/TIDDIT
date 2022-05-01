@@ -55,7 +55,7 @@ def main(bam_header,library,sample_id,version):
 	vcf_header.append("##FORMAT=<ID=RV,Number=1,Type=Integer,Description=\"Number of split reads that support the event\">")
 	vcf_header.append("##FORMAT=<ID=DR,Number=2,Type=Integer,Description=\"Number of paired-ends that supporting the reference allele (breakpoint A, and B)\">")
 	vcf_header.append("##FORMAT=<ID=RR,Number=2,Type=Integer,Description=\"Number of reads supporting the reference allele (breakpoint A, and B)\">")
-	vcf_header.append("##FORMAT=<ID=DP,Number=3,Type=Float,Description=\"Coverage (at A,B, and between)\">")
+	vcf_header.append("##FORMAT=<ID=COV,Number=3,Type=Float,Description=\"Coverage (at A,B, and between)\">")
 	vcf_header.append("##FORMAT=<ID=LQ,Number=2,Type=Float,Description=\"Fraction of low quality reads\">")
 
 	#library statistics line
