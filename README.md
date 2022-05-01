@@ -4,7 +4,7 @@ TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pai
 TIDDIT searches for discordant reads and splti reads (supplementary alignments). The supplementary alignments are assembled and aligned using a fermikit-like workflow.
 Next all signals (contigs, split-reads, and discordant pairs) are clustered using DBSCAN. The resulting clusters are filtered and annotated, and reported as SV depending on the statistics.
 TIDDIT has two analysis modules. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a bam file and generates a coverage report.
-
+On a 30X human genome, the TIDDIT SV module typically completetes within 5 hours, and requires less than 10Gb ram.
 
 INSTALLATION
 ==============
