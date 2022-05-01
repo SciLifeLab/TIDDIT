@@ -1,14 +1,16 @@
 DESCRIPTION
 ==============
 TIDDIT: Is a tool to used to identify  chromosomal rearrangements using Mate Pair or Paired End sequencing data. TIDDIT identifies intra and inter-chromosomal translocations, deletions, tandem-duplications and inversions, using supplementary alignments as well as discordant pairs.
-
+TIDDIT searches for discordant reads and splti reads (supplementary alignments). The supplementary alignments are assembled and aligned using a fermikit-like workflow.
+Next all signals (contigs, split-reads, and discordant pairs) are clustered using DBSCAN. The resulting clusters are filtered and annotated, and reported as SV depending on the statistics.
 TIDDIT has two analysis modules. The sv mode, which is used to search for structural variants. And the cov mode that analyse the read depth of a bam file and generates a coverage report.
-
+On a 30X human genome, the TIDDIT SV module typically completetes within 5 hours, and requires less than 10Gb ram.
 
 INSTALLATION
 ==============
-TIDDIT requires standard c++/c libraries, python 2.7 or 3.6, cython, and Numpy. To compile TIDDIT, cmake must be installed. 
-samtools is reuquired for reading cram files (but not for reading bam).
+TIDDIT requires python3, cython, pysam, and Numpy; as well as bwa and fermikit (fermi2 and ropebwt2).
+
+Installation
 
 ```
 git clone https://github.com/SciLifeLab/TIDDIT.git
@@ -16,16 +18,23 @@ git clone https://github.com/SciLifeLab/TIDDIT.git
 
 To install TIDDIT:
 ```
-cd TIDDIT
-./INSTALL.sh
-```
-The install script will compile python and use pip to install the python dependencies
-TIDDIT is run via the TIDDIT.py script:
+cd tiddit
+pip install -e .
 ```
 
-python TIDDIT.py --help
-python TIDDIT.py  --sv --help
-python TIDDIT.py  --cov --help
+Next install fermikit, I recommend using conda:
+
+```
+conda install fermikit
+```
+
+You may also compile bwa, fermi2, and ropebwt2 yourself. Remember to add executables to path, or provide path through the command line parameters.
+
+```
+
+tiddit --help
+tiddit  --sv --help
+tiddit  --cov --help
 ```
 
 TIDDIT may be installed using bioconda:
@@ -38,110 +47,52 @@ Next, you may run TIDDIT like this:
 	tiddit --sv
 	tiddit --cov
 
-TIDDIT is also distributed with a Singularity environment (http://singularity.lbl.gov/index.html). Type the following command to download the container:
+TIDDIT is also distributed with a Docker container (http://singularity.lbl.gov/index.html). Type the following command to download the container:
 
-    singularity pull --name TIDDIT.simg shub://J35P312/TIDDIT:latest
+    singularity pull --name TIDDIT.simg 
 
 Type the following to run tiddit:
 
-    singularity exec TIDDIT.simg TIDDIT.py
+    singularity exec TIDDIT.simg tiddit
 
-You may also build it yourself (if you have sudo permisions)
-
-    sudo singularity build TIDDIT.simg Singularity
-
-The singularity container will download and install the latest commit on the scilifelab branch of TIDDIT.
-The "versioned_singularity" folder contains singularity recipes for installing certain releases of TIDDIT.
-These releases may also be downloaded through singularity hub
-
-	singularity pull --name TIDDIT.simg shub://J35P312/TIDDIT:2.7.1
 
 The SV module
 =============
 The main TIDDIT module, detects structural variant using discordant pairs, split reads and coverage information
 
-    python TIDDIT.py --sv [Options] --bam in.bam
+    python tiddit --sv [Options] --bam in.bam --ref reference.fa
 
-
-TIDDIT support streaming of the bam file:
-
-   samtools view -buh in.bam |  python TIDDIT.py --sv [Options] --bam /dev/stdin
-
-Optionally, TIDDIT acccepts a reference fasta for GC correction:
-
-    python TIDDIT.py --sv [Options] --bam bam --ref reference.fasta
-
-
-Reference is required for analysing cram files:
-
-    python TIDDIT.py --sv [Options] --bam in.cram --ref reference.fasta
-
-
-Where bam is the input bam or cran file. And reference.fasta is the reference fasta used to align the sequencing data: TIDDIT will crash if the reference fasta is different from the one used to align the reads. The reads of the input bam file must be sorted on genome position.
-
-The reference is required for analysing cram files.
-
-NOTE: It is important that you use the TIDDIT.py wrapper for SV detection. The TIDDIT binary in the TIDDIT/bin folder does not perform any clustering, it simply extract SV signatures into a tab file.
-
+Where bam is the input bam or cram file. And reference.fasta is the reference fasta used to align the sequencing data: TIDDIT will crash if the reference fasta is different from the one used to align the reads. The reads of the input bam file must be sorted on genome position.
 
 TIDDIT may be fine-tuned by altering these optional parameters:
 
 	-o	output prefix(default=output)
-	
-	-i	paired reads maximum allowed insert size. Pairs aligning
-		on the same chr at a distance higher than this are
-		considered candidates for SV (default= 99.9th percentile of insert size)
-		
-	-d	expected reads orientations, possible values "innie" (-> <-) or "outtie" (<- ->). 
-		Default: major orientation within the dataset
-		
-	-p	Minimum number of supporting pairs in order to call a variation event (default 3)
-	
-	-r	Minimum number of supporting split reads to call a small variant (default 3)
-	
-	-q	Minimum mapping quality to consider an alignment (default= 5)
-	
-	-Q	Minimum regional mapping quality (default 20)
-	
+	-i	paired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (default= 99.9th percentile of insert size)
+	-d	expected reads orientations, possible values "innie" (-> <-) or "outtie" (<- ->). Default: major orientation within the dataset
+	-p	Minimum number of supporting pairs in order to call a variant (default 3)
+	-r	Minimum number of supporting split reads to call a variant (default 3)
+	-q	Minimum mapping quality to consider an alignment (default 5)
 	-n	the ploidy of the organism,(default = 2)
-	
-	-e	clustering distance parameter, discordant pairs closer
-		than this distance are considered to belong to the same
-		variant(default = sqrt(insert-size*2)*12)
-		     
+	-e	clustering distance parameter, discordant pairs closer than this distance are considered to belong to the same variant(default = sqrt(insert-size*2)*12)
+	-c	average coverage, overwrites the estimated average coverage (useful for exome or panel data)
 	-l	min-pts parameter (default=3),must be set >= 2
-	
 	-s	Number of reads to sample when computing library statistics(default=25000000)
-		     
-	-z	minimum variant size (default=100), variants smaller than
-		this will not be printed ( z < 10 is not recomended)
-		     
-	--force_ploidy	force the ploidy to be set to -n across the entire genome
-			(i.e skip coverage normalisation of chromosomes)
-		     
-	--no_cluster	Run only the TIDDIT signal extraction
-	
-	--debug		rerun the tiddit clustering procedure
-	
+	-z 	minimum variant size (default=50), variants smaller than this will not be printed ( z < 10 is not recomended)
+	--force_ploidy	force the ploidy to be set to -n across the entire genome (i.e skip coverage normalisation of chromosomes)
 	--n_mask	exclude regions from coverage calculation if they contain more than this fraction of N (default = 0.5)
-		     
-	--ref		reference fasta, used for GC correction and for reading cram
-		     
-	--p_ratio	minimum discordant pair/normal pair ratio at the breakpoint junction(default=0.2)
-		     
+	--bwa	path to bwa executable file(default=bwa)
+	--fermi2	path to fermi2 executable file (default=fermi2)
+	--ropebwt2	path to ropebwt2 executable file (default=ropebwt2)
+	--p_ratio	minimum discordant pair/normal pair ratio at the breakpoint junction(default=0.1)
 	--r_ratio	minimum split read/coverage ratio at the breakpoint junction(default=0.1)
-
+	--max_coverage	filter call if X times higher than chromosome average coverage (default=4)
+	--min_contig	 Skip calling on small contigs (default < 10000 bp)
 
 
 
 output:
 
-TIDDIT SV module produces three output files, a vcf file containing SV calls, a tab file describing the coverage across the genome in bins of size 50 bp, and a tab file dscribing the estimated ploidy and coverage across each contig.
-
-Useful settings:
-
-
-In noisy datasets you may get too many small variants. If this is the case, then you may increase the -l parameter, or set the -i parameter to a high value (such as 2000) (on 10X linked read data, I usually set -l to 5).
+TIDDIT SV module produces two output files, a vcf file containing SV calls, and a tab file dscribing the estimated ploidy and coverage across each contig.
          
                                 
 The cov module
@@ -168,8 +119,6 @@ TIDDIT uses four different filters to detect low quality calls. The filter field
         The number of discordant pairs supporting the variant is too low compared to the number of discordant pairs within that genomic region.
     Unexpectedcoverage
         High coverage
-    Smear
-        The two windows that define the regions next to the breakpoints overlap.
 
 Failed Variants may be removed using tools such as VCFtools or grep. Removing these variants greatly improves the precision of TIDDIT, but may reduce the sensitivity. It is adviced to remove filtered variants or prioritize the variants that have passed the quality checks.
 This command may be usedto filter the TIDDIT vcf:
@@ -183,36 +132,6 @@ The variant support of each call is compared to these values, and the quality co
 
 Note: SVs usually occur in repetetive regions, hence these scores are expected to be relatively low. A true variant may have a low score, and the score itself depends on the input data (mate-pair vs pe for instance).
 
-Contents of the VCF INFO field
-=============
-The INFO field of the VCF contains the following entries:
-
-    SVTYPE
-        Type of structural variant(DEL,DUP,BND,INV,TDUP)
-    END
-        End position of an intra-chromosomal variant
-    LFA
-        The number of discordant pairs at the the first breakpoint of the variant
-    LFB
-	The number of discordant pairs at the the second breakpoint of the variant
-    LTE
-        The number of discordnat pairs that form the structural variant.
-    COVA
-        Coverage on window A
-    COVM
-        The coverage between A and B
-    COVB
-        Coverage on window B
-    CIPOS
-        start and stop positon of window A
-    CIEND
-        start and stop position of window B
-    QUALA
-        The average mapping quality of the reads in window A
-    QUALB
-        The average mapping quality of the reads in window B
-
-The content of the INFO field can be used to filter out false positives and to gain more understanding of the structure of the variant. More info is found in the vcf file. 
 Merging the vcf files
 =====================
 I usually merge vcf files using SVDB (https://github.com/J35P312)
@@ -247,8 +166,8 @@ genes may be annotated using vep or snpeff. NIRVANA may be used for annotating C
 Algorithm
 =========
 
-Discordant pairs and split reads (supplementary alignments) are extracted and stored in the ".signals.tab" file. A discordant pair is any pair having a larger insert size than the  -i paramater, or a pair where the reads map to different chromosomes.
-supplementary alignments and discordant pairs are only extracted if their mapping quality exceed the -q parameter.
+Discordant pairs, split reads (supplementary alignments), and contigs are extracted. A discordant pair is any pair having a larger insert size than the  -i paramater, or a pair where the reads map to different chromosomes.
+supplementary alignments and discordant pairs are only extracted if their mapping quality exceed the -q parameter. Contigs are generated by assembling all reads with supplementary alignment using fermi2
 
 The most recent version of TIDDIT uses an algorithm similar to DBSCAN: A cluster is formed if -l or more signals are located within the -e distance. Once a cluster is formed, more signals may be added if these signals are within the
 -e distance of -l signals within a cluster.
