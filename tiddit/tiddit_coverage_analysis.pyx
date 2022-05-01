@@ -3,7 +3,7 @@ cimport numpy
 import pysam
 import gzip
 
-from . import tiddit_coverage
+import tiddit.tiddit_coverage as tiddit_coverage
 
 
 def get_gc(str reference_fasta,bam_header,bin_size):

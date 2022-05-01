@@ -1,6 +1,6 @@
 import sys
 import os
-from . import DBSCAN
+import tiddit.DBSCAN as DBSCAN
 import numpy
 import statistics 
 from statistics import mode

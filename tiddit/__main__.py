@@ -6,14 +6,14 @@ import pysam
 import os
 import shutil
 
-from . import tiddit_stats
-from . import tiddit_signal
-from . import tiddit_vcf_header
-from . import tiddit_coverage_analysis
-from . import tiddit_coverage
-from . import tiddit_cluster
-from . import tiddit_variant
-from . import tiddit_contig_analysis
+import tiddit.tiddit_stats as tiddit_stats
+import tiddit.tiddit_signal as tiddit_signal
+import tiddit.tiddit_vcf_header as tiddit_vcf_header
+import tiddit.tiddit_coverage_analysis as tiddit_coverage_analysis
+import tiddit.tiddit_coverage as tiddit_coverage
+import tiddit.tiddit_cluster as tiddit_cluster
+import tiddit.tiddit_variant as tiddit_variant
+import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
 
 def main():
 	version="3.0.0"
@@ -204,3 +204,5 @@ def main():
 	else:
 		parser.print_help()
 
+if __name__ == '__main__':
+	main()

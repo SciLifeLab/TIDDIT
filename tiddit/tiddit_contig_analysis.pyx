@@ -3,8 +3,8 @@ import numpy
 import math
 import os
 
-from . import DBSCAN
-from . import tiddit_signal
+import tiddit.DBSCAN as DBSCAN
+import tiddit.tiddit_signal as tiddit_signal
 
 
 def read_contigs(aligned_contigs,prefix,sample_id,min_size):

@@ -4,7 +4,7 @@ import os
 import itertools
 import time
 
-from . import tiddit_coverage
+import tiddit.tiddit_coverage as tiddit_coverage
 
 def find_SA_query_range(SA):
 	a =pysam.AlignedSegment()
