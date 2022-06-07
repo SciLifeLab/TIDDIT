@@ -16,7 +16,7 @@ import tiddit.tiddit_variant as tiddit_variant
 import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
 
 def main():
-	version="3.0.0"
+	version="3.1.0"
 	parser = argparse.ArgumentParser("""tiddit-{}""".format(version),add_help=False)
 	parser.add_argument("--sv"	 , help="call structural variation", required=False, action="store_true")
 	parser.add_argument("--cov"        , help="generate a coverage bed file", required=False, action="store_true")
@@ -45,6 +45,7 @@ def main():
 		parser.add_argument('--bwa', type=str,default="bwa", help="path to bwa executable file(default=bwa)")
 		parser.add_argument('--fermi2', type=str,default="fermi2", help="path to fermi2 executable file (default=fermi2)")
 		parser.add_argument('--ropebwt2', type=str , default="ropebwt2", help="path to ropebwt2 executable file (default=ropebwt2)")
+		parser.add_argument('--skip_assembly', action="store_true", help="Skip running local assembly, tiddit will perform worse, but wont require fermi2, bwa, ropebwt and bwa indexed ref")
 		parser.add_argument('--p_ratio', type=float,default=0.1, help="minimum discordant pair/normal pair ratio at the breakpoint junction(default=0.1)")
 		parser.add_argument('--r_ratio', type=float,default=0.1, help="minimum split read/coverage ratio at the breakpoint junction(default=0.1)")
 		parser.add_argument('--max_coverage', type=float,default=4, help="filter call if X times higher than chromosome average coverage (default=4)")
@@ -55,23 +56,28 @@ def main():
 			print ("error, too low --l value!")
 			quit()
 
-		if not os.path.isfile(args.bwa) and not shutil.which(args.bwa):
-			print("error, BWA executable missing, add BWA to path, or specify using --bwa")
+		if not args.skip_assembly:
+			if not os.path.isfile(args.bwa) and not shutil.which(args.bwa):
+				print("error, BWA executable missing, add BWA to path, or specify using --bwa")
+				quit()
 
-		if not os.path.isfile(args.fermi2) and not shutil.which(args.fermi2):
-			print("error, fermi2 executable missing, add fermi2 to path, or specify using --fermi2")
+			if not os.path.isfile(args.fermi2) and not shutil.which(args.fermi2):
+				print("error, fermi2 executable missing, add fermi2 to path, or specify using --fermi2")
+				quit()
 
-		if not os.path.isfile(args.ropebwt2) and not shutil.which(args.ropebwt2):
-			print("error, ropebwt2 executable missing, add ropebwt2 to path, or specify using --ropebwt2")
-
-		if args.ref:
-			if not os.path.isfile(args.ref):
-				print ("error,  could not find the reference file")
+			if not os.path.isfile(args.ropebwt2) and not shutil.which(args.ropebwt2):
+				print("error, ropebwt2 executable missing, add ropebwt2 to path, or specify using --ropebwt2")
 				quit()
 
 			if not os.path.isfile(args.ref+".bwt") and not os.path.isfile(args.ref+".64.bwt"):
 				print ("error, The reference must be indexed using bwa index")
 				quit()
+
+
+		if not os.path.isfile(args.ref):
+			print ("error,  could not find the reference file")
+			quit()
+
 
 		if not (args.bam.endswith(".bam") or args.bam.endswith(".cram")):
 			print ("error, the input file is not a bam file, make sure that the file extension is .bam or .cram")
@@ -134,10 +140,12 @@ def main():
 		print(time.time()-t)
 
 
-		t=time.time()
-		tiddit_contig_analysis.main(prefix,sample_id,library,contigs,coverage_data,args)
-		print("Clip read assembly in:")
-		print(time.time()-t)
+		if not args.skip_assembly:
+
+			t=time.time()
+			tiddit_contig_analysis.main(prefix,sample_id,library,contigs,coverage_data,args)
+			print("Clip read assembly in:")
+			print(time.time()-t)
 
 		vcf_header=tiddit_vcf_header.main( bam_header,library,sample_id,version )
 	
@@ -145,7 +153,7 @@ def main():
 			args.e=int(library["avg_insert_size"]/2.0)
 	
 		t=time.time()
-		sv_clusters=tiddit_cluster.main(prefix,contigs,contig_length,samples,library["mp"],args.e,args.l,max_ins_len,args.min_contig)
+		sv_clusters=tiddit_cluster.main(prefix,contigs,contig_length,samples,library["mp"],args.e,args.l,max_ins_len,args.min_contig,args.skip_assembly)
 	
 		print("generated clusters in")
 		print(time.time()-t)

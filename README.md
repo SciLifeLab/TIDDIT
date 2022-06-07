@@ -8,9 +8,13 @@ On a 30X human genome, the TIDDIT SV module typically completetes within 5 hours
 
 INSTALLATION
 ==============
-TIDDIT requires python3, cython, pysam, and Numpy; as well as bwa and fermikit (fermi2 and ropebwt2).
+TIDDIT requires python3, cython, pysam, and Numpy.
+
+By default, tiddit will require, bwa, fermi2 and ropebwt2 for local assembly; local assembly may be disabled through the "--skip_assembly" parameter.
 
 Installation
+
+Cloning from Git Hub:
 
 ```
 git clone https://github.com/SciLifeLab/TIDDIT.git
@@ -22,39 +26,38 @@ cd tiddit
 pip install -e .
 ```
 
-Next install fermikit, I recommend using conda:
+Next install fermi2, ropebwt2, and bwa, I recommend using conda:
 
-```
-conda install fermikit
-```
+conda install fermi2 ropebwt2 bwa
 
 You may also compile bwa, fermi2, and ropebwt2 yourself. Remember to add executables to path, or provide path through the command line parameters.
-
 ```
-
 tiddit --help
-tiddit  --sv --help
-tiddit  --cov --help
+tiddit --sv --help
+tiddit --cov --help
 ```
 
 TIDDIT may be installed using bioconda:
-
-	conda install tiddit
+```
+conda install tiddit
+```
 	
 Next, you may run TIDDIT like this:
-
-	tiddit --help
-	tiddit --sv
-	tiddit --cov
+```
+tiddit --help
+tiddit --sv
+tiddit --cov
+```
 
 TIDDIT is also distributed with a Docker container (http://singularity.lbl.gov/index.html). Type the following command to download the container:
-
-    singularity pull --name TIDDIT.simg 
+```
+singularity pull --name TIDDIT.simg 
+```
 
 Type the following to run tiddit:
-
-    singularity exec TIDDIT.simg tiddit
-
+```
+singularity exec TIDDIT.simg tiddit
+```
 
 The SV module
 =============
@@ -80,6 +83,7 @@ TIDDIT may be fine-tuned by altering these optional parameters:
 	-z 	minimum variant size (default=50), variants smaller than this will not be printed ( z < 10 is not recomended)
 	--force_ploidy	force the ploidy to be set to -n across the entire genome (i.e skip coverage normalisation of chromosomes)
 	--n_mask	exclude regions from coverage calculation if they contain more than this fraction of N (default = 0.5)
+	--skip_assembly	Skip running local assembly, tiddit will perform worse, but wont require fermi2, bwa, ropebwt and bwa indexed ref
 	--bwa	path to bwa executable file(default=bwa)
 	--fermi2	path to fermi2 executable file (default=fermi2)
 	--ropebwt2	path to ropebwt2 executable file (default=ropebwt2)

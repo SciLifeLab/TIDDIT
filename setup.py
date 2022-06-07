@@ -20,7 +20,7 @@ else:
 
 setup(
     name = 'tiddit',
-    version = '3.0.0',
+    version = '3.1.0',
     url = "https://github.com/J35P312/SVDB",
     author = "Jesper Eisfeldt",
     author_email= "jesper.eisfeldt@scilifelab.se",

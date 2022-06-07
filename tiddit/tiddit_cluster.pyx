@@ -37,7 +37,7 @@ def find_discordant_pos(fragment,is_mp):
 
 	return(posA,posB)
 
-def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,min_contig):
+def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,min_contig,skip_assembly):
 
 	discordants={}
 	contigs=set([])
@@ -103,38 +103,39 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 			positions[chrA][chrB].append([int(posA),int(posB),i])
 			i+=1
 
-		for line in open("{}_tiddit/contigs_{}.tab".format(prefix,sample)):
-			content=line.rstrip().split("\t")
-			chrA=content[1]
-			chrB=content[2]
+		if not skip_assembly:
+			for line in open("{}_tiddit/contigs_{}.tab".format(prefix,sample)):
+				content=line.rstrip().split("\t")
+				chrA=content[1]
+				chrB=content[2]
 
-			if contig_length[chrA] < min_contig or contig_length[chrB] < min_contig:
-				continue
-
-
-			if not chrA in positions:
-				positions[chrA]={}
-			if not chrB in positions[chrA]:
-				positions[chrA][chrB]=[]
-
-			if not chrA in discordants:
-				discordants[chrA]={}
-			if not chrB in discordants[chrA]:
-				discordants[chrA][chrB]=[]
+				if contig_length[chrA] < min_contig or contig_length[chrB] < min_contig:
+					continue
 
 
-			posA=content[3]
-			posB=content[5]
+				if not chrA in positions:
+					positions[chrA]={}
+				if not chrB in positions[chrA]:
+					positions[chrA][chrB]=[]
 
-			if int(posA) > contig_length[chrA]:
-				posA=contig_length[chrA]
-			if int(posB) > contig_length[chrB]:
-				posB=contig_length[chrB]
+				if not chrA in discordants:
+					discordants[chrA]={}
+				if not chrB in discordants[chrA]:
+					discordants[chrA][chrB]=[]
 
-			discordants[chrA][chrB].append([content[0],sample,"A",posA,content[4],posB,content[6],i])
-			positions[chrA][chrB].append([int(posA),int(posB),i])
-			contigs.add(i)
-			i+=1
+
+				posA=content[3]
+				posB=content[5]
+
+				if int(posA) > contig_length[chrA]:
+					posA=contig_length[chrA]
+				if int(posB) > contig_length[chrB]:
+					posB=contig_length[chrB]
+
+				discordants[chrA][chrB].append([content[0],sample,"A",posA,content[4],posB,content[6],i])
+				positions[chrA][chrB].append([int(posA),int(posB),i])
+				contigs.add(i)
+				i+=1
 
 	candidates={}
 	for chrA in chromosomes:
