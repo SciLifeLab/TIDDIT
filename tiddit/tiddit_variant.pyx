@@ -176,15 +176,16 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 
 	contig_seqs={}
 	new_seq=False
-	for line in open("{}_tiddit/clips.fa.assembly.clean.mag".format(args.o)):			
+	if not args.skip_assembly:
+		for line in open("{}_tiddit/clips.fa.assembly.clean.mag".format(args.o)):			
 
-		if not new_seq and line[0] == "@" and "\t" in line:
-			name=line.split("\t")[0][1:]
-			new_seq=True
+			if not new_seq and line[0] == "@" and "\t" in line:
+				name=line.split("\t")[0][1:]
+				new_seq=True
 
-		elif new_seq:
-			contig_seqs[name]=line.strip("\n")
-			new_seq=False
+			elif new_seq:
+				contig_seqs[name]=line.strip("\n")
+				new_seq=False
 
 	for chrA in sv_clusters:
 		variants[chrA]=[]
