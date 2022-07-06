@@ -282,7 +282,7 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 				svtype,cn=find_sv_type(chrA,chrB,inverted,non_inverted,args,sample_data,samples,library)
 
 				filt=sv_filter(sample_data,args,chrA,chrB,posA,posB,max_ins_len,n_discordants,n_splits,library,sample_data[sample]["discA"],sample_data[sample]["discB"],sample_data[sample]["splitA"],sample_data[sample]["splitB"],n_contigs)
-				format_col="GT:CN:COV:DR:SR:LQ:RR:RD"
+				format_col="GT:CN:COV:DV:RV:LQ:RR:RD"
 
 				#configure filters for CNV based on Read depth
 				for sample in samples:
