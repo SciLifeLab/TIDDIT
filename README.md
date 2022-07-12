@@ -8,7 +8,7 @@ On a 30X human genome, the TIDDIT SV module typically completetes within 5 hours
 
 INSTALLATION
 ==============
-TIDDIT requires python3, cython, pysam, and Numpy.
+TIDDIT requires python3, cython, pysam, joblib, and Numpy.
 
 By default, tiddit will require, bwa, fermi2 and ropebwt2 for local assembly; local assembly may be disabled through the "--skip_assembly" parameter.
 
@@ -74,6 +74,7 @@ TIDDIT may be fine-tuned by altering these optional parameters:
 	-d	expected reads orientations, possible values "innie" (-> <-) or "outtie" (<- ->). Default: major orientation within the dataset
 	-p	Minimum number of supporting pairs in order to call a variant (default 3)
 	-r	Minimum number of supporting split reads to call a variant (default 3)
+	--threads	Number of threads (default 1)
 	-q	Minimum mapping quality to consider an alignment (default 5)
 	-n	the ploidy of the organism,(default = 2)
 	-e	clustering distance parameter, discordant pairs closer than this distance are considered to belong to the same variant(default = sqrt(insert-size*2)*12)

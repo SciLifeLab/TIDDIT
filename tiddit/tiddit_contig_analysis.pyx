@@ -114,9 +114,9 @@ def main(prefix,sample_id,library,contigs,coverage_data,args):
 	f.close()
 	del clips
 
-	os.system("{} -dNCr {}_tiddit/clips.fa | {} assemble -l 81 - > {}_tiddit/clips.fa.assembly.mag".format(args.ropebwt2,prefix,args.fermi2,prefix))
+	os.system("{} -dNCr {}_tiddit/clips.fa | {} assemble -t {} -l 81 - > {}_tiddit/clips.fa.assembly.mag".format(args.ropebwt2,prefix,args.fermi2,args.threads,prefix))
 	os.system("{} simplify -COS -d 0.8 {}_tiddit/clips.fa.assembly.mag 1> {}_tiddit/clips.fa.assembly.clean.mag 2> /dev/null".format(args.fermi2,prefix,prefix))
-	os.system("{} mem -x intractg {} {}_tiddit/clips.fa.assembly.clean.mag  1> {}_tiddit/clips.sam 2> /dev/null".format(args.bwa,args.ref,prefix,prefix))
+	os.system("{} mem -t {} -x intractg {} {}_tiddit/clips.fa.assembly.clean.mag  1> {}_tiddit/clips.sam 2> /dev/null".format(args.bwa,args.threads,args.ref,prefix,prefix))
 
 	read_contigs("{}_tiddit/clips.sam".format(prefix) , prefix, sample_id, args.z)
 	

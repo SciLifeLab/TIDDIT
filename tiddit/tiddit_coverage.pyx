@@ -1,4 +1,5 @@
 import sys
+import time
 cimport numpy
 import numpy
 import math
@@ -43,7 +44,7 @@ def print_coverage(coverage_data,bam_header,bin_size,file_type,outfile):
 	f.close()
 
 ctypedef numpy.double_t DTYPE_t
-def update_coverage(read,int bin_size,numpy.ndarray[DTYPE_t, ndim=1] coverage_data,int min_q,int end_bin_size):
+def update_coverage(read,int bin_size,coverage_data,int min_q,int end_bin_size):
 
 	cdef long ref_start=read.reference_start
 	cdef long ref_end=read.reference_end
@@ -52,7 +53,7 @@ def update_coverage(read,int bin_size,numpy.ndarray[DTYPE_t, ndim=1] coverage_da
 	cdef int end_bin=int(ref_end-1)//bin_size
 
 	cdef int bases_first_bin
-
+	
 	if end_bin == first_bin:
 		bases_first_bin=ref_end-ref_start
 		coverage_data[first_bin]=float(bases_first_bin)/bin_size+coverage_data[first_bin]
@@ -72,7 +73,6 @@ def update_coverage(read,int bin_size,numpy.ndarray[DTYPE_t, ndim=1] coverage_da
 		coverage_data[i]+=1.0
 
 	return(coverage_data)
-
 
 #bam_file_name=sys.argv[1]
 

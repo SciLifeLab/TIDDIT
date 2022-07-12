@@ -111,9 +111,9 @@ def SA_analysis(read,min_q,splits,tag):
 
 	return(splits)
 
-def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_id):
+def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_id, int threads):
 
-	samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=ref)
+	samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=ref,index_filename="{}_tiddit/{}.csi".format(prefix,sample_id),threads=threads)
 	bam_header=samfile.header
 	cdef int bin_size=50
 	cdef str file_type="wig"
@@ -123,7 +123,6 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 	t_split=0
 	t_disc=0
 	t_tot=0
-
 
 	coverage_data,end_bin_size=tiddit_coverage.create_coverage(bam_header,bin_size)	
 
@@ -212,7 +211,6 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 	print("coverage",t_update)
 	print("split",t_split)
 	print("disc",t_disc)
-
 
 	#print("writing coverage wig")
 	#tiddit_coverage.print_coverage(coverage_data,bam_header,bin_size,file_type,outfile)

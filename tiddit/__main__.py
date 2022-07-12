@@ -16,7 +16,7 @@ import tiddit.tiddit_variant as tiddit_variant
 import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
 
 def main():
-	version="3.2.0"
+	version="3.3.0"
 	parser = argparse.ArgumentParser("""tiddit-{}""".format(version),add_help=False)
 	parser.add_argument("--sv"	 , help="call structural variation", required=False, action="store_true")
 	parser.add_argument("--cov"        , help="generate a coverage bed file", required=False, action="store_true")
@@ -31,6 +31,7 @@ def main():
 		parser.add_argument('-i', type=int, help="paired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (default= 99.9th percentile of insert size)")
 		parser.add_argument('-d', type=str,help="expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset")
 		parser.add_argument('-p', type=int,default=3, help="Minimum number of supporting pairs in order to call a variant (default 3)")
+		parser.add_argument('--threads', type=int,default=1, help="Number of threads (default=1)")
 		parser.add_argument('-r', type=int,default=3, help="Minimum number of supporting split reads to call a variant (default 3)")
 		parser.add_argument('-q', type=int,default=5, help="Minimum mapping quality to consider an alignment (default 5)")
 		parser.add_argument('-n', type=int,default=2, help="the ploidy of the organism,(default = 2)")
@@ -89,6 +90,7 @@ def main():
 	
 		bam_file_name=args.bam
 		samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=args.ref)
+
 		bam_header=samfile.header
 		samfile.close()
 
@@ -98,6 +100,7 @@ def main():
 		except:
 			sample_id=bam_file_name.split("/")[-1].split(".")[0]
 
+		pysam.index("-c","-m","6","-@",str(args.threads),bam_file_name,"{}_tiddit/{}.csi".format(args.o,sample_id))
 
 		samples=[sample_id]
 
@@ -109,7 +112,7 @@ def main():
 			contigs.append(contig["SN"])
 			contig_number[contig["SN"]]=i
 			contig_length[ contig["SN"] ]=contig["LN"]
-			i+=0
+			i+=1
 
 		prefix=args.o
 		try:
@@ -130,7 +133,7 @@ def main():
 
 
 		t=time.time()
-		coverage_data=tiddit_signal.main(bam_file_name,args.ref,prefix,min_mapq,max_ins_len,sample_id)
+		coverage_data=tiddit_signal.main(bam_file_name,args.ref,prefix,min_mapq,max_ins_len,sample_id,args.threads)
 		print("extracted signals in:")
 		print(t-time.time())
 
@@ -162,7 +165,6 @@ def main():
 		f.write(vcf_header+"\n")
 		
 		t=time.time()
-		#print(sv_clusters)
 		variants=tiddit_variant.main(bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len)
 		print("analyzed clusters in")
 		print(time.time()-t)
