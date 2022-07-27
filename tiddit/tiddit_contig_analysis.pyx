@@ -28,7 +28,14 @@ def read_contigs(aligned_contigs,prefix,sample_id,min_size):
 			continue
 
 		if read.has_tag("SA") and not (read.is_supplementary or read.is_secondary):
-			split_contigs=tiddit_signal.SA_analysis(read,-2,split_contigs,"SA")
+			split=tiddit_signal.SA_analysis(read,-2,"SA",read.reference_name)
+
+			if split:
+				if not split[2] in split_contigs[split[0]][split[1]]:
+					split_contigs[split[0]][split[1]][split[2]]=[]
+				split_contigs[split[0]][split[1]][split[2]]+=split[3:]
+
+			
 		elif read.has_tag("XA") and not (read.is_supplementary or read.is_secondary):
 			XA=read.get_tag("XA")
 			if XA.count(";") == 1:
@@ -44,7 +51,12 @@ def read_contigs(aligned_contigs,prefix,sample_id,min_size):
 					XA=",".join(xa_list)
 
 				read.set_tag("XA",XA)
-				split_contigs=tiddit_signal.SA_analysis(read,-2,split_contigs,"XA")
+				split=tiddit_signal.SA_analysis(read,-2,"XA",read.reference_name)
+
+				if split:
+					if not split[2] in split_contigs[split[0]][split[1]]:
+						split_contigs[split[0]][split[1]][split[2]]=[]
+					split_contigs[split[0]][split[1]][split[2]]+=split[3:]
 
 		elif not (read.is_supplementary or read.is_secondary) and len(read.cigartuples) > 2:
 

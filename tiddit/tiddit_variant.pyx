@@ -14,6 +14,7 @@ def get_region(samfile,str chr,int start,int end,int bp,int min_q,int max_ins, c
 	cdef int n_discs=0
 	cdef int n_splits=0
 
+
 	cdef int crossing_r=0
 	cdef int crossing_f=0
 
@@ -26,21 +27,32 @@ def get_region(samfile,str chr,int start,int end,int bp,int min_q,int max_ins, c
 	if q_end > contig_length:
 		q_end=contig_length
 
+	if q_start >= q_end:
+		q_start=q_end-10
+
+	cdef long read_reference_start
+	cdef long read_reference_end
+
+	cdef long r_start
+	cdef long r_end
+
 	for read in samfile.fetch(chr, q_start, q_end):
 		if read.is_unmapped:
 			continue
+
+		read_reference_start=read.reference_start
+
 		if not read.mate_is_unmapped:
-			if read.next_reference_start > end and read.reference_start > end:
+			if read.next_reference_start > end and read_reference_start > end:
 				continue		
 		else:
-			if read.reference_start > end:
+			if read_reference_start > end:
 				continue
-
 
 		if read.is_duplicate:
 			continue
 		
-		if not (read.reference_start > end):
+		if not (read_reference_start > end):
 			n_reads+=1
 			if read.mapq < min_q:
 				low_q+=1
@@ -48,27 +60,31 @@ def get_region(samfile,str chr,int start,int end,int bp,int min_q,int max_ins, c
 		if read.mapq < min_q:
 			continue
 
-		r_start=read.reference_start
-		r_end=read.reference_end
+		read_reference_end=read.reference_end
+		read_reference_name=read.reference_name
+		read_next_reference_name=read.next_reference_name
 
-		if r_start < bp-10 and r_end > bp:
+		r_start=read_reference_start
+		r_end=read_reference_end
+
+		if read_reference_start < bp-10 and r_end > bp:
 			crossing_r+=1
 
 		mate_bp_read= (read.next_reference_start < bp and r_end > bp)
-		discordant= ( abs(read.isize) > max_ins or read.next_reference_name != read.reference_name )
+		discordant= ( abs(read.isize) > max_ins or read_next_reference_name != read_reference_name )
 
 		if mate_bp_read and not discordant:
 			crossing_f+=1
 
-		if read.reference_end < start:
+		if read_reference_end < start:
 			continue
-		elif read.reference_start > end:
+		elif read_reference_start > end:
 			continue
 
-		if read.reference_start < start:
+		if read_reference_start < start:
 			r_start=start
 		
-		if read.reference_end > end:
+		if read_reference_end > end:
 			r_end=end
 
 		bases+=r_end-r_start+1
@@ -76,7 +92,7 @@ def get_region(samfile,str chr,int start,int end,int bp,int min_q,int max_ins, c
 		if read.has_tag("SA"):
 			n_splits+=1
 
-		if (abs(read.isize) > max_ins) or (read.next_reference_name != read.reference_name) :
+		if discordant:
 			n_discs+=1
 
 	coverage= bases/(end-start+1)

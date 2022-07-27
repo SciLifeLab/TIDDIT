@@ -75,6 +75,9 @@ def determine_ploidy(dict coverage_data,contigs,dict library,int ploidy,str pref
 		library["avg_coverage"]=c
 
 	for chromosome in contigs:
+		if not chromosome in coverage_data:
+			continue
+
 		avg_coverage_contig=library[ "avg_coverage_{}".format(chromosome) ]
 		library["contig_ploidy_{}".format(chromosome)]=int(round(ploidy*avg_coverage_contig/library["avg_coverage"]))
 		f.write("{}\t{}\t{}\t{}\n".format(chromosome,avg_coverage_contig/library["avg_coverage"]*ploidy,library["contig_ploidy_{}".format(chromosome)],avg_coverage_contig))

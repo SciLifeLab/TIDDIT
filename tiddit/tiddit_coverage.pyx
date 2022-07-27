@@ -7,17 +7,18 @@ cimport cython
 @cython.boundscheck(False)
 @cython.wraparound(False)
 
-def create_coverage(bam_header,bin_size):
+def create_coverage(bam_header,bin_size,c="all"):
 	coverage_data={}
 	end_bin_size={}
 
 	for contig in bam_header["SQ"]:
-		bins= int(math.ceil(contig["LN"]/float(bin_size)))
-		coverage_data[ contig["SN"] ]=numpy.zeros(bins)
-		end_bin_size[contig["SN"]]=contig["LN"]-(bins-1)*bin_size
-
+		if c == "all" or contig["SN"] == c:
+			bins= int(math.ceil(contig["LN"]/float(bin_size)))
+			coverage_data[ contig["SN"] ]=numpy.zeros(bins)
+			end_bin_size[contig["SN"]]=contig["LN"]-(bins-1)*bin_size
+			if c != "all":
+				return(coverage_data[ contig["SN"] ],end_bin_size[contig["SN"]])
 	return(coverage_data,end_bin_size)
-
 def print_coverage(coverage_data,bam_header,bin_size,file_type,outfile):
 	f=open(outfile,"w",buffering=819200)
 
@@ -44,33 +45,31 @@ def print_coverage(coverage_data,bam_header,bin_size,file_type,outfile):
 	f.close()
 
 ctypedef numpy.double_t DTYPE_t
-def update_coverage(read,int bin_size,coverage_data,int min_q,int end_bin_size):
-
-	cdef long ref_start=read.reference_start
-	cdef long ref_end=read.reference_end
+def update_coverage(long ref_start,long ref_end,int bin_size,numpy.ndarray[DTYPE_t, ndim=1] coverage_data,int end_bin_size):
 
 	cdef int first_bin=ref_start//bin_size
-	cdef int end_bin=int(ref_end-1)//bin_size
+	cdef int end_bin=(ref_end-1)//bin_size
 
-	cdef int bases_first_bin
-	
+	cdef float bases_first_bin
+
 	if end_bin == first_bin:
 		bases_first_bin=ref_end-ref_start
-		coverage_data[first_bin]=float(bases_first_bin)/bin_size+coverage_data[first_bin]
+		coverage_data[first_bin]=bases_first_bin/bin_size+coverage_data[first_bin]
 
 		return(coverage_data)
 
 	bases_first_bin=((first_bin+1)*bin_size)-ref_start
-	coverage_data[first_bin]=float(bases_first_bin)/bin_size+coverage_data[first_bin]	
-	cdef int bases_last_bin=(ref_end-1)-end_bin*bin_size
+	coverage_data[first_bin]=bases_first_bin/bin_size+coverage_data[first_bin]
+	cdef float bases_last_bin=(ref_end-1)-end_bin*bin_size
+
 
 	if end_bin < len(coverage_data)-1:
-		coverage_data[end_bin]+=float(bases_last_bin)/bin_size
+		coverage_data[end_bin]=bases_last_bin/bin_size+coverage_data[end_bin]
 	else:
-		coverage_data[end_bin]+=float(bases_last_bin)/end_bin_size
+		coverage_data[end_bin]=bases_last_bin/end_bin_size+coverage_data[end_bin]
 
 	for i in range(first_bin+1,end_bin):
-		coverage_data[i]+=1.0
+		coverage_data[i]=1.0+coverage_data[i]
 
 	return(coverage_data)
 
