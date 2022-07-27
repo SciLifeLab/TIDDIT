@@ -100,7 +100,6 @@ def main():
 		except:
 			sample_id=bam_file_name.split("/")[-1].split(".")[0]
 
-		pysam.index("-c","-m","6","-@",str(args.threads),bam_file_name,"{}_tiddit/{}.csi".format(args.o,sample_id))
 
 		samples=[sample_id]
 
@@ -120,6 +119,8 @@ def main():
 			os.mkdir("{}_tiddit/clips".format(prefix) )
 		except:
 			print("Folder already exists")
+
+		pysam.index("-c","-m","6","-@",str(args.threads),bam_file_name,"{}_tiddit/{}.csi".format(args.o,sample_id))
 	
 		min_mapq=args.q
 		max_ins_len=100000
@@ -133,7 +134,7 @@ def main():
 
 
 		t=time.time()
-		coverage_data=tiddit_signal.main(bam_file_name,args.ref,prefix,min_mapq,max_ins_len,sample_id,args.threads)
+		coverage_data=tiddit_signal.main(bam_file_name,args.ref,prefix,min_mapq,max_ins_len,sample_id,args.threads,args.min_contig)
 		print("extracted signals in:")
 		print(t-time.time())
 
@@ -204,7 +205,12 @@ def main():
 			t=time.time()
 			if read.mapq >= args.q:
 				n_reads+=1
-				coverage_data[read.reference_name]=tiddit_coverage.update_coverage(read,args.z,coverage_data[read.reference_name],args.q,end_bin_size[read.reference_name])
+
+				read_position=read.reference_start
+				read_end=read.reference_end
+				read_reference_name=read.reference_name
+
+				coverage_data[read_reference_name]=tiddit_coverage.update_coverage(read_position,read_end,args.z,coverage_data[read_reference_name],end_bin_size[read_reference_name])
 
 		if args.w:
 			tiddit_coverage.print_coverage(coverage_data,bam_header,args.z,"wig",args.o +".wig")
