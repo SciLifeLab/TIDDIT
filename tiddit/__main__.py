@@ -5,6 +5,7 @@ import time
 import pysam
 import os
 import shutil
+import glob
 
 import tiddit.tiddit_stats as tiddit_stats
 import tiddit.tiddit_signal as tiddit_signal
@@ -16,7 +17,7 @@ import tiddit.tiddit_variant as tiddit_variant
 import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
 
 def main():
-	version="3.2.0"
+	version="3.2.1"
 	parser = argparse.ArgumentParser("""tiddit-{}""".format(version),add_help=False)
 	parser.add_argument("--sv"	 , help="call structural variation", required=False, action="store_true")
 	parser.add_argument("--cov"        , help="generate a coverage bed file", required=False, action="store_true")
@@ -69,8 +70,8 @@ def main():
 				print("error, ropebwt2 executable missing, add ropebwt2 to path, or specify using --ropebwt2")
 				quit()
 
-			if not os.path.isfile(args.ref+".bwt") and not os.path.isfile(args.ref+".64.bwt"):
-				print ("error, The reference must be indexed using bwa index")
+			if not glob.glob("{}*.bwt*".format(args.ref)):
+				print ("error, The reference must be indexed using bwa index; run bwa index, or skip local assembly (--skip_assembly)")
 				quit()
 
 

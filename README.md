@@ -8,7 +8,7 @@ On a 30X human genome, the TIDDIT SV module typically completetes within 5 hours
 
 INSTALLATION
 ==============
-TIDDIT requires python3, cython, pysam, and Numpy.
+TIDDIT requires python3 (=> 3.8), cython, pysam, and Numpy.
 
 By default, tiddit will require, bwa, fermi2 and ropebwt2 for local assembly; local assembly may be disabled through the "--skip_assembly" parameter.
 
