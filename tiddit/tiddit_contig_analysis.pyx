@@ -28,7 +28,14 @@ def read_contigs(aligned_contigs,prefix,sample_id,min_size):
 			continue
 
 		if read.has_tag("SA") and not (read.is_supplementary or read.is_secondary):
-			split_contigs=tiddit_signal.SA_analysis(read,-2,split_contigs,"SA")
+			split=tiddit_signal.SA_analysis(read,-2,"SA",read.reference_name)
+
+			if split:
+				if not split[2] in split_contigs[split[0]][split[1]]:
+					split_contigs[split[0]][split[1]][split[2]]=[]
+				split_contigs[split[0]][split[1]][split[2]]+=split[3:]
+
+			
 		elif read.has_tag("XA") and not (read.is_supplementary or read.is_secondary):
 			XA=read.get_tag("XA")
 			if XA.count(";") == 1:
@@ -44,7 +51,12 @@ def read_contigs(aligned_contigs,prefix,sample_id,min_size):
 					XA=",".join(xa_list)
 
 				read.set_tag("XA",XA)
-				split_contigs=tiddit_signal.SA_analysis(read,-2,split_contigs,"XA")
+				split=tiddit_signal.SA_analysis(read,-2,"XA",read.reference_name)
+
+				if split:
+					if not split[2] in split_contigs[split[0]][split[1]]:
+						split_contigs[split[0]][split[1]][split[2]]=[]
+					split_contigs[split[0]][split[1]][split[2]]+=split[3:]
 
 		elif not (read.is_supplementary or read.is_secondary) and len(read.cigartuples) > 2:
 
@@ -114,9 +126,9 @@ def main(prefix,sample_id,library,contigs,coverage_data,args):
 	f.close()
 	del clips
 
-	os.system("{} -dNCr {}_tiddit/clips.fa | {} assemble -l 81 - > {}_tiddit/clips.fa.assembly.mag".format(args.ropebwt2,prefix,args.fermi2,prefix))
+	os.system("{} -dNCr {}_tiddit/clips.fa | {} assemble -t {} -l 81 - > {}_tiddit/clips.fa.assembly.mag".format(args.ropebwt2,prefix,args.fermi2,args.threads,prefix))
 	os.system("{} simplify -COS -d 0.8 {}_tiddit/clips.fa.assembly.mag 1> {}_tiddit/clips.fa.assembly.clean.mag 2> /dev/null".format(args.fermi2,prefix,prefix))
-	os.system("{} mem -x intractg {} {}_tiddit/clips.fa.assembly.clean.mag  1> {}_tiddit/clips.sam 2> /dev/null".format(args.bwa,args.ref,prefix,prefix))
+	os.system("{} mem -t {} -x intractg {} {}_tiddit/clips.fa.assembly.clean.mag  1> {}_tiddit/clips.sam 2> /dev/null".format(args.bwa,args.threads,args.ref,prefix,prefix))
 
 	read_contigs("{}_tiddit/clips.sam".format(prefix) , prefix, sample_id, args.z)
 	
