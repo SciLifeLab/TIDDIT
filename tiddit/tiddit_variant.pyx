@@ -23,7 +23,7 @@ def get_region(samfile,str chr,int start,int end,int bp,int min_q,int max_ins, c
 
 	q_start=start
 	q_end=end+max_ins
-	
+
 	if q_end > contig_length:
 		q_end=contig_length
 
@@ -44,14 +44,14 @@ def get_region(samfile,str chr,int start,int end,int bp,int min_q,int max_ins, c
 
 		if not read.mate_is_unmapped:
 			if read.next_reference_start > end and read_reference_start > end:
-				continue		
+				continue
 		else:
 			if read_reference_start > end:
 				continue
 
 		if read.is_duplicate:
 			continue
-		
+
 		if not (read_reference_start > end):
 			n_reads+=1
 			if read.mapq < min_q:
@@ -83,7 +83,7 @@ def get_region(samfile,str chr,int start,int end,int bp,int min_q,int max_ins, c
 
 		if read_reference_start < start:
 			r_start=start
-		
+
 		if read_reference_end > end:
 			r_end=end
 
@@ -133,7 +133,7 @@ def find_sv_type(chrA,chrB,inverted,non_inverted,args,sample_data,samples,librar
 				return("DUP:TANDEM",cn)
 		elif cn < p:
 			return("DEL",cn)
-		
+
 		elif inverted > non_inverted:
 			return("INV",cn)
 		else:
@@ -253,7 +253,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 					s=int(math.floor(posA/50.0))
 					e=int(math.floor(posB/50.0))+1
 					sample_data[sample]["covM"]=numpy.average(coverage_data[chrA][s:e] )
-				
+
 			inverted=0
 			non_inverted=0
 			for i in range(0,len(sv_clusters[chrA][chrB][cluster]["positions_A"]["orientation_discordants"]) ):
@@ -277,12 +277,12 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 			svtype,cn=find_sv_type(chrA,chrB,inverted,non_inverted,args,sample_data,samples,library)
 
 			filt=sv_filter(sample_data,args,chrA,chrB,posA,posB,max_ins_len,n_discordants,n_splits,library,sample_data[sample]["discA"],sample_data[sample]["discB"],sample_data[sample]["splitA"],sample_data[sample]["splitB"],n_contigs)
-			format_col="GT:CN:COV:DV:RV:LQ:RR:RD"
+			format_col="GT:CN:COV:DV:RV:LQ:RR:DR"
 
 			#configure filters for CNV based on Read depth
 			for sample in samples:
 				if "DEL" in svtype:
-					#homozygout del based on coverage 
+					#homozygout del based on coverage
 					if cn == 0:
 						filt="PASS"
 
@@ -294,7 +294,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 					if covA > covM*(cn+0.9) and covB > covM*(cn+0.9):
 						filt="PASS"
 
-				#too few reads, but clear RD signal
+				#too few reads, but clear DR signal
 				elif "DUP" in svtype and filt == "BelowExpectedLinks":
 					filt="PASS"
 
@@ -361,7 +361,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 							GT= "1/1"
 						else:
 							GT="0/1"
-							
+
 					variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
 				variants.append([chrA,posA,variant])
 			else:
@@ -472,7 +472,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 
 
 					variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
-				variants.append([chrB,posB,variant])				
+				variants.append([chrB,posB,variant])
 
 	samfile.close()
 	return(variants)
@@ -481,7 +481,7 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 	contig_seqs={}
 	new_seq=False
 	if not args.skip_assembly:
-		for line in open("{}_tiddit/clips.fa.assembly.clean.mag".format(args.o)):			
+		for line in open("{}_tiddit/clips.fa.assembly.clean.mag".format(args.o)):
 
 			if not new_seq and line[0] == "@" and "\t" in line:
 				name=line.split("\t")[0][1:]
@@ -501,5 +501,5 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 	for v in variants_list:
 		for variant in v:
 			variants[ variant[0] ].append( [ variant[1],variant[2] ] )
-		
+
 	return(variants)
