@@ -238,7 +238,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 
 				sample_data[sample]={}
 				sample_data[sample]={"covA":coverageA,"QA":frac_low_qA,"discA":n_discsA,"splitA":n_splitsA,"refRA":crossing_r_A,"refFA":crossing_f_A}
-				sample_data[sample].update({"covB":coverageB,"QB":frac_low_qA,"discB":n_discsB,"splitB":n_splitsB,"refRB":crossing_r_B,"refFB":crossing_f_B})
+				sample_data[sample].update({"covB":coverageB,"QB":frac_low_qB,"discB":n_discsB,"splitB":n_splitsB,"refRB":crossing_r_B,"refFB":crossing_f_B})
 
 				if chrA != chrB:
 					sample_data[sample]["covM"]=0
