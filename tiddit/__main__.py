@@ -17,7 +17,7 @@ import tiddit.tiddit_variant as tiddit_variant
 import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
 
 def main():
-	version="3.3.1"
+	version="3.3.2"
 	parser = argparse.ArgumentParser("""tiddit-{}""".format(version),add_help=False)
 	parser.add_argument("--sv"	 , help="call structural variation", required=False, action="store_true")
 	parser.add_argument("--cov"        , help="generate a coverage bed file", required=False, action="store_true")
@@ -88,7 +88,7 @@ def main():
 		if not os.path.isfile(args.bam):
 			print ("error,  could not find the bam file")
 			quit()
-	
+
 		bam_file_name=args.bam
 		samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=args.ref)
 
@@ -122,10 +122,10 @@ def main():
 			print("Folder already exists")
 
 		pysam.index("-c","-m","6","-@",str(args.threads),bam_file_name,"{}_tiddit/{}.csi".format(args.o,sample_id))
-	
+
 		min_mapq=args.q
 		max_ins_len=100000
-		n_reads=args.s 
+		n_reads=args.s
 
 		library=tiddit_stats.statistics(bam_file_name,args.ref,min_mapq,max_ins_len,n_reads)
 		if args.i:
@@ -153,29 +153,29 @@ def main():
 			print(time.time()-t)
 
 		vcf_header=tiddit_vcf_header.main( bam_header,library,sample_id,version )
-	
+
 		if not args.e:
 			args.e=int(library["avg_insert_size"]/2.0)
-	
+
 		t=time.time()
 		sv_clusters=tiddit_cluster.main(prefix,contigs,contig_length,samples,library["mp"],args.e,args.l,max_ins_len,args.min_contig,args.skip_assembly)
-	
+
 		print("generated clusters in")
 		print(time.time()-t)
-	
+
 		f=open(prefix+".vcf","w")
 		f.write(vcf_header+"\n")
-		
+
 		t=time.time()
 		variants=tiddit_variant.main(bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len)
 		print("analyzed clusters in")
 		print(time.time()-t)
-	
+
 		for chr in contigs:
 			if not chr in variants:
 				continue
 			for variant in sorted(variants[chr], key=lambda x: x[0]):
-				f.write( "\t".join(variant[1])+"\n" ) 
+				f.write( "\t".join(variant[1])+"\n" )
 		f.close()
 		quit()
 
