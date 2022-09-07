@@ -111,7 +111,6 @@ optional parameters:
 
     -o - the prefix of the output files
     -z - compute the coverage within bins of a specified size across the entire genome, default bin size is 500
-    -u - do not print per bin quality values
     -w - generate a wig file instead of bed
  --ref - reference sequence (fasta), required for reading cram file.
 
