@@ -6,6 +6,37 @@ from joblib import Parallel, delayed
 #from pysam.libcalignmentfile cimport AlignmentFile, AlignedSegment
 from pysam import AlignmentFile, AlignedSegment
 
+
+def scoring(scoring_dict,percentiles):
+	score=[0]
+	if scoring_dict["n_contigs"]:
+		score.append(50)
+
+	if scoring_dict["n_discordants"]:
+		score.append(0)
+		for p in percentiles["FA"]:
+			if scoring_dict["n_discordants"]/(scoring_dict["refFA"]+scoring_dict["n_discordants"]) >= p:
+				score[-1]+=5
+
+		score.append(0)
+		for p in percentiles["FB"]:
+			if scoring_dict["n_discordants"]/(scoring_dict["refFB"]+scoring_dict["n_discordants"]) >= p:
+				score[-1]+=5
+
+
+	if scoring_dict["n_splits"]:
+		score.append(0)
+		for p in percentiles["RA"]:
+			if scoring_dict["n_splits"]/(scoring_dict["refRA"]+scoring_dict["n_splits"]) >= p:
+				score[-1]+=5
+
+		score.append(0)
+		for p in percentiles["RB"]:
+			if scoring_dict["n_splits"]/(scoring_dict["refRB"]+scoring_dict["n_splits"]) >= p:
+				score[-1]+=5
+
+	return(max(score))
+
 def get_region(samfile,str chr,int start,int end,int bp,int min_q,int max_ins, contig_number):
 
 	cdef int low_q=0
@@ -67,10 +98,10 @@ def get_region(samfile,str chr,int start,int end,int bp,int min_q,int max_ins, c
 		r_start=read_reference_start
 		r_end=read_reference_end
 
-		if read_reference_start < bp-10 and r_end > bp:
+		if read_reference_start < bp-20 and r_end > bp+20:
 			crossing_r+=1
 
-		mate_bp_read= (read.next_reference_start < bp and r_end > bp)
+		mate_bp_read= (read.next_reference_start < bp-50 and r_end > bp+50)
 		discordant= ( abs(read.isize) > max_ins or read_next_reference_name != read_reference_name )
 
 		if mate_bp_read and not discordant:
@@ -281,14 +312,16 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 
 			#configure filters for CNV based on Read depth
 			for sample in samples:
+
+				covA=sample_data[sample]["covA"]
+				covM=sample_data[sample]["covM"]
+				covB=sample_data[sample]["covB"]
+
 				if "DEL" in svtype:
 					#homozygout del based on coverage
 					if cn == 0:
 						filt="PASS"
 
-					covA=sample_data[sample]["covA"]
-					covM=sample_data[sample]["covM"]
-					covB=sample_data[sample]["covB"]
 
 					#normal coverage on the flanking regions, abnormal inbetween
 					if covA > covM*(cn+0.9) and covB > covM*(cn+0.9):
@@ -297,8 +330,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 				#too few reads, but clear DR signal
 				elif "DUP" in svtype and filt == "BelowExpectedLinks":
 					filt="PASS"
-
-
+				scoring_dict={"n_contigs":n_contigs, "n_discordants":n_discordants,"n_splits":n_splits,"covA":covA,"covM":covM,"covB":covB,"refRA":sample_data[sample]["refRA"],"refRB":sample_data[sample]["refRB"],"refFA":sample_data[sample]["refFA"],"refFB":sample_data[sample]["refFB"]}
 
 			if svtype != "BND":
 				info=["SVTYPE={}".format(svtype),"SVLEN={}".format(posB-posA),"END={}".format(posB)]
@@ -363,7 +395,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 							GT="0/1"
 
 					variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
-				variants.append([chrA,posA,variant])
+				variants.append([chrA,posA,variant,scoring_dict])
 			else:
 				info=["SVTYPE=BND".format(svtype)]
 				inverted=False
@@ -439,7 +471,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 
 
 					variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
-				variants.append([chrA,posA,variant])
+				variants.append([chrA,posA,variant,scoring_dict])
 
 
 				variant=[chrB,str(posB),"SV_{}_2".format(var_n),"N",alt_str_b,".",filt,info,format_col]
@@ -472,7 +504,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 
 
 					variant.append( "{}:{}:{},{},{}:{}:{}:{},{}:{},{}:{},{}".format(GT,cn,sample_data[sample]["covA"],sample_data[sample]["covM"],sample_data[sample]["covB"],n_discordants,n_splits,sample_data[sample]["QA"],sample_data[sample]["QB"],sample_data[sample]["refRA"],sample_data[sample]["refRB"],sample_data[sample]["refFA"],sample_data[sample]["refFB"]) )
-				variants.append([chrB,posB,variant])
+				variants.append([chrB,posB,variant, scoring_dict ])
 
 	samfile.close()
 	return(variants)
@@ -498,8 +530,25 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 
 	variants_list=Parallel(n_jobs=args.threads)( delayed(define_variant)(chrA,bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len,contig_seqs) for chrA in sv_clusters)
 
+	ratios={"fragments_A":[],"fragments_B":[],"reads_A":[],"reads_B":[]}
 	for v in variants_list:
 		for variant in v:
+			if variant[3]["n_discordants"]:
+				ratios["fragments_A"].append(variant[3]["n_discordants"]/(variant[3]["refFA"]+variant[3]["n_discordants"]) )
+				ratios["fragments_B"].append(variant[3]["n_discordants"]/(variant[3]["refFB"]+variant[3]["n_discordants"]) )
+
+			if variant[3]["n_splits"]:
+				ratios["reads_A"].append(variant[3]["n_splits"]/(variant[3]["refRA"]+variant[3]["n_splits"]) )
+				ratios["reads_B"].append(variant[3]["n_splits"]/(variant[3]["refRB"]+variant[3]["n_splits"]) )
+
+
+	p=[1,5,10,20,30,40,50,60,70,75,80,85,90,95,97.5,99]
+	percentiles={"FA":numpy.percentile(ratios["fragments_A"],p),"FB":numpy.percentile(ratios["fragments_B"],p),"RA":numpy.percentile(ratios["reads_A"],p),"RB":numpy.percentile(ratios["reads_B"],p)}
+
+	for v in variants_list:
+		for variant in v:	
+			score=scoring(variant[3],percentiles)
+			variant[2][5]=str(score)
 			variants[ variant[0] ].append( [ variant[1],variant[2] ] )
 
 	return(variants)

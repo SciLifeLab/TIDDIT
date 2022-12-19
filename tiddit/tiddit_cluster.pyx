@@ -70,7 +70,7 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 				if int(posB) > contig_length[chrB]:
 					posA=contig_length[chrB]
 	
-			discordants[chrA][chrB].append([content[0],sample,"D",posA,content[5],posB,content[8],i])
+			discordants[chrA][chrB].append([content[0],sample,"D",posA,content[5],posB,content[8],i,int(content[3]),int(content[4]),int(content[6]),int(content[7])])
 			positions[chrA][chrB].append([int(posA),int(posB),i])
 			i+=1
 
@@ -99,7 +99,7 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 			if int(posB) > contig_length[chrB]:
 				posB=contig_length[chrB]
 
-			discordants[chrA][chrB].append([content[0],sample,"S",posA,content[4],posB,content[6],i])
+			discordants[chrA][chrB].append([content[0],sample,"S",posA,content[4],posB,content[6],i,int(content[7]),int(content[8]),int(content[9]),int(content[10])])
 			positions[chrA][chrB].append([int(posA),int(posB),i])
 			i+=1
 
@@ -132,7 +132,7 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 				if int(posB) > contig_length[chrB]:
 					posB=contig_length[chrB]
 
-				discordants[chrA][chrB].append([content[0],sample,"A",posA,content[4],posB,content[6],i])
+				discordants[chrA][chrB].append([content[0],sample,"A",posA,content[4],posB,content[6],i,int(content[7]),int(content[8]),int(content[9]),int(content[10])])
 				positions[chrA][chrB].append([int(posA),int(posB),i])
 				contigs.add(i)
 				i+=1
@@ -197,6 +197,9 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 					candidates[chrA][chrB][candidate]["positions_A"]["orientation_contigs"]=[]
 					candidates[chrA][chrB][candidate]["positions_A"]["orientation_splits"]=[]
 					candidates[chrA][chrB][candidate]["positions_A"]["orientation_discordants"]=[]
+					candidates[chrA][chrB][candidate]["positions_A"]["start"]=[]
+					candidates[chrA][chrB][candidate]["positions_A"]["end"]=[]
+
 					candidates[chrA][chrB][candidate]["start_A"]=0
 					candidates[chrA][chrB][candidate]["end_A"]=0
 
@@ -208,6 +211,8 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 					candidates[chrA][chrB][candidate]["positions_B"]["orientation_contigs"]=[]
 					candidates[chrA][chrB][candidate]["positions_B"]["orientation_splits"]=[]
 					candidates[chrA][chrB][candidate]["positions_B"]["orientation_discordants"]=[]
+					candidates[chrA][chrB][candidate]["positions_B"]["start"]=[]
+					candidates[chrA][chrB][candidate]["positions_B"]["end"]=[]
 
 					candidates[chrA][chrB][candidate]["start_B"]=0
 					candidates[chrA][chrB][candidate]["end_B"]=0
@@ -218,7 +223,13 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 					candidates[chrA][chrB][candidate]["sample_contigs"][discordants[chrA][chrB][i][1]]=set([])
 
 				candidates[chrA][chrB][candidate]["samples"].add(discordants[chrA][chrB][i][1])
-				
+
+				candidates[chrA][chrB][candidate]["positions_A"]["start"].append(discordants[chrA][chrB][i][8])
+				candidates[chrA][chrB][candidate]["positions_A"]["end"].append(discordants[chrA][chrB][i][9])
+
+				candidates[chrA][chrB][candidate]["positions_B"]["start"].append(discordants[chrA][chrB][i][10])
+				candidates[chrA][chrB][candidate]["positions_B"]["end"].append(discordants[chrA][chrB][i][11])
+
 				if discordants[chrA][chrB][i][2] == "D":
 					candidates[chrA][chrB][candidate]["discordants"].add(discordants[chrA][chrB][i][0])
 					candidates[chrA][chrB][candidate]["positions_A"]["discordants"].append(int(discordants[chrA][chrB][i][3]))
@@ -321,11 +332,11 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 					candidates[chrA][chrB][candidate]["posA"]
 					candidates[chrA][chrB][candidate]["posB"]
 
-				candidates[chrA][chrB][candidate]["startB"]=min(candidates[chrA][chrB][candidate]["positions_B"]["contigs"]+candidates[chrA][chrB][candidate]["positions_B"]["splits"]+candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
-				candidates[chrA][chrB][candidate]["endB"]=max(candidates[chrA][chrB][candidate]["positions_B"]["contigs"]+candidates[chrA][chrB][candidate]["positions_B"]["splits"]+candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
+				candidates[chrA][chrB][candidate]["startB"]=min(candidates[chrA][chrB][candidate]["positions_B"]["start"])
+				candidates[chrA][chrB][candidate]["endB"]=max(candidates[chrA][chrB][candidate]["positions_B"]["end"])
 
-				candidates[chrA][chrB][candidate]["startA"]=min(candidates[chrA][chrB][candidate]["positions_A"]["contigs"]+candidates[chrA][chrB][candidate]["positions_A"]["splits"]+candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
-				candidates[chrA][chrB][candidate]["endA"]=max(candidates[chrA][chrB][candidate]["positions_A"]["contigs"]+candidates[chrA][chrB][candidate]["positions_A"]["splits"]+candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
+				candidates[chrA][chrB][candidate]["startA"]=min(candidates[chrA][chrB][candidate]["positions_A"]["start"])
+				candidates[chrA][chrB][candidate]["endA"]=max(candidates[chrA][chrB][candidate]["positions_A"]["end"])
 
 	return(candidates)
 
