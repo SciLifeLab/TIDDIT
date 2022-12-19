@@ -20,7 +20,7 @@ else:
 
 setup(
     name = 'tiddit',
-    version = '3.3.2',
+    version = '3.4.0',
 
     url = "https://github.com/SciLifeLab/TIDDIT",
     author = "Jesper Eisfeldt",

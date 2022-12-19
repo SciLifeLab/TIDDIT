@@ -66,18 +66,40 @@ def SA_analysis(read,min_q,tag,reference_name):
 	cdef long read_query_alignment_end=read.query_alignment_end
 
 	if (read.query_alignment_start ) < (read.query_length - read_query_alignment_end):
-		split_pos=read.reference_end+1
+		if read.is_reverse:
+
+
+			split_pos=read.reference_start+1
+		else:
+			split_pos=read.reference_end+1		
 	else:
-		split_pos=read.reference_start+1
+		if read.is_reverse:
+			split_pos=read.reference_end+1
+		else:
+			split_pos=read.reference_start+1
 
 	supplementry_alignment=find_SA_query_range(SA_data)
 	SA_chr=SA_data[0]
 
+	startA=read.reference_start+1
+	endA=read.reference_end+1
+
+	startB=supplementry_alignment.reference_start
+	endB=supplementry_alignment.reference_end
+
 
 	if (supplementry_alignment.query_alignment_start ) < (supplementry_alignment.query_length - read_query_alignment_end):
-		SA_split_pos=supplementry_alignment.reference_end
+		if SA_data[2] == "-":
+
+			SA_split_pos=supplementry_alignment.reference_start
+		else:
+			SA_split_pos=supplementry_alignment.reference_end
 	else:
-		SA_split_pos=supplementry_alignment.reference_start
+		if SA_data[2] == "-":
+			SA_split_pos=supplementry_alignment.reference_end
+
+		else:
+			SA_split_pos=supplementry_alignment.reference_start
 
 
 	if SA_chr < reference_name:
@@ -86,6 +108,12 @@ def SA_analysis(read,min_q,tag,reference_name):
 		tmp=split_pos
 		split_pos=SA_split_pos
 		SA_split_pos=tmp
+
+		startB=read.reference_start+1
+		endB=read.reference_end+1
+		startA=supplementry_alignment.reference_start
+		endA=supplementry_alignment.reference_end
+
 
 	else:
 		chrA=reference_name
@@ -97,11 +125,16 @@ def SA_analysis(read,min_q,tag,reference_name):
 				split_pos=SA_split_pos
 				SA_split_pos=tmp
 
+				startB=read.reference_start+1
+				endB=read.reference_end+1
+				startA=supplementry_alignment.reference_start
+				endA=supplementry_alignment.reference_end
+
 	split=[]
 	if "-" == SA_data[2]:
-		split=[chrA,chrB,read.query_name,split_pos,read.is_reverse,SA_split_pos, True]
+		split=[chrA,chrB,read.query_name,split_pos,read.is_reverse,SA_split_pos, True,startA,endA,startB,endB]
 	else:
-		split=[chrA,chrB,read.query_name,split_pos,read.is_reverse,SA_split_pos,False]
+		split=[chrA,chrB,read.query_name,split_pos,read.is_reverse,SA_split_pos,False,startA,endA,startB,endB]
 		#splits[chrA][chrB][read.query_name]+=[split_pos,read.is_reverse,SA_split_pos,False]
 
 	return(split)

@@ -63,7 +63,8 @@ def read_contigs(aligned_contigs,prefix,sample_id,min_size):
 			current_bp=read.reference_start
 			for i in range(0,len(read.cigartuples)-1):
 				if read.cigartuples[i][0] == 2 and read.cigartuples[i][1] > min_size:
-					split_contigs[read.reference_name][read.reference_name]["{}_d_{}".format(read.query_name,i)]=[current_bp,read.is_reverse,current_bp+read.cigartuples[i][1],read.is_reverse]
+					
+					split_contigs[read.reference_name][read.reference_name]["{}_d_{}".format(read.query_name,i)]=[current_bp,read.is_reverse,current_bp+read.cigartuples[i][1],read.is_reverse,read.reference_start,current_bp,current_bp+read.cigartuples[i][1],read.reference_end]
 				current_bp+=read.cigartuples[i][1]
 
 	f=open("{}_tiddit/contigs_{}.tab".format(prefix,sample_id),"w")
