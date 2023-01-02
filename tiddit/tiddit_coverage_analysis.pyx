@@ -1,4 +1,5 @@
 import numpy
+import re
 cimport numpy
 import pysam
 import gzip
@@ -19,7 +20,9 @@ def get_gc(str reference_fasta,bam_header,bin_size):
 		with gzip.open(reference_fasta, 'r') as f:
 			sequence=f.read()
 
-	split_reference=sequence.split(">")
+
+	#split_reference=sequence.split(">")
+	split_reference=re.split("\n>|^>", sequence)
 	del sequence
 	del split_reference[0]
 
