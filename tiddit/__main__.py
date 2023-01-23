@@ -115,11 +115,8 @@ def main():
 			i+=1
 
 		prefix=args.o
-		try:
-			os.mkdir( "{}_tiddit".format(prefix) )
-			os.mkdir("{}_tiddit/clips".format(prefix) )
-		except:
-			print("Folder already exists")
+		os.mkdir(f"{prefix}_tiddit")
+		os.mkdir(f"{prefix}_tiddit/clips")
 
 		pysam.index("-c","-m","6","-@",str(args.threads),bam_file_name,"{}_tiddit/{}.csi".format(args.o,sample_id))
 
