@@ -42,23 +42,13 @@ TIDDIT may be installed using bioconda:
 ```
 conda install tiddit
 ```
-	
-Next, you may run TIDDIT like this:
-```
-tiddit --help
-tiddit --sv
-tiddit --cov
-```
 
-TIDDIT is also distributed with a Docker container (http://singularity.lbl.gov/index.html). Type the following command to download the container:
+or using the docker image on biocontainers
 ```
-singularity pull --name TIDDIT.simg 
+docker pull quay.io/biocontainers/tiddit:<tag>
 ```
+visit https://quay.io/repository/biocontainers/tiddit?tab=tags for tags.
 
-Type the following to run tiddit:
-```
-singularity exec TIDDIT.simg tiddit
-```
 
 The SV module
 =============
