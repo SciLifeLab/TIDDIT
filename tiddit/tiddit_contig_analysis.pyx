@@ -39,13 +39,13 @@ def read_contigs(aligned_contigs,prefix,sample_id,min_size):
 		elif read.has_tag("XA") and not (read.is_supplementary or read.is_secondary):
 			XA=read.get_tag("XA")
 			if XA.count(";") == 1:
-				if "-" in XA:
-					XA=XA.replace("-","")
+				if ",-" in XA:
+					XA=XA.replace(",-",",")
 					xa_list=XA.split(",")
 					xa_list.insert(2,"-")
 					XA=",".join(xa_list)
 				else:
-					XA=XA.replace("+","")
+					XA=XA.replace(",+",",")
 					xa_list=XA.split(",")
 					xa_list.insert(2,"+")
 					XA=",".join(xa_list)
