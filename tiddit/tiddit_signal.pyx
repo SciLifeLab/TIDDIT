@@ -65,7 +65,13 @@ def SA_analysis(read,min_q,tag,reference_name):
 
 	cdef long read_query_alignment_end=read.query_alignment_end
 
-	if (read.query_alignment_start ) < (read.query_length - read_query_alignment_end):
+	clip_before=False
+
+	supplementry_alignment=find_SA_query_range(SA_data)
+	if supplementry_alignment.query_alignment_start < read.query_alignment_start:
+		clip_before=True
+
+	if not clip_before:
 		if read.is_reverse:
 
 
@@ -78,7 +84,6 @@ def SA_analysis(read,min_q,tag,reference_name):
 		else:
 			split_pos=read.reference_start+1
 
-	supplementry_alignment=find_SA_query_range(SA_data)
 	SA_chr=SA_data[0]
 
 	startA=read.reference_start+1
@@ -87,8 +92,7 @@ def SA_analysis(read,min_q,tag,reference_name):
 	startB=supplementry_alignment.reference_start
 	endB=supplementry_alignment.reference_end
 
-
-	if (supplementry_alignment.query_alignment_start ) < (supplementry_alignment.query_length - read_query_alignment_end):
+	if clip_before:
 		if SA_data[2] == "-":
 
 			SA_split_pos=supplementry_alignment.reference_start
@@ -190,6 +194,9 @@ def worker(str chromosome, str bam_file_name,str ref,str prefix,int min_q,int ma
 				splits.append(split)
 
 		if read.mate_is_unmapped:
+			continue
+
+		if not read.is_paired:
 			continue
 
 
