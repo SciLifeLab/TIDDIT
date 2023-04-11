@@ -37,7 +37,7 @@ def find_discordant_pos(fragment,is_mp):
 
 	return(posA,posB)
 
-def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,min_contig,skip_assembly):
+def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,min_contig,skip_assembly,min_reads):
 
 	discordants={}
 	contigs=set([])
@@ -265,13 +265,18 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 				candidates[chrA][chrB][candidate]["N_splits"]=len(candidates[chrA][chrB][candidate]["splits"])
 				candidates[chrA][chrB][candidate]["N_contigs"]=len(candidates[chrA][chrB][candidate]["contigs"])
 
-				if candidates[chrA][chrB][candidate]["N_contigs"]:
-					candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["contigs"])
-					candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["contigs"])
-				elif candidates[chrA][chrB][candidate]["N_splits"]:
+
+				if candidates[chrA][chrB][candidate]["N_splits"] and min_reads <= candidates[chrA][chrB][candidate]["N_splits"]:
 					candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["splits"])
 					candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["splits"])
 
+				elif candidates[chrA][chrB][candidate]["N_contigs"]:
+					candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["contigs"])
+					candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["contigs"])
+
+				elif candidates[chrA][chrB][candidate]["N_splits"]:
+					candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["splits"])
+					candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["splits"])				
 
 				else:
 					reverse_A = candidates[chrA][chrB][candidate]["positions_A"]["orientation_discordants"].count("True")
@@ -327,10 +332,6 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 						candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
 						candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
 
-
-
-					candidates[chrA][chrB][candidate]["posA"]
-					candidates[chrA][chrB][candidate]["posB"]
 
 				candidates[chrA][chrB][candidate]["startB"]=min(candidates[chrA][chrB][candidate]["positions_B"]["start"])
 				candidates[chrA][chrB][candidate]["endB"]=max(candidates[chrA][chrB][candidate]["positions_B"]["end"])
