@@ -22,6 +22,7 @@ setup(
     name = 'tiddit',
     version = '3.6.0',
 
+
     url = "https://github.com/SciLifeLab/TIDDIT",
     author = "Jesper Eisfeldt",
     author_email= "jesper.eisfeldt@scilifelab.se",
