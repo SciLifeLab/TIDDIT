@@ -7,6 +7,22 @@ from joblib import Parallel, delayed
 from pysam import AlignmentFile, AlignedSegment
 
 
+
+def percentile(a, q):
+	size = len(a)
+	percentiles=[]
+
+	sorted_a=sorted(a)
+
+	for v in q:
+		if not size:
+			percentiles.append(0)
+		else:
+			percentiles.append( sorted_a[ int(math.ceil((size * v) / 100.0)) - 1 ] )
+
+	return(percentiles)
+
+
 def scoring(scoring_dict,percentiles):
 	score=[0]
 	if scoring_dict["n_contigs"]:
@@ -543,7 +559,8 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 
 
 	p=[1,5,10,20,30,40,50,60,70,75,80,85,90,95,97.5,99]
-	percentiles={"FA":numpy.percentile(ratios["fragments_A"],p),"FB":numpy.percentile(ratios["fragments_B"],p),"RA":numpy.percentile(ratios["reads_A"],p),"RB":numpy.percentile(ratios["reads_B"],p)}
+
+	percentiles={"FA":percentile(ratios["fragments_A"],p),"FB":percentile(ratios["fragments_B"],p),"RA":percentile(ratios["reads_A"],p),"RB":percentile(ratios["reads_B"],p)}
 
 	for v in variants_list:
 		for variant in v:	
