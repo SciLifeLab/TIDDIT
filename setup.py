@@ -1,5 +1,9 @@
 from setuptools import setup
 import numpy
+import pyximport
+import pysam
+pyximport.install()
+
 
 try:
     from Cython.Build import cythonize
@@ -20,14 +24,16 @@ else:
 
 setup(
     name = 'tiddit',
-    version = '3.6.1',
+    version = '3.7.0',
 
 
     url = "https://github.com/SciLifeLab/TIDDIT",
     author = "Jesper Eisfeldt",
     author_email= "jesper.eisfeldt@scilifelab.se",
     ext_modules = ext_modules,
-    include_dirs=[numpy.get_include()],
+    extra_link_args=pysam.get_libraries(),
+    define_macros=pysam.get_defines(),
+    include_dirs=[numpy.get_include()]+pysam.get_include(),
     packages = ['tiddit'],
     install_requires = ['numpy','pysam'],
     entry_points = {'console_scripts': ['tiddit = tiddit.__main__:main']},

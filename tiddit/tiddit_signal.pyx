@@ -4,11 +4,12 @@ import os
 import itertools
 import time
 from joblib import Parallel, delayed
+from pysam.libcalignmentfile cimport AlignmentFile, AlignedSegment
 
 import tiddit.tiddit_coverage as tiddit_coverage
 
 def find_SA_query_range(SA):
-	a =pysam.AlignedSegment()
+	cdef a =pysam.AlignedSegment()
 	a.reference_start=int( SA[1] )
 
 	if SA[2] == "+":
@@ -143,21 +144,27 @@ def SA_analysis(read,min_q,tag,reference_name):
 
 	return(split)
 
-def worker(str chromosome, str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_id, int bin_size):
+def worker(str chromosome, str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_id, int bin_size,skip_index):
 	print("Collecting signals on contig: {}".format(chromosome))
-	samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=ref,index_filename="{}_tiddit/{}.csi".format(prefix,sample_id))
+
+	bam_index="{}_tiddit/{}.csi".format(prefix,sample_id)
+	if skip_index:
+		bam_index=False
+
+	cdef AlignmentFile samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=ref,index_filename=bam_index)
 	bam_header=samfile.header
 	coverage_data,end_bin_size=tiddit_coverage.create_coverage(bam_header,bin_size,chromosome)	
 
-	clips=[]
-	data=[]
-	splits=[]
+	cdef list clips=[]
+	cdef list data=[]
+	cdef list splits=[]
 
-	clip_dist=100
+	cdef int clip_dist=100
 
 	cdef long read_position
 	cdef long read_end
 	cdef int mapq
+	cdef AlignedSegment read
 
 	for read in samfile.fetch(chromosome,until_eof=True):
 
@@ -219,16 +226,16 @@ def worker(str chromosome, str bam_file_name,str ref,str prefix,int min_q,int ma
 
 	return(chromosome,data,splits,coverage_data, "{}_tiddit/clips/{}.fa".format(prefix,chromosome) )
 
-def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_id, int threads, int min_contig):
+def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_id, int threads, int min_contig,skip_index):
 
-	samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=ref,index_filename="{}_tiddit/{}.csi".format(prefix,sample_id))
+	cdef AlignmentFile samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=ref)
 	bam_header=samfile.header
 	samfile.close()
 	cdef int bin_size=50
-	cdef str file_type="wig"
+	cdef str file_type=u"wig"
 	cdef str outfile=prefix+".tiddit_coverage.wig"
 
-	t_tot=0
+	cdef long t_tot=0
 
 	cdef dict data={}
 	cdef dict splits={}
@@ -248,7 +255,7 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 			splits[chrA["SN"]][chrB["SN"]]={}
 
 	t=time.time()
-	res=Parallel(n_jobs=threads)( delayed(worker)(chromosome,bam_file_name,ref,prefix,min_q,max_ins,sample_id,bin_size) for chromosome in chromosomes )
+	res=Parallel(n_jobs=threads,timeout=99999)( delayed(worker)(chromosome,bam_file_name,ref,prefix,min_q,max_ins,sample_id,bin_size,skip_index) for chromosome in chromosomes )
 
 	chromosomes=set(chromosomes)
 	for i in range(0,len(res)):

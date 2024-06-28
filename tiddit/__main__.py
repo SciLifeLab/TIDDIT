@@ -17,7 +17,7 @@ import tiddit.tiddit_variant as tiddit_variant
 import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
 
 def main():
-	version="3.6.1"
+	version="3.7.0"
 	parser = argparse.ArgumentParser("""tiddit-{}""".format(version),add_help=False)
 	parser.add_argument("--sv"	 , help="call structural variation", required=False, action="store_true")
 	parser.add_argument("--cov"        , help="generate a coverage bed file", required=False, action="store_true")
@@ -27,6 +27,7 @@ def main():
 
 		parser = argparse.ArgumentParser("""tiddit --sv --bam inputfile [-o prefix] --ref ref.fasta""")
 		parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
+		parser.add_argument('--force_overwrite'       , help="force the analysis and overwrite any data in the output folder", required=False, action="store_true")
 		parser.add_argument('--bam', type=str,required=True, help="coordinate sorted bam file(required)")
 		parser.add_argument('-o', type=str,default="output", help="output prefix(default=output)")
 		parser.add_argument('-i', type=int, help="paired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (default= 99.9th percentile of insert size)")
@@ -48,6 +49,7 @@ def main():
 		parser.add_argument('--fermi2', type=str,default="fermi2", help="path to fermi2 executable file (default=fermi2)")
 		parser.add_argument('--ropebwt2', type=str , default="ropebwt2", help="path to ropebwt2 executable file (default=ropebwt2)")
 		parser.add_argument('--skip_assembly', action="store_true", help="Skip running local assembly, tiddit will perform worse, but wont require fermi2, bwa, ropebwt and bwa indexed ref")
+		#parser.add_argument('--skip_index', action="store_true", help="Do not generate the csi index")
 		parser.add_argument('--p_ratio', type=float,default=0.1, help="minimum discordant pair/normal pair ratio at the breakpoint junction(default=0.1)")
 		parser.add_argument('--r_ratio', type=float,default=0.1, help="minimum split read/coverage ratio at the breakpoint junction(default=0.1)")
 		parser.add_argument('--max_coverage', type=float,default=4, help="filter call if X times higher than chromosome average coverage (default=4)")
@@ -115,10 +117,21 @@ def main():
 			i+=1
 
 		prefix=args.o
-		os.mkdir(f"{prefix}_tiddit")
-		os.mkdir(f"{prefix}_tiddit/clips")
+		try:
+			os.mkdir(f"{prefix}_tiddit")
+			os.mkdir(f"{prefix}_tiddit/clips")
+		except:
+			if args.force_overwrite:
+				pass
+			else:
+				print("Eror output folder exists")
+				quit()
 
-		pysam.index("-c","-m","6","-@",str(args.threads),bam_file_name,"{}_tiddit/{}.csi".format(args.o,sample_id))
+		#if not args.skip_index:
+		t=time.time()
+		print("Creating index")
+		pysam.index("-c","-m","4","-@",str(args.threads),bam_file_name,"{}_tiddit/{}.csi".format(args.o,sample_id))
+		print("Created index in: " + str(time.time()-t) )
 
 		min_mapq=args.q
 		max_ins_len=100000
@@ -132,7 +145,7 @@ def main():
 
 
 		t=time.time()
-		coverage_data=tiddit_signal.main(bam_file_name,args.ref,prefix,min_mapq,max_ins_len,sample_id,args.threads,args.min_contig)
+		coverage_data=tiddit_signal.main(bam_file_name,args.ref,prefix,min_mapq,max_ins_len,sample_id,args.threads,args.min_contig,False)
 		print("extracted signals in:")
 		print(t-time.time())
 
@@ -153,6 +166,8 @@ def main():
 
 		if not args.e:
 			args.e=int(library["avg_insert_size"]/2.0)
+		if not args.e:
+			args.e=50
 
 		t=time.time()
 		sv_clusters=tiddit_cluster.main(prefix,contigs,contig_length,samples,library["mp"],args.e,args.l,max_ins_len,args.min_contig,args.skip_assembly,args.r)
