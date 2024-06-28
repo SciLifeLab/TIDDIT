@@ -3,10 +3,8 @@ import math
 import numpy
 from joblib import Parallel, delayed
 
-#from pysam.libcalignmentfile cimport AlignmentFile, AlignedSegment
-from pysam import AlignmentFile, AlignedSegment
-
-
+import pysam
+from pysam.libcalignmentfile cimport AlignmentFile, AlignedSegment
 
 def percentile(a, q):
 	size = len(a)
@@ -53,14 +51,13 @@ def scoring(scoring_dict,percentiles):
 
 	return(max(score))
 
-def get_region(samfile,str chr,int start,int end,int bp,int min_q,int max_ins, contig_number):
+def get_region(AlignmentFile samfile,str chr,int start,int end,int bp,int min_q,int max_ins, contig_number):
 
 	cdef int low_q=0
 	cdef int n_reads=0
 	cdef long bases=0
 	cdef int n_discs=0
 	cdef int n_splits=0
-
 
 	cdef int crossing_r=0
 	cdef int crossing_f=0
@@ -82,6 +79,8 @@ def get_region(samfile,str chr,int start,int end,int bp,int min_q,int max_ins, c
 
 	cdef long r_start
 	cdef long r_end
+
+	cdef AlignedSegment read
 
 	for read in samfile.fetch(chr, q_start, q_end):
 		if read.is_unmapped:
@@ -233,13 +232,14 @@ def sv_filter(sample_data,args,chrA,chrB,posA,posB,max_ins_len,n_discordants,n_s
 	return(filt)
 
 def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,samples,dict coverage_data,contig_number,max_ins_len,contig_seqs):
-
-	samfile  = AlignmentFile(bam_file_name, "r",reference_filename=args.ref,index_filename="{}_tiddit/{}.csi".format(args.o,samples[0]))
+	cdef AlignmentFile samfile  = AlignmentFile(bam_file_name, "r",reference_filename=args.ref,index_filename="{}_tiddit/{}.csi".format(args.o,samples[0]))
 	variants=[]
 
 	var_n=0
 	for chrB in sv_clusters[chrA]:
+
 		for cluster in sv_clusters[chrA][chrB]:
+
 			n_discordants=sv_clusters[chrA][chrB][cluster]["N_discordants"]
 			n_splits=sv_clusters[chrA][chrB][cluster]["N_splits"]
 			n_contigs=sv_clusters[chrA][chrB][cluster]["N_contigs"]
@@ -261,20 +261,23 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 			s=int(math.floor(sv_clusters[chrA][chrB][cluster]["startA"]/50.0))
 			e=int(math.floor(sv_clusters[chrA][chrB][cluster]["endA"]/50.0))+1
 			avg_a=numpy.average(coverage_data[chrA][s:e])
+			#print(f"{chrA}-{posA}-{chrB}")
 
 			if avg_a > args.max_coverage*library[ "avg_coverage_{}".format(chrA) ]:
 				continue
 			elif (args.max_coverage*n_discordants/avg_a < args.p_ratio/2 and args.max_coverage*n_splits/avg_a < args.r_ratio/2) and not n_contigs:
 				continue
 
-			avg_b=numpy.average(coverage_data[chrA][s:e])
+			s=int(math.floor(sv_clusters[chrA][chrB][cluster]["startB"]/50.0))
+			e=int(math.floor(sv_clusters[chrA][chrB][cluster]["endB"]/50.0))+1
+			avg_b=numpy.average(coverage_data[chrB][s:e])
+
 			if avg_b == 0:
 				continue
 			elif avg_b > args.max_coverage*library[ "avg_coverage_{}".format(chrB) ]:
 				continue
 			elif (args.max_coverage*n_discordants/avg_b < args.p_ratio/2 and args.max_coverage*n_splits/avg_b < args.r_ratio/2) and not n_contigs:
 				continue
-
 
 			var_n+=1
 			sample_data={}
@@ -544,7 +547,7 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 		for chrB in sv_clusters[chrA]:
 			variants[chrB]=[]
 
-	variants_list=Parallel(n_jobs=args.threads)( delayed(define_variant)(chrA,bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len,contig_seqs) for chrA in sv_clusters)
+	variants_list=Parallel(n_jobs=args.threads,prefer="threads",timeout=99999)( delayed(define_variant)(chrA,bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len,contig_seqs) for chrA in sv_clusters)
 
 	ratios={"fragments_A":[],"fragments_B":[],"reads_A":[],"reads_B":[]}
 	for v in variants_list:

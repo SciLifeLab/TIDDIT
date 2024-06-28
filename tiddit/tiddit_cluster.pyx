@@ -2,8 +2,7 @@ import sys
 import os
 import tiddit.DBSCAN as DBSCAN
 import numpy
-import statistics 
-from statistics import mode
+from collections import Counter
 
 def find_discordant_pos(fragment,is_mp):
 	if is_mp:
@@ -267,16 +266,16 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 
 
 				if candidates[chrA][chrB][candidate]["N_splits"] and min_reads <= candidates[chrA][chrB][candidate]["N_splits"]:
-					candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["splits"])
-					candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["splits"])
+					candidates[chrA][chrB][candidate]["posA"]=Counter(candidates[chrA][chrB][candidate]["positions_A"]["splits"]).most_common(1)[0][0]
+					candidates[chrA][chrB][candidate]["posB"]=Counter(candidates[chrA][chrB][candidate]["positions_B"]["splits"]).most_common(1)[0][0]
 
 				elif candidates[chrA][chrB][candidate]["N_contigs"]:
-					candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["contigs"])
-					candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["contigs"])
+					candidates[chrA][chrB][candidate]["posA"]=Counter(candidates[chrA][chrB][candidate]["positions_A"]["contigs"]).most_common(1)[0][0]
+					candidates[chrA][chrB][candidate]["posB"]=Counter(candidates[chrA][chrB][candidate]["positions_B"]["contigs"]).most_common(1)[0][0]
 
 				elif candidates[chrA][chrB][candidate]["N_splits"]:
-					candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["splits"])
-					candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["splits"])				
+					candidates[chrA][chrB][candidate]["posA"]=Counter(candidates[chrA][chrB][candidate]["positions_A"]["splits"]).most_common(1)[0][0]
+					candidates[chrA][chrB][candidate]["posB"]=Counter(candidates[chrA][chrB][candidate]["positions_B"]["splits"]).most_common(1)[0][0]		
 
 				else:
 					reverse_A = candidates[chrA][chrB][candidate]["positions_A"]["orientation_discordants"].count("True")
@@ -329,9 +328,8 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 								candidates[chrA][chrB][candidate]["posB"]=min(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
 
 					else:
-						candidates[chrA][chrB][candidate]["posA"]=mode(candidates[chrA][chrB][candidate]["positions_A"]["discordants"])
-						candidates[chrA][chrB][candidate]["posB"]=mode(candidates[chrA][chrB][candidate]["positions_B"]["discordants"])
-
+						candidates[chrA][chrB][candidate]["posA"]=Counter(candidates[chrA][chrB][candidate]["positions_A"]["discordants"]).most_common(1)[0][0]
+						candidates[chrA][chrB][candidate]["posB"]=Counter(candidates[chrA][chrB][candidate]["positions_B"]["discordants"]).most_common(1)[0][0]
 
 				candidates[chrA][chrB][candidate]["startB"]=min(candidates[chrA][chrB][candidate]["positions_B"]["start"])
 				candidates[chrA][chrB][candidate]["endB"]=max(candidates[chrA][chrB][candidate]["positions_B"]["end"])
