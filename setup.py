@@ -17,6 +17,7 @@ if has_cython:
         "tiddit/tiddit_coverage.pyx",
         "tiddit/tiddit_cluster.pyx",
         "tiddit/tiddit_coverage_analysis.pyx",
+        "tiddit/tiddit_gc.pyx",
         "tiddit/tiddit_variant.pyx",
         "tiddit/tiddit_contig_analysis.pyx"])
 else:
@@ -24,7 +25,7 @@ else:
 
 setup(
     name = 'tiddit',
-    version = '3.7.0',
+    version = '3.8.0',
 
 
     url = "https://github.com/SciLifeLab/TIDDIT",

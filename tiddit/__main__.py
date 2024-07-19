@@ -15,9 +15,10 @@ import tiddit.tiddit_coverage as tiddit_coverage
 import tiddit.tiddit_cluster as tiddit_cluster
 import tiddit.tiddit_variant as tiddit_variant
 import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
+import tiddit.tiddit_gc as tiddit_gc
 
 def main():
-	version="3.7.0"
+	version="3.8.0"
 	parser = argparse.ArgumentParser("""tiddit-{}""".format(version),add_help=False)
 	parser.add_argument("--sv"	 , help="call structural variation", required=False, action="store_true")
 	parser.add_argument("--cov"        , help="generate a coverage bed file", required=False, action="store_true")
@@ -95,6 +96,10 @@ def main():
 		samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=args.ref)
 
 		bam_header=samfile.header
+		chromosomes=[]
+
+		for chr in bam_header["SQ"]:
+			chromosomes.append(chr["SN"])
 		samfile.close()
 
 
@@ -149,8 +154,10 @@ def main():
 		print("extracted signals in:")
 		print(t-time.time())
 
+		gc_dictionary=tiddit_gc.main(args.ref,chromosomes,args.threads,50,0.5)
+
 		t=time.time()
-		library=tiddit_coverage_analysis.determine_ploidy(coverage_data,contigs,library,args.n,prefix,args.c,args.ref,50,bam_header)
+		library=tiddit_coverage_analysis.determine_ploidy(coverage_data,contigs,library,args.n,prefix,args.c,args.ref,50,bam_header,gc_dictionary)
 		print("calculated coverage in:")
 		print(time.time()-t)
 
@@ -179,7 +186,7 @@ def main():
 		f.write(vcf_header+"\n")
 
 		t=time.time()
-		variants=tiddit_variant.main(bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len)
+		variants=tiddit_variant.main(bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len,gc_dictionary)
 		print("analyzed clusters in")
 		print(time.time()-t)
 

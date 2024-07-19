@@ -177,11 +177,11 @@ def find_sv_type(chrA,chrB,inverted,non_inverted,args,sample_data,samples,librar
 				return("DUP:INV",cn)
 			else:
 				return("DUP:TANDEM",cn)
+
+		if inverted > non_inverted:
+			return("INV",cn)
 		elif cn < p:
 			return("DEL",cn)
-
-		elif inverted > non_inverted:
-			return("INV",cn)
 		else:
 			return("BND",cn)
 
@@ -231,7 +231,7 @@ def sv_filter(sample_data,args,chrA,chrB,posA,posB,max_ins_len,n_discordants,n_s
 
 	return(filt)
 
-def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,samples,dict coverage_data,contig_number,max_ins_len,contig_seqs):
+def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,samples,dict coverage_data,contig_number,max_ins_len,contig_seqs,gc):
 	cdef AlignmentFile samfile  = AlignmentFile(bam_file_name, "r",reference_filename=args.ref,index_filename="{}_tiddit/{}.csi".format(args.o,samples[0]))
 	variants=[]
 
@@ -270,6 +270,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 
 			s=int(math.floor(sv_clusters[chrA][chrB][cluster]["startB"]/50.0))
 			e=int(math.floor(sv_clusters[chrA][chrB][cluster]["endB"]/50.0))+1
+
 			avg_b=numpy.average(coverage_data[chrB][s:e])
 
 			if avg_b == 0:
@@ -302,7 +303,10 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 				else:
 					s=int(math.floor(posA/50.0))
 					e=int(math.floor(posB/50.0))+1
-					sample_data[sample]["covM"]=numpy.average(coverage_data[chrA][s:e] )
+					coverage_between=coverage_data[chrA][s:e]
+					gc_between=gc[chrA][s:e]
+
+					sample_data[sample]["covM"]=numpy.average(coverage_between[ gc_between > -1 ] )
 
 			inverted=0
 			non_inverted=0
@@ -528,7 +532,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 	samfile.close()
 	return(variants)
 
-def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,samples,dict coverage_data,contig_number,max_ins_len):
+def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,samples,dict coverage_data,contig_number,max_ins_len,gc):
 	contig_seqs={}
 	new_seq=False
 	if not args.skip_assembly:
@@ -547,7 +551,7 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 		for chrB in sv_clusters[chrA]:
 			variants[chrB]=[]
 
-	variants_list=Parallel(n_jobs=args.threads,prefer="threads",timeout=99999)( delayed(define_variant)(chrA,bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len,contig_seqs) for chrA in sv_clusters)
+	variants_list=Parallel(n_jobs=args.threads,prefer="threads",timeout=99999)( delayed(define_variant)(chrA,bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len,contig_seqs,gc) for chrA in sv_clusters)
 
 	ratios={"fragments_A":[],"fragments_B":[],"reads_A":[],"reads_B":[]}
 	for v in variants_list:
