@@ -38,6 +38,8 @@ tiddit --sv --help
 tiddit --cov --help
 ```
 
+Optionally, the assembly calling may be turned off using the "--skip_assembly" option.
+
 TIDDIT may be installed using bioconda:
 ```
 conda install tiddit
@@ -60,6 +62,7 @@ Where bam is the input bam or cram file. And reference.fasta is the reference fa
 
 TIDDIT may be fine-tuned by altering these optional parameters:
 
+
 	-o	output prefix(default=output)
 	-i	paired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (default= 99.9th percentile of insert size)
 	-d	expected reads orientations, possible values "innie" (-> <-) or "outtie" (<- ->). Default: major orientation within the dataset
@@ -74,6 +77,7 @@ TIDDIT may be fine-tuned by altering these optional parameters:
 	-s	Number of reads to sample when computing library statistics(default=25000000)
 	-z 	minimum variant size (default=50), variants smaller than this will not be printed ( z < 10 is not recomended)
 	--force_ploidy	force the ploidy to be set to -n across the entire genome (i.e skip coverage normalisation of chromosomes)
+	 --force_overwrite     force the analysis and overwrite any data in the output folder
 	--n_mask	exclude regions from coverage calculation if they contain more than this fraction of N (default = 0.5)
 	--skip_assembly	Skip running local assembly, tiddit will perform worse, but wont require fermi2, bwa, ropebwt and bwa indexed ref
 	--bwa	path to bwa executable file(default=bwa)
