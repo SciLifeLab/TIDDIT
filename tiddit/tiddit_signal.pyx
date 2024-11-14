@@ -144,7 +144,7 @@ def SA_analysis(read,min_q,tag,reference_name):
 
 	return(split)
 
-def worker(str chromosome, str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_id, int bin_size,skip_index):
+def worker(str chromosome, str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_id, int bin_size,skip_index,int min_anchor_len,int min_clip_len):
 	print("Collecting signals on contig: {}".format(chromosome))
 
 	bam_index="{}_tiddit/{}.csi".format(prefix,sample_id)
@@ -184,16 +184,17 @@ def worker(str chromosome, str bam_file_name,str ref,str prefix,int min_q,int ma
 		if read_supplementary or read.is_secondary:
 			continue
 
-		if read_mapq > 1:
-			cigar_tuple=read.cigartuples
-			if (cigar_tuple[0][0] == 4 and cigar_tuple[0][1] > 10) and (cigar_tuple[-1][0] == 0 and cigar_tuple[-1][1] > 30) and len(cigar_tuple) < 7:
-				clips.append([">{}|{}|{}\n".format(read.query_name,read_chromosome,read_position+1),read.query_sequence+"\n"])
-
-			elif cigar_tuple[-1][0] == 4 and cigar_tuple[-1][1] > 10 and (cigar_tuple[0][0] == 0 and cigar_tuple[0][1] > 30) and len(cigar_tuple) < 7:
-				clips.append([">{}|{}|{}\n".format(read.query_name,read_chromosome,read_position+1),read.query_sequence+"\n"])
 
 		if read_mapq < min_q:
 			continue
+
+		if ( abs(read.isize) < max_ins and mate_chromosome == read_chromosome ):
+			cigar_tuple=read.cigartuples
+			if (cigar_tuple[0][0] == 4 and cigar_tuple[0][1] > min_clip_len) and (cigar_tuple[-1][0] == 0 and cigar_tuple[-1][1] > min_anchor_len):
+				clips.append([">{}|{}|{}\n".format(read.query_name,read_chromosome,read_position+1),read.query_sequence+"\n"])
+
+			elif cigar_tuple[-1][0] == 4 and cigar_tuple[-1][1] > min_clip_len and (cigar_tuple[0][0] == 0 and cigar_tuple[0][1] > min_anchor_len):
+				clips.append([">{}|{}|{}\n".format(read.query_name,read_chromosome,read_position+1),read.query_sequence+"\n"])
 
 		if read.has_tag("SA"):
 			split=SA_analysis(read,min_q,"SA",read_chromosome)
@@ -226,7 +227,7 @@ def worker(str chromosome, str bam_file_name,str ref,str prefix,int min_q,int ma
 
 	return(chromosome,data,splits,coverage_data, "{}_tiddit/clips/{}.fa".format(prefix,chromosome) )
 
-def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_id, int threads, int min_contig,skip_index):
+def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_id, int threads, int min_contig,skip_index,int min_anchor_len,int min_clip_len):
 
 	cdef AlignmentFile samfile = pysam.AlignmentFile(bam_file_name, "r",reference_filename=ref)
 	bam_header=samfile.header
@@ -255,7 +256,7 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 			splits[chrA["SN"]][chrB["SN"]]={}
 
 	t=time.time()
-	res=Parallel(n_jobs=threads,timeout=99999)( delayed(worker)(chromosome,bam_file_name,ref,prefix,min_q,max_ins,sample_id,bin_size,skip_index) for chromosome in chromosomes )
+	res=Parallel(n_jobs=threads)( delayed(worker)(chromosome,bam_file_name,ref,prefix,min_q,max_ins,sample_id,bin_size,skip_index,min_anchor_len,min_clip_len) for chromosome in chromosomes )
 
 	chromosomes=set(chromosomes)
 	for i in range(0,len(res)):

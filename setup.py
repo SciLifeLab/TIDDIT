@@ -18,6 +18,8 @@ if has_cython:
         "tiddit/tiddit_cluster.pyx",
         "tiddit/tiddit_coverage_analysis.pyx",
         "tiddit/tiddit_gc.pyx",
+        "tiddit/silverfish.pyx",
+        "tiddit/graphlib.pyx",
         "tiddit/tiddit_variant.pyx",
         "tiddit/tiddit_contig_analysis.pyx"])
 else:

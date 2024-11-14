@@ -367,8 +367,9 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 
 				if n_contigs:
 					for c in sv_clusters[chrA][chrB][cluster]["contigs"]:
-						if "_" in c:
-							c=c.split("_")[0]
+						if "_d_" in c:
+							c=c.split("_d_")[0]
+
 						ctgs=[ contig_seqs[c] ]
 					info+=["CTG={}".format("|".join(ctgs) )]
 
@@ -451,9 +452,9 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 
 				if n_contigs:
 					for c in sv_clusters[chrA][chrB][cluster]["contigs"]:
-						if "_" in c:
-							c=c.split("_")[0]
-
+						if "_d_" in c:
+							c=c.split("_d_")[0]
+ 
 						ctgs=[ contig_seqs[c] ]
 					info+=["CTG={}".format("|".join(ctgs) )]
 
@@ -538,13 +539,20 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 	if not args.skip_assembly:
 		for line in open("{}_tiddit/clips.fa.assembly.clean.mag".format(args.o)):
 
-			if not new_seq and line[0] == "@" and "\t" in line:
-				name=line.split("\t")[0][1:]
-				new_seq=True
-
-			elif new_seq:
+			if line[0] == ">":
+				name=line[1:].rstrip()
+			else:
 				contig_seqs[name]=line.strip("\n")
-				new_seq=False
+
+			#if not new_seq and line[0] == "@" and "\t" in line:
+			#	name=line.split("\t")[0][1:]
+			#	new_seq=True
+
+			#elif new_seq:
+			#	contig_seqs[name]=line.strip("\n")
+			#	new_seq=False
+
+
 	variants={}
 	for chrA in sv_clusters:
 		variants[chrA]=[]

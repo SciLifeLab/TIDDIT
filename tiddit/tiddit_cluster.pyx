@@ -150,14 +150,12 @@ def main(prefix,chromosomes,contig_length,samples,is_mp,epsilon,m,max_ins_len,mi
 				candidates[chrA][chrB]={}
 
 			positions[chrA][chrB]=numpy.array(sorted(positions[chrA][chrB],key=lambda l:l[0]))
-			#print(positions[:,[0,1]])
 			
 			clusters=DBSCAN.main(positions[chrA][chrB],epsilon,m)
 			positions[chrA][chrB]=list(positions[chrA][chrB])
 			cluster_pos=[]
 			for i in range(0,len(positions[chrA][chrB])):
 				cluster_pos.append(list(positions[chrA][chrB][i])+[clusters[i]] )
-				#positions[i].append(clusters[i])
 
 			cluster_pos= sorted(cluster_pos,key=lambda l:l[2])
 			n_ctg_clusters=0
