@@ -233,8 +233,8 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 	bam_header=samfile.header
 	samfile.close()
 	cdef int bin_size=50
-	cdef str file_type="wig"
-	cdef str outfile=prefix+".tiddit_coverage.wig"
+	file_type="wig"
+	outfile=prefix+".tiddit_coverage.wig"
 
 	cdef long t_tot=0
 
