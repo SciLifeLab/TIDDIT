@@ -41,7 +41,7 @@ def x_coordinate_clustering(data,epsilon,m):
 
 		distances=[]
 		current=data[i,:]
-		points=data[i+1:i+m,:]
+		points=data[i+1:i+m+1,:]
 
 		#print points
 		distances=[]

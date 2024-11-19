@@ -18,7 +18,7 @@ import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
 import tiddit.tiddit_gc as tiddit_gc
 
 def main():
-	version="3.8.0"
+	version="3.9.0"
 	parser = argparse.ArgumentParser("""tiddit-{}""".format(version),add_help=False)
 	parser.add_argument("--sv"	 , help="call structural variation", required=False, action="store_true")
 	parser.add_argument("--cov"        , help="generate a coverage bed file", required=False, action="store_true")
@@ -27,9 +27,13 @@ def main():
 	if args.sv == True:
 
 		parser = argparse.ArgumentParser("""tiddit --sv --bam inputfile [-o prefix] --ref ref.fasta""")
+		#required parameters
 		parser.add_argument('--sv'       , help="call structural variation", required=False, action="store_true")
 		parser.add_argument('--force_overwrite'       , help="force the analysis and overwrite any data in the output folder", required=False, action="store_true")
 		parser.add_argument('--bam', type=str,required=True, help="coordinate sorted bam file(required)")
+		parser.add_argument('--ref', type=str, help="reference fasta",required=True)
+
+		#related to sv calling
 		parser.add_argument('-o', type=str,default="output", help="output prefix(default=output)")
 		parser.add_argument('-i', type=int, help="paired reads maximum allowed insert size. Pairs aligning on the same chr at a distance higher than this are considered candidates for SV (default= 99.9th percentile of insert size)")
 		parser.add_argument('-d', type=str,help="expected reads orientations, possible values \"innie\" (-> <-) or \"outtie\" (<- ->). Default: major orientation within the dataset")
@@ -42,19 +46,28 @@ def main():
 		parser.add_argument('-c', type=float, help="average coverage, overwrites the estimated average coverage (useful for exome or panel data)")
 		parser.add_argument('-l', type=int,default=3, help="min-pts parameter (default=3),must be set >= 2")
 		parser.add_argument('-s', type=int,default=25000000, help="Number of reads to sample when computing library statistics(default=25000000)")
-		parser.add_argument('-z', type=int,default=50, help="minimum variant size (default=50), variants smaller than this will not be printed ( z < 10 is not recomended)")
 		parser.add_argument('--force_ploidy',action="store_true", help="force the ploidy to be set to -n across the entire genome (i.e skip coverage normalisation of chromosomes)")
 		parser.add_argument('--n_mask',type=float,default=0.5, help="exclude regions from coverage calculation if they contain more than this fraction of N (default = 0.5)")
-		parser.add_argument('--ref', type=str, help="reference fasta",required=True)
-		parser.add_argument('--bwa', type=str,default="bwa", help="path to bwa executable file(default=bwa)")
-		parser.add_argument('--fermi2', type=str,default="fermi2", help="path to fermi2 executable file (default=fermi2)")
-		parser.add_argument('--ropebwt2', type=str , default="ropebwt2", help="path to ropebwt2 executable file (default=ropebwt2)")
-		parser.add_argument('--skip_assembly', action="store_true", help="Skip running local assembly, tiddit will perform worse, but wont require fermi2, bwa, ropebwt and bwa indexed ref")
-		#parser.add_argument('--skip_index', action="store_true", help="Do not generate the csi index")
+
+		#stuff related to filtering
 		parser.add_argument('--p_ratio', type=float,default=0.1, help="minimum discordant pair/normal pair ratio at the breakpoint junction(default=0.1)")
 		parser.add_argument('--r_ratio', type=float,default=0.1, help="minimum split read/coverage ratio at the breakpoint junction(default=0.1)")
 		parser.add_argument('--max_coverage', type=float,default=4, help="filter call if X times higher than chromosome average coverage (default=4)")
 		parser.add_argument('--min_contig', type=int,default=10000, help="Skip calling on small contigs (default < 10000 bp)")
+		parser.add_argument('-z', type=int,default=50, help="minimum variant size (default=50), variants smaller than this will not be printed ( z < 10 is not recomended)")
+
+		#assembly related stuff
+		parser.add_argument('--skip_assembly', action="store_true", help="Skip running local assembly, tiddit will perform worse, but wont require bwa and bwa indexed ref, and will complete quicker")
+		parser.add_argument('--bwa', type=str,default="bwa", help="path to bwa executable file(default=bwa)")
+		parser.add_argument('--min_clip', type=int,default=4, help="Minimum clip reads to initiate local assembly of a region(default=4)")
+		parser.add_argument('--padding', type=int,default=4, help="Extend the local assembly by this number of bases (default=200bp)")
+		parser.add_argument('--min_pts_clips', type=int,default=3, help="min-pts parameter for the clustering of candidates for local assembly (default=3)")
+		parser.add_argument('--max_assembly_reads', type=int,default=100000, help="Skip assembly of regions containing too many reads (default=10000 reads)")
+		parser.add_argument('--max_local_assembly_region', type=int,default=2000, help="maximum size of the clip read cluster for being considered a local assembly candidate (default=2000 bp)")
+		parser.add_argument('--min_anchor_len', type=int,default=60, help="minimum mapped bases to be considered a clip read  (default=60 bp)")
+		parser.add_argument('--min_clip_len', type=int,default=25, help="minimum clipped bases to be considered a clip read (default=25 bp)")
+		parser.add_argument('--min_contig_len', type=int,default=200, help="minimum contig length for SV analysis (default=200 bp)")
+		parser.add_argument('-k', type=int,default=91, help="kmer lenght used by the local assembler (default=91 bp)")
 		args= parser.parse_args()
 
 		if args.l < 2:
@@ -63,15 +76,7 @@ def main():
 
 		if not args.skip_assembly:
 			if not os.path.isfile(args.bwa) and not shutil.which(args.bwa):
-				print("error, BWA executable missing, add BWA to path, or specify using --bwa")
-				quit()
-
-			if not os.path.isfile(args.fermi2) and not shutil.which(args.fermi2):
-				print("error, fermi2 executable missing, add fermi2 to path, or specify using --fermi2")
-				quit()
-
-			if not os.path.isfile(args.ropebwt2) and not shutil.which(args.ropebwt2):
-				print("error, ropebwt2 executable missing, add ropebwt2 to path, or specify using --ropebwt2")
+				print("error, BWA executable missing, add BWA to path, or specify using --bwa, or skip local assembly (--skip_assembly)")
 				quit()
 
 			if not glob.glob("{}*.bwt*".format(args.ref)):
@@ -150,7 +155,7 @@ def main():
 
 
 		t=time.time()
-		coverage_data=tiddit_signal.main(bam_file_name,args.ref,prefix,min_mapq,max_ins_len,sample_id,args.threads,args.min_contig,False)
+		coverage_data=tiddit_signal.main(bam_file_name,args.ref,prefix,min_mapq,max_ins_len,sample_id,args.threads,args.min_contig,False,args.min_anchor_len,args.min_clip_len)
 		print("extracted signals in:")
 		print(t-time.time())
 
