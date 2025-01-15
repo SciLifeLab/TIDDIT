@@ -1,6 +1,6 @@
 import time
 import sys
-import graphlib
+import tiddit.graphlib as graphlib
 import copy
 
 def build_kmer_hist(seq,kmer_hist,k):
