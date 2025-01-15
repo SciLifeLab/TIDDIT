@@ -1,6 +1,5 @@
 import time
 import sys
-import graphlib
 import tiddit.graphlib as graphlib
 import copy
 
