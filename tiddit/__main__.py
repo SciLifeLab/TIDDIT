@@ -18,7 +18,7 @@ import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
 import tiddit.tiddit_gc as tiddit_gc
 
 def main():
-	version="3.9.1"
+	version="3.9.2"
 	parser = argparse.ArgumentParser("""tiddit-{}""".format(version),add_help=False)
 	parser.add_argument("--sv"	 , help="call structural variation", required=False, action="store_true")
 	parser.add_argument("--cov"        , help="generate a coverage bed file", required=False, action="store_true")
@@ -60,9 +60,9 @@ def main():
 		parser.add_argument('--skip_assembly', action="store_true", help="Skip running local assembly, tiddit will perform worse, but wont require bwa and bwa indexed ref, and will complete quicker")
 		parser.add_argument('--bwa', type=str,default="bwa", help="path to bwa executable file(default=bwa)")
 		parser.add_argument('--min_clip', type=int,default=4, help="Minimum clip reads to initiate local assembly of a region(default=4)")
-		parser.add_argument('--padding', type=int,default=4, help="Extend the local assembly by this number of bases (default=200bp)")
+		parser.add_argument('--padding', type=int,default=100, help="Extend the local assembly by this number of bases (default=100bp)")
 		parser.add_argument('--min_pts_clips', type=int,default=3, help="min-pts parameter for the clustering of candidates for local assembly (default=3)")
-		parser.add_argument('--max_assembly_reads', type=int,default=100000, help="Skip assembly of regions containing too many reads (default=10000 reads)")
+		parser.add_argument('--max_assembly_reads', type=int,default=100000, help="Skip assembly of regions containing too many reads (default=100000 reads)")
 		parser.add_argument('--max_local_assembly_region', type=int,default=2000, help="maximum size of the clip read cluster for being considered a local assembly candidate (default=2000 bp)")
 		parser.add_argument('--min_anchor_len', type=int,default=60, help="minimum mapped bases to be considered a clip read  (default=60 bp)")
 		parser.add_argument('--min_clip_len', type=int,default=25, help="minimum clipped bases to be considered a clip read (default=25 bp)")

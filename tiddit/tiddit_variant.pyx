@@ -156,7 +156,11 @@ def find_sv_type(chrA,chrB,inverted,non_inverted,args,sample_data,samples,librar
 
 	p=library["contig_ploidy_{}".format(chrA)]
 	for sample in samples:
-		cn=int(round(sample_data[sample]["covM"]*p/library[ "avg_coverage_{}".format(chrA) ]))
+		if library[ "avg_coverage_{}".format(chrA) ] != 0:
+			cn=int(round(sample_data[sample]["covM"]*p/library[ "avg_coverage_{}".format(chrA) ]))
+		else:
+			cn=int(round(sample_data[sample]["covM"]*args.n/library[ "avg_coverage" ]))
+
 
 	#mitochondria or similar
 	if p > args.n*10:
@@ -261,7 +265,6 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 			s=int(math.floor(sv_clusters[chrA][chrB][cluster]["startA"]/50.0))
 			e=int(math.floor(sv_clusters[chrA][chrB][cluster]["endA"]/50.0))+1
 			avg_a=numpy.average(coverage_data[chrA][s:e])
-			#print(f"{chrA}-{posA}-{chrB}")
 
 			if avg_a > args.max_coverage*library[ "avg_coverage_{}".format(chrA) ]:
 				continue
@@ -305,8 +308,12 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 					e=int(math.floor(posB/50.0))+1
 					coverage_between=coverage_data[chrA][s:e]
 					gc_between=gc[chrA][s:e]
-
-					sample_data[sample]["covM"]=numpy.average(coverage_between[ gc_between > -1 ] )
+					coverage_between=coverage_between[ gc_between > -1 ]
+					if len(coverage_between) > 4:
+						sample_data[sample]["covM"]=numpy.average(coverage_between)
+					else:
+						sample_data[sample]["covM"]=library[ "avg_coverage_{}".format(chrA) ]
+						
 
 			inverted=0
 			non_inverted=0
@@ -559,7 +566,7 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 		for chrB in sv_clusters[chrA]:
 			variants[chrB]=[]
 
-	variants_list=Parallel(n_jobs=args.threads,prefer="threads",timeout=99999)( delayed(define_variant)(chrA,bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len,contig_seqs,gc) for chrA in sv_clusters)
+	variants_list=Parallel(n_jobs=args.threads,prefer="threads")( delayed(define_variant)(chrA,bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len,contig_seqs,gc) for chrA in sv_clusters)
 
 	ratios={"fragments_A":[],"fragments_B":[],"reads_A":[],"reads_B":[]}
 	for v in variants_list:
