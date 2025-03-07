@@ -27,9 +27,8 @@ def binned_gc(fasta_path,contig,bin_size,n_cutoff):
 		if n/bin_size > n_cutoff:
 			contig_gc[bin]=-1
 		else:
-			result = round(100*gc/number_of_chars)
-			contig_gc[bin] = result
-			
+			contig_gc[bin] = round(100*gc/number_of_chars)
+
 		next_start+=bin_size
 	return([contig,contig_gc])
 
