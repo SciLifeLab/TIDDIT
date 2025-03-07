@@ -1,0 +1,4 @@
+[build-system]
+requires = ["setuptools","pysam","numpy","cython","joblib"]
+build-backend = "setuptools.build_meta"
+
