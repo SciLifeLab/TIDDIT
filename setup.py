@@ -38,7 +38,7 @@ setup(
     define_macros=pysam.get_defines(),
     include_dirs=[numpy.get_include()]+pysam.get_include(),
     packages = ['tiddit'],
-    install_requires = ['numpy','pysam'],
+    install_requires = ['numpy','pysam','joblib'],
     entry_points = {'console_scripts': ['tiddit = tiddit.__main__:main']},
 
 )
