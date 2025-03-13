@@ -6,30 +6,30 @@ from joblib import Parallel, delayed
 def binned_gc(fasta_path,contig,bin_size,n_cutoff):
 	fasta=pysam.FastaFile(fasta_path)
 	contig_length=fasta.get_reference_length(contig)
-	elements=int(math.ceil(contig_length/bin_size))
+	number_of_bins=int(math.ceil(contig_length/bin_size))
 	
-	contig_gc=numpy.zeros(elements,dtype=numpy.int8)
+	contig_gc=numpy.zeros(number_of_bins,dtype=numpy.int8)
 
-	start=0
-	for i in range(0,elements):
-		slice=fasta.fetch(contig, start, start+bin_size)
+	next_start=0
+	for bin in range(0,number_of_bins):
+		slice=fasta.fetch(contig, next_start, next_start+bin_size)
 		n=0
 		gc=0
+		number_of_chars=0
 
-		for charachter in slice:
-			if charachter == "N" or charachter == "n":
+		for character in slice:
+			number_of_chars += 1
+			if character == "N" or character == "n":
 				n+=1
-			elif charachter == "C" or charachter == "c" or charachter == "G" or charachter == "g":
+			elif character == "C" or character == "c" or character == "G" or character == "g":
 				gc+=1
 
 		if n/bin_size > n_cutoff:
-			contig_gc[i]=-1
-
+			contig_gc[bin]=-1
 		else:
-			contig_gc[i]=round(100*gc/elements)
+			contig_gc[bin] = round(100*gc/number_of_chars)
 
-		start+=bin_size
-
+		next_start+=bin_size
 	return([contig,contig_gc])
 
 def main(reference,contigs,threads,bin_size,n_cutoff):
