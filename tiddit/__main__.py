@@ -18,7 +18,7 @@ import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
 import tiddit.tiddit_gc as tiddit_gc
 
 def main():
-	version="3.9.2"
+	version="3.9.3"
 	parser = argparse.ArgumentParser("""tiddit-{}""".format(version),add_help=False)
 	parser.add_argument("--sv"	 , help="call structural variation", required=False, action="store_true")
 	parser.add_argument("--cov"        , help="generate a coverage bed file", required=False, action="store_true")
@@ -210,7 +210,7 @@ def main():
 		parser.add_argument('-o', type=str,default="output", help="output prefix(default=output)")
 		parser.add_argument('-z', type=int,default=500, help="use bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout")
 		parser.add_argument('-w'        , help="generate wig instead of bed", required=False, action="store_true")
-		parser.add_argument('-q'        , help="minimum mapping quality(default=20)", required=False, default=20)
+		parser.add_argument('-q'        , type=int, help="minimum mapping quality(default=20)", required=False, default=20)
 		parser.add_argument('--ref', type=str, help="reference fasta, used for reading cram")
 		args= parser.parse_args()
 
