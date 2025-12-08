@@ -210,7 +210,7 @@ def main():
 		parser.add_argument('-o', type=str,default="output", help="output prefix(default=output)")
 		parser.add_argument('-z', type=int,default=500, help="use bins of specified size(default = 500bp) to measure the coverage of the entire bam file, set output to stdout to print to stdout")
 		parser.add_argument('-w'        , help="generate wig instead of bed", required=False, action="store_true")
-		parser.add_argument('-q'        , help="minimum mapping quality(default=20)", required=False, default=20)
+		parser.add_argument('-q'        , type=int, help="minimum mapping quality(default=20)", required=False, default=20)
 		parser.add_argument('--ref', type=str, help="reference fasta, used for reading cram")
 		args= parser.parse_args()
 
