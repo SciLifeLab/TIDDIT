@@ -10,15 +10,17 @@ LABEL base_image="python:3.8-slim"
 LABEL software="TIDDIT.py"
 LABEL software.version=${TIDDIT_VERSION}
 
-## Install dependencies
+## Download and extract
+RUN conda install conda-forge::unzip
 RUN conda install -c conda-forge pip gcc joblib
 RUN conda install -c bioconda numpy cython pysam bwa
 
-## Copy local source
-COPY . /app/TIDDIT
+RUN wget https://github.com/SciLifeLab/TIDDIT/archive/TIDDIT-${TIDDIT_VERSION}.zip && \
+    unzip TIDDIT-${TIDDIT_VERSION}.zip && \
+    rm TIDDIT-${TIDDIT_VERSION}.zip
 
 ## Install
-RUN cd /app/TIDDIT && \
+RUN cd TIDDIT-TIDDIT-${TIDDIT_VERSION}  && \
 	pip install -e .
 
 ENTRYPOINT ["tiddit"]
