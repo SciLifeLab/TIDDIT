@@ -3,7 +3,7 @@ FROM condaforge/mambaforge:24.9.2-0
 WORKDIR /app
 
 ## Set TIDDIT version
-ARG TIDDIT_VERSION=3.9.1
+ARG TIDDIT_VERSION=3.9.5
 
 ## Add some info
 LABEL base_image="python:3.8-slim"
