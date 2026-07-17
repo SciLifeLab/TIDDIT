@@ -18,7 +18,8 @@ import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
 import tiddit.tiddit_gc as tiddit_gc
 
 def main():
-	version="3.9.5"
+	print(tiddit_stats.__file__)
+	version="3.9.6"
 	parser = argparse.ArgumentParser("""tiddit-{}""".format(version),add_help=False)
 	parser.add_argument("--sv"	 , help="call structural variation", required=False, action="store_true")
 	parser.add_argument("--cov"        , help="generate a coverage bed file", required=False, action="store_true")
@@ -166,6 +167,7 @@ def main():
 		gc_dictionary=tiddit_gc.main(args.ref,chromosomes,args.threads,50,0.5)
 
 		t=time.time()
+		print("Calculating Coverage across the genome")
 		library=tiddit_coverage_analysis.determine_ploidy(coverage_data,contigs,library,args.n,prefix,args.c,args.ref,50,bam_header,gc_dictionary)
 		print("calculated coverage in:")
 		print(time.time()-t)
@@ -174,6 +176,7 @@ def main():
 		if not args.skip_assembly:
 
 			t=time.time()
+			print("Performing clip read assembly")
 			tiddit_contig_analysis.main(prefix,sample_id,library,contigs,coverage_data,args)
 			print("Clip read assembly in:")
 			print(time.time()-t)

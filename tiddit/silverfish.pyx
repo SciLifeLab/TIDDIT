@@ -58,11 +58,20 @@ def remove_tips(graph,min_tip_length):
 	switches=branch_end.union(branch_start)
 	for start in starting_point.union(branch_start,branch_end):	
 		chains=[]
-		for node in graph.sucessors[start]:
-			chains.append([start]+find_chain(graph,node,switches))
+
+		#the node is not connected to anything
+		if not start in graph.sucessors and start in graph.end_points:
+			graph.delete_kmer(start)
+			continue
+		
+		if start in graph.sucessors:
+			for node in graph.sucessors[start]:
+				chains.append([start]+find_chain(graph,node,switches))
+		else:
+			chains.append([start])
 
 		for chain in chains:
-			if len(chain) < 20 and chain[-1] in graph.end_points:
+			if len(chain) < min_tip_length and chain[-1] in graph.end_points:
 				for node in chain:
 					graph.delete_kmer(node)
 
@@ -91,49 +100,79 @@ def chain_typer(chain,graph):
 
 	return("unknown")
 
-def forward_scaffold(scaffold,chains,graph,chain_numbers):
+cpdef forward_scaffold(int scaffold,list chains,set chain_numbers,int chain_length,int max_kmers,dict forward_links):
 	results=[]
-	
-	for i in range(0,len(chains)):
+	cdef int i,j
+
+	if chain_length > max_kmers:
+		return([[scaffold]])
+
+	next_node=chains[scaffold][0][-1]
+	for i in forward_links.get(next_node,[]):
+
 		if i in chain_numbers:
 			continue
 
-		if chains[i][0][0] == chains[scaffold][0][-1]:
-			r=forward_scaffold(i,chains,graph,set([i]) | chain_numbers )
+		chain_numbers.add(i)
+		next_length=len(chains[i][0])
+		r=forward_scaffold(i,chains,chain_numbers, chain_length + next_length,max_kmers,forward_links )
+		chain_numbers.remove(i)
 
-			for j in range(0,len(r)):
-				results.append( [ chains[scaffold][0]+r[j][0][1:],r[j][1] | set([scaffold]) ] )
+		for j in range(len(r)):
+			r[j].append(scaffold)
+			results.append(r[j])
 			
 	if not results:
-		results=[ [chains[scaffold][0], set([scaffold]) ] ]
+		results=[[scaffold]]
 
 	return(results)
 
-def backward_scaffold(scaffold,chains,graph,chain_numbers):
+cpdef backward_scaffold(int scaffold,list chains,set chain_numbers,int chain_length,int max_kmers,dict backward_links):
 	results=[]
+	cdef int i,j
+	cdef int next_length
+
+	if chain_length > max_kmers:
+		return([[scaffold]])
 	
-	for i in range(0,len(chains)):
+	previous_node=chains[scaffold][0][0]
+	for i in backward_links.get(previous_node,[]):
+
 		if i in chain_numbers:
 			continue
 
-		if chains[i][0][-1] == chains[scaffold][0][0]:
-			r=backward_scaffold(i,chains,graph,set([i]) | chain_numbers )
+		chain_numbers.add(i)
+		next_length=len(chains[i][0])
+		r=backward_scaffold(i,chains,chain_numbers,chain_length + next_length,max_kmers ,backward_links)
+		chain_numbers.remove(i)
 
-			for j in range(0,len(r)):
-				results.append( [ r[j][0]+chains[scaffold][0][1:],r[j][1] | set([scaffold]) ] )
+		for j in range(len(r)):
+			r[j].append(scaffold)
+			results.append(r[j])
 			
 	if not results:
-		results=[ [chains[scaffold][0], set([scaffold]) ] ]
+		results=[[scaffold]]
 
 	return(results)
 
-def main(reads,k,min_support):
+def build_sequence(chain_path,chains):
+
+	sequence=[chains[chain_path[0]][0][0]]
+
+	for chain in chain_path:
+		for kmer in chains[chain][0][1:]:
+			sequence.append(kmer[-1])
+
+	return("".join(sequence))
+
+def main(reads,k,min_support,max_kmers):
 
 	time_all=time.time()
 
 	kmers={}
 	time_kmerize=time.time()
 	graph = graphlib.graph()
+	#print("build kmer hist")
 
 	kmer_hist={}
 	for read in reads:
@@ -143,6 +182,7 @@ def main(reads,k,min_support):
 		read_kmers,kmer_hist=build_kmer_hist(reads[read],kmer_hist,k)
 		kmers[read]=read_kmers
 
+	#print("bulding graph")
 	for read in kmers:
 		if len(reads[read]) < k+1:
 			continue
@@ -159,15 +199,20 @@ def main(reads,k,min_support):
 			elif kmer_hist[kmers[read][i]] >= min_support and kmer_hist[kmers[read][i-1]] < min_support:
 				graph.add_kmer(kmers[read][i],read)
 
-			if kmer_hist[kmers[read][i]] >= min_support and kmer_hist[kmers[read][i]] >= min_support:
+			if kmer_hist[kmers[read][i-1]] >= min_support and kmer_hist[kmers[read][i]] >= min_support:
 				graph.add_vertice(kmers[read][i-1],kmers[read][i],read)		
 
 	if not reads:
 		return([])
-	
+	#print("drop kmers")
 	graph=drop_kmers(graph,min_support)
+	#print("trim edges")
 	graph=trim_edges(graph,min_support)
+	#print("remove tips")
 	graph=remove_tips(graph,10)
+
+	if len(graph.kmers) > max_kmers:
+		return([])
 
 	branch_start=graph.in_branch_points
 	branch_end=graph.out_branch_points
@@ -175,6 +220,7 @@ def main(reads,k,min_support):
 
 	chains=[]
 	switches=branch_end.union(branch_start)
+	#print("walk chains")
 	for start in starting_point.union(branch_start,branch_end):	
 		for node in graph.sucessors[start]:
 
@@ -183,47 +229,118 @@ def main(reads,k,min_support):
 			chains.append([chain,chain_type])
 
 	scaffolds=[]
+
+
+
+	forward_links={}
+	backward_links={}
+
+	for i in range(len(chains)):
+
+		start=chains[i][0][0]
+		end=chains[i][0][-1]
+
+		if start not in forward_links:
+			forward_links[start]=[]
+
+		if end not in backward_links:
+			backward_links[end]=[]
+
+		forward_links[start].append(i)
+		backward_links[end].append(i)
+
+	visited_chains=set()
+
+	scaffolds=[]
+	seen_scaffolds=set()
+	#print("extract scaffolds")
+	#print(len(chains))
+
 	for i in range(0,len(chains)):
+
+		# skip chains already included in previous scaffolds
+		if i in visited_chains:
+			continue
+		#print(i)
 		chain=chains[i][0]
 		start=chain[0]
 		end=chain[-1]
 
-		scaffold=[]	
+		scaffold=[]
 
 		if chains[i][1] == "end_point":
-			results=backward_scaffold(i,chains,graph,set([i]) )
-			scaffolds+=results
+			#print("end_point")
+			results=backward_scaffold(i,chains,set([i]),len(chains[i][0]),max_kmers,backward_links)
 
-		elif chains[i] == "start_point":
-			results=forward_scaffold(i,chains,graph,set([i]) )
-			scaffolds+=results
+			for scaffold_result in results:
+				signature=frozenset(scaffold_result)
+				if signature in seen_scaffolds:
+					continue
+
+				seen_scaffolds.add(signature)
+				scaffolds.append(scaffold_result)
+				visited_chains.update(scaffold_result)
+
+		elif chains[i][1] == "starting_point":
+			#print("starting_point")
+			results=forward_scaffold(i,chains,set([i]),len(chains[i][0]),max_kmers,forward_links)
+
+			for scaffold_result in results:
+				scaffold_result.reverse()
+
+				signature=frozenset(scaffold_result)
+				if signature in seen_scaffolds:
+					continue
+
+				seen_scaffolds.add(signature)
+				scaffolds.append(scaffold_result)
+				visited_chains.update(scaffold_result)
+
+
+
 		else:
-			forward=forward_scaffold(i,chains,graph,set([i]) )
+			#print("middle")
+			forward=forward_scaffold(i,chains,set([i]),len(chains[i][0]),max_kmers,forward_links)
+			backward=backward_scaffold(i,chains,set([i]),len(chains[i][0]),max_kmers,backward_links )
+
+			#print("done_middle_forward")
 			for forward_result in forward:
-				backward_result=backward_scaffold(i,chains,graph,forward_result[1] )
-				for result in backward_result:
-					scaffolds.append([  result[0]+forward_result[0][len(chains[i][0])-1:],forward_result[1] | result[1]])
+				forward_result = forward_result[-1:0:-1]
+				for backward_result in backward:
+					combined_path=backward_result+forward_result
+
+					if len(combined_path) != len(set(combined_path)):
+						continue
+
+					signature=frozenset(combined_path)
+					if signature in seen_scaffolds:
+						continue
+
+					seen_scaffolds.add(signature)
+					scaffolds.append(combined_path)
+					visited_chains.update(combined_path)
+
+		if len(scaffolds) > 10:
+			break 
 
 	results=[]
+	#print("print scaffolds")
+	scaffold_sets=[set(x) for x in scaffolds]
 	for i in range(0,len(scaffolds)):
 	
-		skip=False
-		for j in range(0,len(scaffolds)):
-			if j ==i or j < i:
-				continue
-			if not len(scaffolds[i][-1]-scaffolds[j][-1]):
-				skip=True
+		if i > 10:
+			break
 
+		skip=False
+		for j in range(i+1,len(scaffolds)):
+			if not scaffold_sets[i]-scaffold_sets[j]:
+				skip=True
+				break
 		if skip:
 			continue
 
-		scaffolded_chains=list(map(str,scaffolds[i][-1]))
+		results.append(build_sequence(scaffolds[i],chains))
 
-		out=[]
-		for j in range(1,len(scaffolds[i][0])):
-			out.append(scaffolds[i][0][j][-1])
-
-		results.append(scaffolds[i][0][0]+"".join(out))
 	return(results)
 
 min_branch_length=2

@@ -235,7 +235,6 @@ def main(str bam_file_name,str ref,str prefix,int min_q,int max_ins,str sample_i
 	cdef int bin_size=50
 	file_type="wig"
 	outfile=prefix+".tiddit_coverage.wig"
-
 	cdef long t_tot=0
 
 	cdef dict data={}

@@ -11,23 +11,28 @@ try:
 except ImportError:
     has_cython = False
 
+from setuptools import Extension
+
 if has_cython:
-    ext_modules = cythonize([
-        "tiddit/tiddit_signal.pyx",
-        "tiddit/tiddit_coverage.pyx",
-        "tiddit/tiddit_cluster.pyx",
-        "tiddit/tiddit_coverage_analysis.pyx",
-        "tiddit/tiddit_gc.pyx",
-        "tiddit/silverfish.pyx",
-        "tiddit/graphlib.pyx",
-        "tiddit/tiddit_variant.pyx",
-        "tiddit/tiddit_contig_analysis.pyx"])
+    extensions = [
+        Extension("tiddit.tiddit_signal", ["tiddit/tiddit_signal.pyx"]),
+        Extension("tiddit.tiddit_coverage", ["tiddit/tiddit_coverage.pyx"]),
+        Extension("tiddit.tiddit_cluster", ["tiddit/tiddit_cluster.pyx"]),
+        Extension("tiddit.tiddit_coverage_analysis", ["tiddit/tiddit_coverage_analysis.pyx"]),
+        Extension("tiddit.tiddit_gc", ["tiddit/tiddit_gc.pyx"]),
+        Extension("tiddit.silverfish", ["tiddit/silverfish.pyx"]),
+        Extension("tiddit.graphlib", ["tiddit/graphlib.pyx"]),
+        Extension("tiddit.tiddit_variant", ["tiddit/tiddit_variant.pyx"]),
+        Extension("tiddit.tiddit_contig_analysis", ["tiddit/tiddit_contig_analysis.pyx"]),
+    ]
+    ext_modules = cythonize(extensions)
 else:
     ext_modules = []
 
+
 setup(
     name = 'tiddit',
-    version = '3.9.5',
+    version = '3.9.6',
 
 
     url = "https://github.com/SciLifeLab/TIDDIT",

@@ -35,6 +35,9 @@ def read_contigs(aligned_contigs,prefix,sample_id,min_size):
 		if read.is_unmapped:
 			continue
 
+		if read.mapq < 1:
+			continue
+
 		if read.has_tag("SA") and not (read.is_supplementary or read.is_secondary):
 			split=tiddit_signal.SA_analysis(read,-2,"SA",read.reference_name)
 
@@ -42,29 +45,6 @@ def read_contigs(aligned_contigs,prefix,sample_id,min_size):
 				if not split[2] in split_contigs[split[0]][split[1]]:
 					split_contigs[split[0]][split[1]][split[2]]=[]
 				split_contigs[split[0]][split[1]][split[2]]+=split[3:]
-
-			
-		elif read.has_tag("XA") and not (read.is_supplementary or read.is_secondary):
-			XA=read.get_tag("XA")
-			if XA.count(";") == 1:
-				if ",-" in XA:
-					XA=XA.replace(",-",",")
-					xa_list=XA.split(",")
-					xa_list.insert(2,"-")
-					XA=",".join(xa_list)
-				else:
-					XA=XA.replace(",+",",")
-					xa_list=XA.split(",")
-					xa_list.insert(2,"+")
-					XA=",".join(xa_list)
-
-				read.set_tag("XA",XA)
-				split=tiddit_signal.SA_analysis(read,-2,"XA",read.reference_name)
-
-				if split:
-					if not split[2] in split_contigs[split[0]][split[1]]:
-						split_contigs[split[0]][split[1]][split[2]]=[]
-					split_contigs[split[0]][split[1]][split[2]]+=split[3:]
 
 		elif not (read.is_supplementary or read.is_secondary) and len(read.cigartuples) > 2:
 
@@ -90,15 +70,19 @@ def read_contigs(aligned_contigs,prefix,sample_id,min_size):
 
 	f.close()
 
-def local_assembly(args,sample_id,prefix,regions,chr):
+def local_assembly(args,sample_id,prefix,regions,chr,library):
 
 	if os.path.isfile("{}_tiddit/clips/clips.fa.assembly.{}.clean.mag".format(prefix,chr)):
 		os.remove("{}_tiddit/clips/clips.fa.assembly.{}.clean.mag".format(prefix,chr))
 
 	cdef AlignmentFile samfile  = AlignmentFile(args.bam, "r",reference_filename=args.ref,index_filename="{}_tiddit/{}.csi".format(args.o,sample_id))
 	mag=open( "{}_tiddit/clips/clips.fa.assembly.{}.clean.mag".format(prefix,chr) ,"w")
+	debug=open( "{}_tiddit/clips/clips.fa.assembly.{}.log".format(prefix,chr) ,"w")
+
 	contig=1
 	for region in regions[chr]:
+		debug.write(chr + ":" + str(region[1]) + "-" + str(region[2])+"\n")
+		debug.flush()
 
 		n_reads=0
 		proper=0
@@ -108,6 +92,8 @@ def local_assembly(args,sample_id,prefix,regions,chr):
 			continue
 
 		reads={}
+
+		bases=0
 		for read in samfile.fetch(region[0], region[1], region[2]):
 			if read.is_supplementary or read.is_duplicate or read.is_secondary:
 				continue
@@ -118,6 +104,7 @@ def local_assembly(args,sample_id,prefix,regions,chr):
 				proper+=1
 
 			reads[str(n_reads)]=read.query_sequence
+			bases+=len(read.query_sequence)
 			if n_reads > 50000:
 				break
 
@@ -128,7 +115,13 @@ def local_assembly(args,sample_id,prefix,regions,chr):
 		if low_mapq/n_reads > 0.25 or proper/n_reads < 0.75:
 			continue
 	
-		results=silverfish.main(reads,args.k,args.min_clip)
+		coverage=bases/(region[2]-region[1]+1)
+		if coverage > library[ "avg_coverage_{}".format(chr) ]*args.max_coverage:
+			continue
+	
+		max_kmers=2*(region[2]-region[1]+2*library["avg_read_length"])
+
+		results=silverfish.main(reads,args.k,args.min_clip,max_kmers)
 		del reads
 
 		for result in results:
@@ -138,6 +131,8 @@ def local_assembly(args,sample_id,prefix,regions,chr):
 			contig+=1
 
 	mag.close()
+	debug.close()
+
 	return( "{}_tiddit/clips/clips.fa.assembly.{}.clean.mag".format(prefix,chr) )
 
 def main(prefix,sample_id,library,contigs,coverage_data,args):
@@ -201,7 +196,7 @@ def main(prefix,sample_id,library,contigs,coverage_data,args):
 
 	del clips
 
-	contigs=Parallel(n_jobs=args.threads,timeout=99999)( delayed(local_assembly)(args,sample_id,prefix,regions,chr) for chr in regions)
+	contigs=Parallel(n_jobs=args.threads,timeout=99999)( delayed(local_assembly)(args,sample_id,prefix,regions,chr,library) for chr in regions)
 
 	mag=open(f"{prefix}_tiddit/clips.fa.assembly.clean.mag","w")
 	for contig in contigs:

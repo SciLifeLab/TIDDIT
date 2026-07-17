@@ -62,44 +62,49 @@ class graph:
 			if len(self.vertices[kmer1]) == 0:
 				del self.vertices[kmer1]
 
-		if kmer1 in self.in_branch_points:
-			if len(self.sucessors[kmer1]) < 3:
-				self.in_branch_points.remove(kmer1)
-
 		if kmer1 in self.sucessors:
 			if kmer2 in self.sucessors[kmer1]:
 				self.sucessors[kmer1].remove(kmer2)
 
+			if kmer1 in self.in_branch_points and len(self.sucessors[kmer1]) < 2:
+				self.in_branch_points.remove(kmer1)
+
 			if not self.sucessors[kmer1]:
 				self.end_points.add(kmer1)
 
-		if kmer2 in self.out_branch_points:
-			if len(self.predecessors[kmer2]) < 3:
+		if kmer2 in self.predecessors:
+			if kmer1 in self.predecessors[kmer2]:
+				self.predecessors[kmer2].remove(kmer1)
+
+			if kmer2 in self.out_branch_points and len(self.predecessors[kmer2]) < 2:
 				self.out_branch_points.remove(kmer2)
 
-		if kmer1 in self.predecessors[kmer2]:
-			self.predecessors[kmer2].remove(kmer1)
-
-		if not len(self.predecessors[kmer2]):
-			self.starting_points.add(kmer2)
+			if not self.predecessors[kmer2]:
+				self.starting_points.add(kmer2)
 
 		if (kmer1,kmer2) in self.vertice_set:
 			self.vertice_set.remove((kmer1,kmer2))
 
 	def delete_kmer(self,kmer):
-		if kmer in self.kmers:
-			del self.kmers[kmer]
 
-		sucessors=set([])
-		for sucessor in self.sucessors[kmer]:
-			sucessors.add(sucessor)
+		if kmer not in self.kmers:
+			return
 
-		predecessors=set([])
-		for predecessor in self.predecessors[kmer]:
-			predecessors.add(predecessor)
+		sucessors=set(self.sucessors.get(kmer,set()))
+		predecessors=set(self.predecessors.get(kmer,set()))
 
 		for predecessor in predecessors:
 			self.delete_vertice(predecessor,kmer)
 
 		for sucessor in sucessors:
 			self.delete_vertice(kmer,sucessor)
+
+		del self.kmers[kmer]
+
+		self.predecessors.pop(kmer,None)
+		self.sucessors.pop(kmer,None)
+
+		self.starting_points.discard(kmer)
+		self.end_points.discard(kmer)
+		self.in_branch_points.discard(kmer)
+		self.out_branch_points.discard(kmer)
