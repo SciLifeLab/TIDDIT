@@ -19,7 +19,7 @@ import tiddit.tiddit_gc as tiddit_gc
 
 def main():
 	print(tiddit_stats.__file__)
-	version="3.9.6"
+	version="3.9.7"
 	parser = argparse.ArgumentParser("""tiddit-{}""".format(version),add_help=False)
 	parser.add_argument("--sv"	 , help="call structural variation", required=False, action="store_true")
 	parser.add_argument("--cov"        , help="generate a coverage bed file", required=False, action="store_true")

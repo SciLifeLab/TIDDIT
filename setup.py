@@ -32,7 +32,7 @@ else:
 
 setup(
     name = 'tiddit',
-    version = '3.9.6',
+    version = '3.9.7',
 
 
     url = "https://github.com/SciLifeLab/TIDDIT",
