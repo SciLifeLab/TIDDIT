@@ -1,10 +1,12 @@
 import time
 import math
+import sys
 import numpy
 from joblib import Parallel, delayed
 
 import pysam
 from pysam.libcalignmentfile cimport AlignmentFile, AlignedSegment
+from tiddit.variant_validation import invalid_candidate_interval_diagnostics
 
 def percentile(a, q):
 	size = len(a)
@@ -61,6 +63,14 @@ def get_region(AlignmentFile samfile,str chr,int start,int end,int bp,int min_q,
 
 	cdef int crossing_r=0
 	cdef int crossing_f=0
+	cdef long interval_width=end-start+1
+
+	if interval_width <= 0:
+		raise ValueError(
+			"TIDDIT_INVALID_INTERVAL contig={} start={} end={} width={}".format(
+				chr, start, end, interval_width
+			)
+		)
 
 	bam_header=samfile.header
 	contig_length=bam_header["SQ"][contig_number[chr]]["LN"]
@@ -141,7 +151,7 @@ def get_region(AlignmentFile samfile,str chr,int start,int end,int bp,int min_q,
 		if discordant:
 			n_discs+=1
 
-	coverage= bases/(end-start+1)
+	coverage=bases/interval_width
 
 	if n_reads > 0:
 		frac_low_q=low_q/float(n_reads)
@@ -238,6 +248,7 @@ def sv_filter(sample_data,args,chrA,chrB,posA,posB,max_ins_len,n_discordants,n_s
 def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,samples,dict coverage_data,contig_number,max_ins_len,contig_seqs,gc):
 	cdef AlignmentFile samfile  = AlignmentFile(bam_file_name, "r",reference_filename=args.ref,index_filename="{}_tiddit/{}.csi".format(args.o,samples[0]))
 	variants=[]
+	rejections=[]
 
 	var_n=0
 	for chrB in sv_clusters[chrA]:
@@ -250,6 +261,22 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 
 			if (n_discordants < args.p and n_splits < args.r) and not n_contigs:
 					continue
+
+			interval_rejections=invalid_candidate_interval_diagnostics(
+				chrA,
+				chrB,
+				cluster,
+				sv_clusters[chrA][chrB][cluster]["startA"],
+				sv_clusters[chrA][chrB][cluster]["endA"],
+				sv_clusters[chrA][chrB][cluster]["startB"],
+				sv_clusters[chrA][chrB][cluster]["endB"],
+				n_discordants,
+				n_splits,
+				n_contigs,
+			)
+			if interval_rejections:
+				rejections.extend(interval_rejections)
+				continue
 
 			posA=sv_clusters[chrA][chrB][cluster]["posA"]
 			posB=sv_clusters[chrA][chrB][cluster]["posB"]
@@ -538,7 +565,7 @@ def define_variant(str chrA, str bam_file_name,dict sv_clusters,args,dict librar
 				variants.append([chrB,posB,variant, scoring_dict ])
 
 	samfile.close()
-	return(variants)
+	return(variants,rejections)
 
 def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,samples,dict coverage_data,contig_number,max_ins_len,gc):
 	contig_seqs={}
@@ -566,7 +593,15 @@ def main(str bam_file_name,dict sv_clusters,args,dict library,int min_mapq,sampl
 		for chrB in sv_clusters[chrA]:
 			variants[chrB]=[]
 
-	variants_list=Parallel(n_jobs=args.threads,prefer="threads")( delayed(define_variant)(chrA,bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len,contig_seqs,gc) for chrA in sv_clusters)
+	variant_results=Parallel(n_jobs=args.threads,prefer="threads")( delayed(define_variant)(chrA,bam_file_name,sv_clusters,args,library,min_mapq,samples,coverage_data,contig_number,max_ins_len,contig_seqs,gc) for chrA in sv_clusters)
+	variants_list=[]
+	rejections=[]
+	for chromosome_variants, chromosome_rejections in variant_results:
+		variants_list.append(chromosome_variants)
+		rejections.extend(chromosome_rejections)
+
+	for diagnostic in sorted(rejections):
+		print(diagnostic,file=sys.stderr)
 
 	ratios={"fragments_A":[],"fragments_B":[],"reads_A":[],"reads_B":[]}
 	for v in variants_list:
