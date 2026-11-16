@@ -16,6 +16,7 @@ import tiddit.tiddit_cluster as tiddit_cluster
 import tiddit.tiddit_variant as tiddit_variant
 import tiddit.tiddit_contig_analysis as tiddit_contig_analysis
 import tiddit.tiddit_gc as tiddit_gc
+from tiddit.name_validation import names_unusable_in_file_names
 
 def main():
 	print(tiddit_stats.__file__)
@@ -130,6 +131,12 @@ def main():
 			contig_number[contig["SN"]]=i
 			contig_length[ contig["SN"] ]=contig["LN"]
 			i+=1
+
+		#the sample name and the names of the contigs that get called are used in the names of the work files
+		called_contigs=[contig for contig in contigs if contig_length[contig] >= args.min_contig]
+		bad_names=names_unusable_in_file_names([sample_id]+called_contigs)
+		if bad_names:
+			sys.exit("Error: TIDDIT uses sample and contig names in its work file names and cannot handle the \"/\" in: {}".format(", ".join(bad_names)))
 
 		prefix=args.o
 		try:
